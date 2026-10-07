@@ -1,0 +1,19 @@
+# AI Usage Log — Habulan Rush
+_Form 03 Compliance: Required by Level Up 3.0 Esports Game Dev Challenge Rules_
+
+## Schema
+| Date | Tool | Area | Output | Extent | Reviewer |
+|------|------|------|--------|--------|----------|
+| Date of AI use | Tool name (e.g. Antigravity / Claude) | System or file affected | What was generated or changed | Full / Partial / Review only | Team member who reviewed |
+
+---
+
+## Log Entries
+
+| Date | Tool | Area | Output | Extent | Reviewer |
+|------|------|------|--------|--------|----------|
+| 2026-10-07 | Antigravity (Claude Sonnet) | Project Setup | Read all md-doc/ documentation, established PLANNING.md and TASK.md tracking, installed agent skills (roblox-luau, roblox-architecture, roblox-networking, roblox-tooling, game-feel, camera-systems, level-design, find-skills), connected Roblox Studio MCP | Review only | — |
+| 2026-10-07 | Antigravity (Claude Sonnet) | Design Lock (T01) | Created DESIGN_LOCK.md confirming all GDD System Review HIGH findings (F01–F18) with recommended defaults from the System Specification | Review only | — |
+| 2026-10-07 | Antigravity (Claude Sonnet) | Repository Scaffolding (T02) | Created folder structure, default.project.json (Rojo), AI_LOG.md, ASSET_LOG.md | Full | — |
+| 2026-10-07 | Antigravity (Claude Sonnet) | Config Module (T03/T04) | Created ReplicatedStorage/Config.lua with all gameplay constants, skill definitions, Diskarte values, match timing, network rewind parameters | Full | — |
+| 2026-10-07 | Cline (Muse Spark) | MovementController T09 | Completed StarterPlayerScripts/MovementController.lua: post-tag +20% boost (F08 via TagEvent), linear wall-clamped dash (12st/0.2s/6s/F07), slide momentum + 50% hitbox (F09), MS_03 movement lock, UI/UX Spec §4 bindings (PC Shift/Q/C, gamepad L2-stick/B/R1, touch), HRush* attribute UI bridge, Rojo $className fixes (LocalScript/Script/ModuleScript) | Full | — |

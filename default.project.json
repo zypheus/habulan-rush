@@ -1,0 +1,66 @@
+{
+  "name": "HabulanRush",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Config": {
+        "$className": "ModuleScript",
+        "$path": "src/ReplicatedStorage/Config.lua"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "RequestPounce":   { "$className": "RemoteEvent" },
+        "RequestSkill":    { "$className": "RemoteEvent" },
+        "RequestDash":     { "$className": "RemoteEvent" },
+        "PickSkill":       { "$className": "RemoteEvent" },
+        "ActivateDiskarte":{ "$className": "RemoteEvent" },
+        "StateChanged":    { "$className": "RemoteEvent" },
+        "TagEvent":        { "$className": "RemoteEvent" },
+        "SkillEvent":      { "$className": "RemoteEvent" },
+        "DiskarteUpdate":  { "$className": "RemoteEvent" },
+        "ClutchEvent":     { "$className": "RemoteEvent" }
+      }
+    },
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "MatchService": {
+        "$className": "Script",
+        "$path": "src/ServerScriptService/MatchService.lua"
+      },
+      "TagService": {
+        "$className": "Script",
+        "$path": "src/ServerScriptService/TagService.lua"
+      },
+      "SkillService": {
+        "$className": "Script",
+        "$path": "src/ServerScriptService/SkillService.lua"
+      },
+      "EventService": {
+        "$className": "Script",
+        "$path": "src/ServerScriptService/EventService.lua"
+      }
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "MovementController": {
+          "$className": "LocalScript",
+          "$path": "src/StarterPlayerScripts/MovementController.lua"
+        },
+        "TargetLockController": {
+          "$className": "LocalScript",
+          "$path": "src/StarterPlayerScripts/TargetLockController.lua"
+        },
+        "UIController": {
+          "$className": "LocalScript",
+          "$path": "src/StarterPlayerScripts/UIController.lua"
+        }
+      }
+    }
+  }
+}
