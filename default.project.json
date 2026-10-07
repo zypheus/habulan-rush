@@ -6,7 +6,6 @@
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
       "Config": {
-        "$className": "ModuleScript",
         "$path": "src/ReplicatedStorage/Config.lua"
       },
       "Remotes": {
@@ -27,20 +26,19 @@
     "ServerScriptService": {
       "$className": "ServerScriptService",
       "MatchService": {
-        "$className": "Script",
-        "$path": "src/ServerScriptService/MatchService.lua"
+        "$path": "src/ServerScriptService/MatchService.server.lua"
       },
       "TagService": {
-        "$className": "Script",
-        "$path": "src/ServerScriptService/TagService.lua"
+        "$path": "src/ServerScriptService/TagService.server.lua"
       },
       "SkillService": {
-        "$className": "Script",
-        "$path": "src/ServerScriptService/SkillService.lua"
+        "$path": "src/ServerScriptService/SkillService.server.lua"
       },
       "EventService": {
-        "$className": "Script",
-        "$path": "src/ServerScriptService/EventService.lua"
+        "$path": "src/ServerScriptService/EventService.server.lua"
+      },
+      "Bootstrap": {
+        "$path": "src/ServerScriptService/Bootstrap.server.lua"
       }
     },
 
@@ -49,16 +47,13 @@
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
         "MovementController": {
-          "$className": "LocalScript",
-          "$path": "src/StarterPlayerScripts/MovementController.lua"
+          "$path": "src/StarterPlayerScripts/MovementController.client.lua"
         },
         "TargetLockController": {
-          "$className": "LocalScript",
-          "$path": "src/StarterPlayerScripts/TargetLockController.lua"
+          "$path": "src/StarterPlayerScripts/TargetLockController.client.lua"
         },
         "UIController": {
-          "$className": "LocalScript",
-          "$path": "src/StarterPlayerScripts/UIController.lua"
+          "$path": "src/StarterPlayerScripts/UIController.client.lua"
         }
       }
     }

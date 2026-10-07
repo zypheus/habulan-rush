@@ -39,6 +39,22 @@ Config.Movement = {
 	-- Post-tag speed boost for ex-Taya [SD F08]
 	PostTagSpeedBoostMult     = 1.20, -- multiplies base walk and sprint
 	PostTagSpeedBoostDuration = 2.0,  -- seconds
+
+	-- Dash VFX (client-predicted juice; transient — must decay to rest).
+	-- Ribbon afterimage + one-shot burst on dash start. All values from here.
+	DashVFX = {
+		Enabled          = true,
+		TrailLifetime    = 0.35,  -- s the ribbon lingers AFTER the dash ends
+		BurstCount       = 16,    -- particles spawned at dash start
+		ParticleLifetime = 0.30,  -- s each burst particle lives
+		ParticleSpeedMin = 8,     -- studs/s backward spread (min)
+		ParticleSpeedMax = 18,    -- studs/s backward spread (max)
+		ColorStart       = Color3.fromRGB(130, 225, 255), -- cyan flash
+		ColorEnd         = Color3.fromRGB(150, 130, 255), -- violet fade
+		SizeStart        = 0.7,   -- studs at birth, shrinks to 0
+		TransparencyIn   = 0.2,   -- birth transparency (0 = opaque, 1 = invisible)
+		LightEmission    = 0.7,   -- glow strength
+	},
 }
 
 -- ============================================================

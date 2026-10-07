@@ -1,0 +1,1741 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">Config</string>
+        <string name="Source"><![CDATA[--!strict
+-- ReplicatedStorage/Config.lua
+-- Single source of truth for ALL tunable values in Habulan Rush.
+-- Zero hardcoding anywhere else in the codebase. All numbers come from here.
+-- Locked values from DESIGN_LOCK.md (2026-10-07) are marked [LOCKED].
+-- Values marked [SD] are Spec Defaults pending team confirmation.
+
+local Config = {}
+
+-- ============================================================
+-- MOVEMENT
+-- ============================================================
+Config.Movement = {
+	-- Runner speeds (studs/s)
+	RunnerWalkSpeed   = 16,   -- [LOCKED via TDD §3]
+	RunnerSprintSpeed = 21,   -- [LOCKED via TDD §3]
+
+	-- Stamina
+	StaminaMax         = 100,
+	StaminaDrainRate   = 20,  -- per second while sprinting
+	StaminaRegenRate   = 12,  -- per second after RegenDelay
+	StaminaRegenDelay  = 1.0, -- seconds without sprinting before regen starts
+	StaminaDepletedMin = 10,  -- must reach this before sprint re-enables after depletion [SD]
+
+	-- Dash
+	DashDistance           = 12,   -- studs
+	DashDuration           = 0.2,  -- seconds
+	DashCooldown           = 6.0,  -- seconds
+	DashPounceInvulnTime   = 0.15, -- [LOCKED F07] seconds of pounce invulnerability (not touch/Tsinelas)
+
+	-- Slide
+	SlideDuration     = 0.6,  -- seconds
+	SlideCooldown     = 3.0,  -- seconds
+	SlideHitboxScale  = 0.5,  -- [SD] 50% height
+
+	-- Taya
+	TayaSpeed         = 18,   -- studs/s constant, no stamina
+
+	-- Post-tag speed boost for ex-Taya [SD F08]
+	PostTagSpeedBoostMult     = 1.20, -- multiplies base walk and sprint
+	PostTagSpeedBoostDuration = 2.0,  -- seconds
+
+	-- Dash VFX (client-predicted juice; transient — must decay to rest).
+	-- Ribbon afterimage + one-shot burst on dash start. All values from here.
+	DashVFX = {
+		Enabled          = true,
+		TrailLifetime    = 0.35,  -- s the ribbon lingers AFTER the dash ends
+		BurstCount       = 16,    -- particles spawned at dash start
+		ParticleLifetime = 0.30,  -- s each burst particle lives
+		ParticleSpeedMin = 8,     -- studs/s backward spread (min)
+		ParticleSpeedMax = 18,    -- studs/s backward spread (max)
+		ColorStart       = Color3.fromRGB(130, 225, 255), -- cyan flash
+		ColorEnd         = Color3.fromRGB(150, 130, 255), -- violet fade
+		SizeStart        = 0.7,   -- studs at birth, shrinks to 0
+		TransparencyIn   = 0.2,   -- birth transparency (0 = opaque, 1 = invisible)
+		LightEmission    = 0.7,   -- glow strength
+	},
+}
+
+-- ============================================================
+-- TAG SYSTEM
+-- ============================================================
+Config.Tag = {
+	TouchTagRange       = 3,    -- studs
+	SafeWindowDuration  = 2.0,  -- seconds [LOCKED F06: longest applies, no stack]
+	LockDelayDuration   = 1.0,  -- seconds (gates target lock only, not touch/pounce)
+
+	-- Pounce
+	PounceWindupTime    = 0.35, -- seconds telegraph on client
+	PounceLungeDistance = 14,   -- studs
+	PounceLungeSpeed    = 45,   -- studs/s
+	PounceHitRadius     = 4,    -- studs
+	PounceMissStunTime  = 1.0,  -- seconds self-stun on miss
+	PounceCooldown      = 3.0,  -- seconds after miss
+
+	-- Ring buffer for lag rewind
+	RewindBufferDuration = 0.5,  -- seconds of Runner position history kept
+	RewindDefault        = 0.12, -- [LOCKED F17] default rewind window (seconds)
+	RewindMax            = 0.20, -- [LOCKED F17] hard cap (seconds)
+
+	-- Tag validation
+	CloseChaseDistance  = 10,   -- [LOCKED F11] studs for Diskarte close-chase-escape reward
+}
+
+-- ============================================================
+-- TAYA (role)
+-- ============================================================
+Config.Taya = {
+	TargetLockAcquireRange = 40, -- studs
+	TargetLockBreakRange   = 55, -- studs
+	TargetLockCoverTimeout = 1.0, -- seconds behind cover before lock breaks
+	TargetLockCooldown     = 4.0, -- seconds after lock break
+}
+
+-- ============================================================
+-- MATCH
+-- ============================================================
+Config.Match = {
+	MinPlayers        = 4,  -- [LOCKED F18]
+	MaxPlayers        = 8,
+
+	-- State durations (seconds)
+	LobbyReadyTimeout = 0,    -- 0 = host-start; set > 0 for auto-start countdown
+	DraftDuration     = 12,   -- MS_02
+	CountdownDuration = 5,    -- MS_03
+	RoundDuration     = 150,  -- MS_04 Round Live
+	RoundEndDuration  = 8,    -- MS_05
+	MatchEndDuration  = 15,   -- MS_06
+
+	TotalRounds       = 3,
+
+	-- Draft runs before EVERY round [LOCKED F01]
+	DraftEveryRound   = true,
+
+	-- Scoring: points by rank (1st = index 1). Covers up to 8 players.
+	RoundPoints       = { 8, 6, 5, 4, 3, 2, 1, 0 },
+
+	-- Disconnect rules [LOCKED F18]
+	OnTayaDisconnect  = "NearestRunner", -- nearest Runner becomes Taya
+	OnRunnerDisconnect = "RankLast",     -- ranked last for the round
+	BelowMinPlayersAction = "PauseEndRound", -- pause 10 s then end round without points [SD]
+	BelowMinPauseDuration = 10,
+
+	-- Event phases (time remaining in Round Live)
+	SimulaEnd       = 100, -- seconds left when SIMULA ends
+	BarangayRushEnd = 50,  -- seconds left when BARANGAY RUSH ends / HULING HABOL starts
+
+	-- Barangay Rush event warning
+	EventWarningTime = 2.5, -- seconds before phase change
+}
+
+-- ============================================================
+-- EVENTS (Huling Habol escalation thresholds)
+-- ============================================================
+Config.Events = {
+	HulingHabolEscalation = { 50, 30, 15, 10, 5 }, -- seconds remaining triggers
+}
+
+-- ============================================================
+-- SKILLS
+-- ============================================================
+-- Schema per skill entry (see TDD §3.1):
+--   id, role, type, cooldown, duration, range, params, tell, weakness
+
+Config.Skills = {
+	RS_01 = {
+		id       = "RS_01",
+		name     = "Luksong Baka",
+		role     = "Runner",
+		type     = "Escape",
+		cooldown = 12,
+		duration = 0,
+		range    = 18,
+		params   = { height = 14, distance = 18 }, -- impulse values
+		tell     = { vfx = "DustRing",   sfx = "Hup" },
+		weakness = "No air steering",
+		counterCondition = "Escapes a pounce or Lambat while airborne",
+	},
+	RS_02 = {
+		id       = "RS_02",
+		name     = "Pekeng Takbo",
+		role     = "Runner",
+		type     = "Decoy",
+		cooldown = 18,
+		duration = 4, -- decoy active seconds
+		range    = 0,
+		params   = { breakLock = true },
+		tell     = { vfx = "SmokePuff",  sfx = "Psssh" },
+		weakness = "Decoy has no stamina and runs in a straight line",
+		counterCondition = "Taya locks onto or pounces the decoy",
+	},
+	RS_03 = {
+		id       = "RS_03",
+		name     = "Tsinelas Throw",
+		role     = "Runner",
+		type     = "Stun",
+		cooldown = 25,
+		duration = 1.0, -- stun duration on hit
+		range    = 25,  -- max projectile range (studs)
+		params   = {},
+		tell     = { vfx = "SlipperArc", sfx = "Whoosh" },
+		weakness = "Linear projectile; short stun only",
+		counterCondition = "Hit on Taya mid-wind-up or mid-skill cast",
+	},
+	TS_01 = {
+		id       = "TS_01",
+		name     = "Sigaw",
+		role     = "Taya",
+		type     = "Detection",
+		cooldown = 20,
+		duration = 2.0, -- reveal duration
+		range    = 40,  -- radial reveal range (studs)
+		params   = {},
+		tell     = { vfx = "ShoutWave",  sfx = "Sigaw" },
+		weakness = "Only reveals; does not slow or stun",
+		counterCondition = "Tag a Runner who used Pekeng Takbo within the reveal window",
+	},
+	TS_02 = {
+		id       = "TS_02",
+		name     = "Lambat",
+		role     = "Taya",
+		type     = "Area",
+		cooldown = 22,
+		duration = 5.0, -- slow duration on hit Runner
+		range    = 8,   -- net zone radius (studs)
+		params   = { slowMult = 0.60 }, -- Runner moves at 60% speed
+		tell     = { vfx = "NetGrid",   sfx = "Whomp" },
+		weakness = "Runners can dash or jump out of the net",
+		counterCondition = "Tag a Runner slowed by the net",
+	},
+	TS_03 = {
+		id       = "TS_03",
+		name     = "Hatak",
+		role     = "Taya",
+		type     = "Speed",
+		cooldown = 15,
+		duration = 1.5, -- speed boost duration
+		range    = 0,
+		params   = { speedMult = 1.35, lockDisabled = true }, -- +35%, disables target lock
+		tell     = { vfx = "SpeedLines", sfx = "Dash" },
+		weakness = "Lock disabled; small window; commits Taya forward",
+		counterCondition = "Tag a Runner within 2 s of using Hatak",
+	},
+}
+
+-- ============================================================
+-- DISKARTE
+-- ============================================================
+Config.Diskarte = {
+	MeterMax = 100,
+
+	-- Gain values (per trigger)
+	Gain = {
+		-- Runner gains
+		LockBreak          = 15,
+		PounceDouge        = 25,
+		Counter            = 20,
+		CloseChaseEscape   = 15, -- within CloseChaseDistance studs
+
+		-- Taya gains
+		PounceTag          = 25,
+		Tag                = 15,  -- regular touch tag
+		CatchAfterEscape   = 20,  -- catch after Runner used escape skill
+		TayaCounter        = 20,  -- Taya counter
+	},
+
+	-- Anti-snowball guards [SD F13]
+	SamePairCooldown      = 6.0, -- seconds before the same pair can grant each other gains again
+	RepeatedTagCooldown   = 3.0, -- seconds before same tag grants gain again
+
+	-- Moves
+	Moves = {
+		LIKSI = {
+			role   = "Runner",
+			effect = "NextSkillCooldownReduction",
+			params = { reduction = 0.50, window = 8.0 }, -- 50% CD reduction within 8 s
+		},
+		BANTAY = {
+			role   = "Taya",
+			effect = "DirectionalRunnerClue",
+			params = { duration = 2.0, wallReveal = false },
+		},
+		PUSO = {
+			role   = "Both",
+			effect = "SafeWindowOnNextTagInteraction",
+			params = { safeWindow = 0.75, expiry = 10.0 }, -- does not stack with other windows
+		},
+	},
+
+	-- Input bindings [SD F14]
+	ActivateKey     = Enum.KeyCode.F,       -- PC
+	ActivateMobile  = "DiskarteButton",     -- near skill bar
+	ActivateGamepad = Enum.KeyCode.ButtonX, -- console face button
+}
+
+-- ============================================================
+-- NETWORK / PERFORMANCE
+-- ============================================================
+Config.Network = {
+	RateLimit = 10, -- max requests per second per player per remote
+}
+
+Config.Performance = {
+	MaxPartsPerMap     = 6000,
+	MaxActiveEmitters  = 30,
+	ServerFrameBudgetMs = 4,
+	MemoryBudgetMB     = 1024, -- 1 GB
+	NetworkBudgetKBs   = 20,  -- KB/s per client
+}
+
+-- ============================================================
+-- MAPS (placeholder; map data will expand here)
+-- ============================================================
+Config.Maps = {
+	Kalsada = {
+		id         = "Kalsada",
+		name       = "Barangay Kalsada",
+		size       = Vector2.new(150, 150),
+		spawnCount = 8,
+		rushEvent  = "CourtRush",
+	},
+	Binaha = {
+		id         = "Binaha",
+		name       = "Binaha na Baryo",
+		size       = Vector2.new(150, 150),
+		spawnCount = 8,
+		rushEvent  = "TubigTumataas",
+		floodSpeedMult       = 0.80, -- -20% in submerged low areas
+		evacSafeWindowDuration = 1.5, -- [SD] one-time per visit
+	},
+}
+
+return Config
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">Remotes</string>
+      </Properties>
+      <Item class="RemoteEvent" referent="3">
+        <Properties>
+          <string name="Name">ActivateDiskarte</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="4">
+        <Properties>
+          <string name="Name">ClutchEvent</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="5">
+        <Properties>
+          <string name="Name">DiskarteUpdate</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="6">
+        <Properties>
+          <string name="Name">PickSkill</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="7">
+        <Properties>
+          <string name="Name">RequestDash</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="8">
+        <Properties>
+          <string name="Name">RequestPounce</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="9">
+        <Properties>
+          <string name="Name">RequestSkill</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="10">
+        <Properties>
+          <string name="Name">SkillEvent</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="11">
+        <Properties>
+          <string name="Name">StateChanged</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="12">
+        <Properties>
+          <string name="Name">TagEvent</string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="13">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="14">
+      <Properties>
+        <string name="Name">Bootstrap</string>
+        <token name="RunContext">0</token>
+        <string name="Source">--!strict
+-- ServerScriptService/Bootstrap.server.lua
+-- Owner: Programmer A (T08 greybox dependency)
+-- Responsibility: Build the minimal playable arena so the place never loads
+-- empty: 150x150 baseplate (Kalsada greybox footprint), 8 equidistant spawns,
+-- world lighting defaults, and StarterPlayer character defaults.
+-- Re-runnable and idempotent: safe to re-sync via Rojo without duplicating.
+-- Full art pass (court, sari-sari, jeepneys, low gaps) lands in T08.
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local StarterPlayer = game:GetService("StarterPlayer")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
+
+local ARENA_SIZE = 150 -- studs, square (T08: Barangay Kalsada 150x150)
+local SPAWN_COUNT = 8
+local SPAWN_RADIUS = 55 -- studs from center, equidistant ring
+
+local function ensureBaseplate(): BasePart
+	local existing = Workspace:FindFirstChild("KalsadaBaseplate")
+	if existing and existing:IsA("BasePart") then
+		return existing
+	end
+	local base = Instance.new("Part")
+	base.Name = "KalsadaBaseplate"
+	base.Size = Vector3.new(ARENA_SIZE, 2, ARENA_SIZE)
+	base.Position = Vector3.new(0, -1, 0) -- top surface at Y=0
+	base.Anchored = true
+	base.Material = Enum.Material.Grass
+	base.Color = Color3.fromRGB(90, 160, 90)
+	base.TopSurface = Enum.SurfaceType.Smooth
+	base.BottomSurface = Enum.SurfaceType.Smooth
+	base.Parent = Workspace
+	return base
+end
+
+local function ensureSpawns()
+	local folder = Workspace:FindFirstChild("SpawnLocations")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "SpawnLocations"
+		folder.Parent = Workspace
+	end
+	for i = 1, SPAWN_COUNT do
+		local name = string.format("Spawn%02d", i)
+		local spawn = folder:FindFirstChild(name)
+		if not spawn then
+			spawn = Instance.new("SpawnLocation")
+			spawn.Name = name
+			spawn.Parent = folder
+		end
+		if spawn:IsA("SpawnLocation") then
+			local angle = (math.pi * 2 / SPAWN_COUNT) * (i - 1)
+			spawn.Position = Vector3.new(
+				math.cos(angle) * SPAWN_RADIUS,
+				3, -- 3 studs above ground so characters never clip on spawn
+				math.sin(angle) * SPAWN_RADIUS
+			)
+			spawn.Size = Vector3.new(6, 1, 6)
+			spawn.Anchored = true
+			spawn.Enabled = true
+			spawn.AllowTeamChangeOnTouch = false
+			spawn.Neutral = true
+			spawn.Material = Enum.Material.SmoothPlastic
+			spawn.Color = Color3.fromRGB(60, 140, 220)
+			spawn.TopSurface = Enum.SurfaceType.Smooth
+			spawn.BottomSurface = Enum.SurfaceType.Weld
+			-- Hide the decal so the greybox stays clean.
+			local decal = spawn:FindFirstChildOfClass("Decal")
+			if decal then
+				decal:Destroy()
+			end
+		end
+	end
+end
+
+local function ensureLighting()
+	Lighting.Ambient = Color3.fromRGB(120, 120, 120)
+	Lighting.Brightness = 2
+	Lighting.ClockTime = 14 -- afternoon, high readability for playtests
+	Lighting.GlobalShadows = true
+end
+
+local function ensureCharacterDefaults()
+	-- T09 tuning relies on WalkSpeed set at runtime, but sane defaults help
+	-- before MovementController attaches (avoids 16-vs-default pop).
+	StarterPlayer.CharacterWalkSpeed = Config.Movement.RunnerWalkSpeed
+	StarterPlayer.CharacterJumpPower = 50 -- Roblox default; vaults &lt;= 4 studs (T08)
+end
+
+ensureBaseplate()
+ensureSpawns()
+ensureLighting()
+ensureCharacterDefaults()
+
+-- TEMP DEBUG (remove when MatchService T07 lands): no match state machine exists
+-- yet, so nothing ever fires StateChanged MS_04 and MovementController stays in
+-- inputLocked (WalkSpeed 0). Auto-unlock shortly after each spawn so T09 movement
+-- is testable in Studio Play right now. MatchService will own this event later.
+local DEBUG_AUTO_UNLOCK = true
+if DEBUG_AUTO_UNLOCK then
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(1.5)
+			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+		end)
+	end)
+	-- Cover the player that spawned before this script ran (Play Solo).
+	for _, player in Players:GetPlayers() do
+		task.spawn(function()
+			if not player.Character then
+				player.CharacterAdded:Wait()
+			end
+			task.wait(1.5)
+			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+		end)
+	end
+end
+
+-- Late-join safety: if Workspace gets cleared, rebuild once.
+Workspace.ChildRemoved:Connect(function(child)
+	if child.Name == "KalsadaBaseplate" then
+		task.defer(ensureBaseplate)
+	end
+end)
+
+print(string.format(
+	"[Bootstrap] Arena ready — %dx%d baseplate, %d spawns @ r=%d. T09 movement testable.",
+	ARENA_SIZE,
+	ARENA_SIZE,
+	SPAWN_COUNT,
+	SPAWN_RADIUS
+))</string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="15">
+      <Properties>
+        <string name="Name">EventService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/EventService.lua
+-- Owner: Programmer B (T05)
+-- Responsibility: Orchestrates Barangay Rush events and Huling Habol
+--                 timeline based on MatchService phase changes.
+-- See System Specification §7 and Config.Match / Config.Events.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T24–T26): Implement Court Rush event, match phase controller,
+--                 and Huling Habol presentation escalation.
+
+print("[EventService] Loaded — stub only. Implement T24–T26.")
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="16">
+      <Properties>
+        <string name="Name">MatchService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/MatchService.lua
+-- Owner: Programmer A (T05)
+-- Responsibility: State machine (MS_01→MS_06), shuffle bag, scoring,
+--                 phase timers, and disconnect handling.
+-- See PLANNING.md §3 and System Specification §2 for full rules.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T07): Implement match state machine and shuffle bag.
+
+print("[MatchService] Loaded — stub only. Implement T07.")
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="17">
+      <Properties>
+        <string name="Name">SkillService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/SkillService.lua
+-- Owner: Programmer B (T05)
+-- Responsibility: Skill draft, cooldowns, role checks, skill effects,
+--                 Diskarte meter and move activation.
+-- See System Specification §5–6 and Config.Skills / Config.Diskarte.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T16–T22): Implement skill draft, all 6 skills, and Diskarte system.
+
+print("[SkillService] Loaded — stub only. Implement T16–T22.")
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="18">
+      <Properties>
+        <string name="Name">TagService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/TagService.lua
+-- Owner: Programmer A (T05)
+-- Responsibility: Pounce/touch tag validation, tag transfer, Safe Window,
+--                 Lock Delay, lag rewind buffer.
+-- See System Specification §4 and DESIGN_LOCK.md for confirmed rules.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T11): Implement server-authoritative tag validation.
+-- TODO (T12): Implement Safe Window, speed boost, and lock delay.
+-- TODO (T13): Implement pounce mechanics and validation.
+
+print("[TagService] Loaded — stub only. Implement T11–T13.")
+]]></string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="19">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="20">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="21">
+        <Properties>
+          <string name="Name">MovementController</string>
+          <string name="Source"><![CDATA[--!strict
+-- StarterPlayerScripts/MovementController.lua (LocalScript)
+-- Owner: Programmer A
+-- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
+--
+-- Responsibilities:
+--   • Runner walk / sprint speed via Humanoid.WalkSpeed (16 / 21, Config-driven)
+--   • Stamina drain 20/s, regen 12/s after 1s, depletion lock until >= 10
+--   • Post-tag ex-Taya boost: +20% walk+sprint for 2s (F08, via TagEvent)
+--   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s pounce invuln (F07),
+--     wall-clamped raycast, RequestDash → server (server validates + records)
+--   • Slide: 0.6s, 3s cooldown, 50% hitbox (HipHeight), momentum entry (F09)
+--   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide gated to MS_04.
+--     NOTE (playtest): Bootstrap TEMP auto-fires MS_04/Runner 1.5s after spawn
+--     until MatchService T07 owns the state machine — without it you stay locked.
+--   • Bindings (UI/UX Spec §4): PC Shift/Q/C · Gamepad L2-stick/B/R1 · Touch buttons
+--   • Dash VFX: rear Trail ribbon + particle burst on Q (Config.Movement.DashVFX)
+--   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
+--
+-- Does NOT handle: tag detection/validation (TagService owns truth),
+-- skill cooldowns (SkillService), timers/scores (MatchService), or lock camera.
+--
+-- All numeric constants come exclusively from Config.Movement — zero hardcoding.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+-- ── Config ──────────────────────────────────────────────────────────────────
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Mv     = Config.Movement   -- shorthand
+
+-- ── Player / character refs ──────────────────────────────────────────────────
+local LocalPlayer = Players.LocalPlayer
+local Character: Model
+local Humanoid: Humanoid
+local HRP: BasePart  -- HumanoidRootPart
+
+-- ── Remotes ──────────────────────────────────────────────────────────────────
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local RequestDash = Remotes:WaitForChild("RequestDash") :: RemoteEvent
+local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
+local TagEvent = Remotes:WaitForChild("TagEvent") :: RemoteEvent
+
+-- ── State ────────────────────────────────────────────────────────────────────
+-- Stamina
+local stamina = Mv.StaminaMax
+local isDepletion = false -- true after stamina reaches 0; locked until >= StaminaDepletedMin
+local isSprinting = false -- whether sprint key is held AND conditions allow sprinting
+local regenTimer = 0.0 -- seconds since sprint stopped
+
+-- Dash
+local isDashing = false
+local dashCooldownLeft = 0.0
+local dashInvulnLeft = 0.0 -- F07 pounce invulnerability window (vs pounce lunge only)
+local dashConn: RBXScriptConnection? = nil
+
+-- Slide
+local isSliding = false
+local slideCooldownLeft = 0.0
+local slideTimer = 0.0
+local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
+
+-- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s, stamina rules unchanged.
+local boostLeft = 0.0
+
+-- Movement lock: MS_03 Countdown locks input; MS_05/MS_06/MS_01 freeze & end slides.
+local inputLocked = true
+
+local role = "Runner" -- "Runner" | "Taya"; updated by StateChanged
+local roundLive = false -- true only during MS_04 Round Live (dash/slide gate)
+
+-- Sprint input held flags per device
+local sprintHeld_KB     = false
+local sprintHeld_GP     = false
+local dashRequested_KB  = false
+local dashRequested_GP  = false
+local slideRequested_KB = false
+local slideRequested_GP = false
+
+-- ── Utility ──────────────────────────────────────────────────────────────────
+local function getCharRefs(): boolean
+	Character = LocalPlayer.Character
+	if not Character then return false end
+	Humanoid = Character:FindFirstChildOfClass("Humanoid") :: Humanoid
+	HRP      = Character:FindFirstChild("HumanoidRootPart") :: BasePart
+	return Humanoid ~= nil and HRP ~= nil
+end
+
+local function clamp(v, lo, hi)
+	return math.max(lo, math.min(hi, v))
+end
+
+-- ── Speed management ─────────────────────────────────────────────────────────
+-- Spec §3 + F08: Runner walk 16 / sprint 21. Ex-Taya gets +20% on BOTH base
+-- speeds for 2s (PostTagSpeedBoostMult/Duration); stamina rules unchanged.
+-- Taya is a flat 18 with no stamina. Slide holds its entry speed (momentum).
+-- Call this any time role / sprint / boost / lock state changes.
+local function applySpeed()
+	if not Humanoid then
+		return
+	end
+	if inputLocked then
+		Humanoid.WalkSpeed = 0
+		return
+	end
+	if role == "Taya" then
+		Humanoid.WalkSpeed = Mv.TayaSpeed
+		return
+	end
+
+	if isSliding then
+		-- During slide keep momentum; speed was set once on slide start.
+		return
+	end
+
+	local mult = 1.0
+	if boostLeft > 0 then
+		mult = Mv.PostTagSpeedBoostMult
+	end
+
+	local targetSpeed: number
+	if isSprinting then
+		targetSpeed = Mv.RunnerSprintSpeed * mult
+	else
+		targetSpeed = Mv.RunnerWalkSpeed * mult
+	end
+
+	Humanoid.WalkSpeed = targetSpeed
+end
+
+-- ── Stamina ──────────────────────────────────────────────────────────────────
+-- Spec §3: drain 20/s while sprinting; regen +12/s after 1s without sprinting.
+-- Depletion (hit 0) forces walk until stamina >= StaminaDepletedMin (10).
+-- Sprint counts only while the character is actually trying to move
+-- (Humanoid.MoveDirection), so holding Shift while standing still never drains.
+local function updateStamina(dt: number)
+	if role == "Taya" then
+		return
+	end
+
+	local sprintKeyHeld = sprintHeld_KB or sprintHeld_GP
+	local isMoving = false
+	if Humanoid then
+		isMoving = Humanoid.MoveDirection.Magnitude > 0.1
+	end
+
+	-- Decide if we're actually sprinting this frame
+	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing
+	if isDepletion and stamina < Mv.StaminaDepletedMin then
+		wantSprint = false -- forced walk until stamina recovers enough
+	elseif isDepletion and stamina >= Mv.StaminaDepletedMin then
+		isDepletion = false -- depletion lock released
+	end
+
+	if wantSprint then
+		-- Drain stamina
+		isSprinting = true
+		regenTimer = 0.0
+		stamina = clamp(stamina - Mv.StaminaDrainRate * dt, 0, Mv.StaminaMax)
+		if stamina <= 0 then
+			stamina = 0
+			isSprinting = false
+			isDepletion = true -- enter depletion; walk enforced
+		end
+	else
+		-- Regen stamina after delay
+		isSprinting = false
+		regenTimer = regenTimer + dt
+		if regenTimer >= Mv.StaminaRegenDelay then
+			stamina = clamp(stamina + Mv.StaminaRegenRate * dt, 0, Mv.StaminaMax)
+		end
+	end
+
+	applySpeed()
+end
+
+-- ── UI attribute bridge ────────────────────────────────────────────────────────
+-- LocalScripts cannot be require()d, so UIController reads live movement state
+-- from attributes on LocalPlayer (poll-free via GetAttributeChangedSignal):
+--   HRushStamina (0–100), HRushStaminaMax, HRushDashCD, HRushSlideCD,
+--   HRushDashing (bool), HRushSliding (bool), HRushBoost (seconds left),
+--   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar).
+local lastPush = 0.0
+local function pushAttributes(force: boolean?)
+	local now = os.clock()
+	if not force and (now - lastPush) < 0.1 then
+		return
+	end
+	lastPush = now
+	LocalPlayer:SetAttribute("HRushStamina", stamina)
+	LocalPlayer:SetAttribute("HRushStaminaMax", Mv.StaminaMax)
+	LocalPlayer:SetAttribute("HRushDashCD", dashCooldownLeft)
+	LocalPlayer:SetAttribute("HRushSlideCD", slideCooldownLeft)
+	LocalPlayer:SetAttribute("HRushDashing", isDashing)
+	LocalPlayer:SetAttribute("HRushSliding", isSliding)
+	LocalPlayer:SetAttribute("HRushBoost", boostLeft)
+	LocalPlayer:SetAttribute("HRushRole", role)
+end
+
+-- ── Dash VFX (client-side juice) ─────────────────────────────────────────────
+-- Game-feel medium tier: transient ribbon + particle burst on the Q event —
+-- 2 cheap channels, decays to rest via TrailLifetime/ParticleLifetime, never
+-- touches input or simulation. All values from Config.Movement.DashVFX.
+local dashTrail: Trail? = nil
+local dashEmitter: ParticleEmitter? = nil
+
+local function buildDashFX(char: Model)
+	dashTrail = nil
+	dashEmitter = nil
+	if not Mv.DashVFX.Enabled then
+		return
+	end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not (hrp and hrp:IsA("BasePart")) then
+		return
+	end
+
+	-- Ribbon anchors: rear corners of HumanoidRootPart (character faces -Z,
+	-- so +Z offset = behind the player — the streak trails the dash path).
+	local attA = Instance.new("Attachment")
+	attA.Name = "DashFX_A"
+	attA.Position = Vector3.new(-0.9, -0.5, 0.9)
+	attA.Parent = hrp
+	local attB = Instance.new("Attachment")
+	attB.Name = "DashFX_B"
+	attB.Position = Vector3.new(0.9, -0.5, 0.9)
+	attB.Parent = hrp
+
+	local trail = Instance.new("Trail")
+	trail.Name = "DashTrail"
+	trail.Attachment0 = attA
+	trail.Attachment1 = attB
+	trail.FaceCamera = true
+	trail.Lifetime = Mv.DashVFX.TrailLifetime
+	trail.Color = ColorSequence.new(Mv.DashVFX.ColorStart, Mv.DashVFX.ColorEnd)
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, Mv.DashVFX.TransparencyIn),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.Enabled = false -- on only while dashing; segments linger after disable
+	trail.Parent = hrp
+	dashTrail = trail
+
+	-- One-shot burst emitter at the heels. Rate 0 → particles only via Emit().
+	-- Emitted in WORLD space (not locked to part) so streaks stay behind while
+	-- the character glides forward 12 studs.
+	local attEmit = Instance.new("Attachment")
+	attEmit.Name = "DashFX_Emit"
+	attEmit.Position = Vector3.new(0, -0.5, 1.0)
+	attEmit.Parent = hrp
+
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "DashBurst"
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Rate = 0
+	emitter.Lifetime = NumberRange.new(Mv.DashVFX.ParticleLifetime)
+	emitter.Speed = NumberRange.new(Mv.DashVFX.ParticleSpeedMin, Mv.DashVFX.ParticleSpeedMax)
+	emitter.SpreadAngle = Vector2.new(30, 30)
+	emitter.EmissionDirection = Enum.NormalId.Back
+	emitter.Acceleration = Vector3.new(0, -8, 0) -- slight settle, no float-up
+	emitter.Color = ColorSequence.new(Mv.DashVFX.ColorStart, Mv.DashVFX.ColorEnd)
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, Mv.DashVFX.SizeStart),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, Mv.DashVFX.TransparencyIn),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emitter.LightEmission = Mv.DashVFX.LightEmission
+	emitter.Parent = attEmit
+	dashEmitter = emitter
+end
+
+local function startDashFX()
+	if dashTrail then
+		dashTrail.Enabled = true
+	end
+	if dashEmitter then
+		dashEmitter:Emit(Mv.DashVFX.BurstCount)
+	end
+end
+
+local function stopDashFX()
+	-- Disabling stops new ribbon segments; existing ones fade over TrailLifetime.
+	if dashTrail then
+		dashTrail.Enabled = false
+	end
+end
+
+-- ── Dash ──────────────────────────────────────────────────────────────────────
+-- Spec §3: DashDistance (12) studs in DashDuration (0.2s), DashCooldown (6s),
+-- DashPounceInvulnTime (0.15s, F07 vs pounce lunge only — server enforces this).
+-- No stamina cost. Movement is linear start→end (constant velocity 60 st/s);
+-- a forward raycast clamps the target so the dash stops at walls instead of
+-- phasing through. Server is notified via RequestDash (validates cooldown/round).
+local function cancelDash()
+	if dashConn then
+		dashConn:Disconnect()
+		dashConn = nil
+	end
+	isDashing = false
+	stopDashFX()
+	applySpeed()
+	pushAttributes()
+end
+
+local function performDash()
+	if not roundLive or inputLocked then
+		return
+	end
+	if role ~= "Runner" then
+		return
+	end
+	if isDashing or dashCooldownLeft > 0 then
+		return
+	end
+	if isSliding then
+		return
+	end
+	if not Humanoid or not HRP then
+		return
+	end
+
+	isDashing = true
+	dashInvulnLeft = Mv.DashPounceInvulnTime
+	dashCooldownLeft = Mv.DashCooldown
+
+	-- Direction: current move direction if moving, else facing.
+	local moveDir = Humanoid.MoveDirection
+	if moveDir.Magnitude < 0.1 then
+		moveDir = HRP.CFrame.LookVector
+	end
+	moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+	if moveDir.Magnitude < 0.01 then
+		moveDir = HRP.CFrame.LookVector
+		moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+	end
+	moveDir = moveDir.Unit
+
+	-- Notify the server (server records dash direction + timestamp for invuln check).
+	RequestDash:FireServer(moveDir)
+
+	-- VFX: ribbon on during the glide + one-shot particle burst at the heels.
+	startDashFX()
+
+	-- Clamp travel so we stop at walls instead of phasing through them.
+	local travel = Mv.DashDistance
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { Character }
+	rayParams.IgnoreWater = true
+	local origin = HRP.Position + Vector3.new(0, 0.5, 0)
+	local hit = Workspace:Raycast(origin, moveDir * (travel + 1), rayParams)
+	if hit then
+		-- Leave a 1-stud margin so the capsule never embeds in the wall.
+		travel = math.max(0, hit.Distance - 1)
+	end
+
+	-- Client-side glide: linear interpolation start→end over DashDuration.
+	-- Constant velocity (NOT eased) so 12 studs really land in 0.2s.
+	local startPos = HRP.Position
+	local dashDir = moveDir
+	local elapsed = 0.0
+	if dashConn then
+		dashConn:Disconnect()
+		dashConn = nil
+	end
+	dashConn = RunService.Heartbeat:Connect(function(dt: number)
+		if not HRP or not HRP.Parent then
+			cancelDash()
+			return
+		end
+		elapsed += dt
+		local alpha = clamp(elapsed / Mv.DashDuration, 0, 1)
+		local targetPos = startPos + dashDir * travel
+		local face = HRP.CFrame - HRP.CFrame.Position
+		HRP.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha)) * face
+		if alpha >= 1 then
+			cancelDash()
+		end
+	end)
+end
+
+-- ── Slide ─────────────────────────────────────────────────────────────────────
+-- Spec §3 + F09: SlideDuration (0.6s), SlideCooldown (3s), hitbox at
+-- SlideHitboxScale (50% height) so touch tag cannot hit a Runner under a low gap
+-- (TagService reads the sliding flag via position/height; server owns the verdict).
+-- Entry keeps current momentum with a small forward burst; WalkSpeed is held at
+-- slide entry speed. Cancelled by dash attempts, tag swaps, round end, or death.
+local function endSlide()
+	if not isSliding or not Humanoid then
+		return
+	end
+	-- Restore exact HipHeight captured at slide start (never assume the default).
+	Humanoid.HipHeight = slideHipHeight
+	isSliding = false
+	applySpeed()
+	pushAttributes(true)
+end
+
+local function performSlide()
+	if not roundLive or inputLocked then
+		return
+	end
+	if role ~= "Runner" then
+		return
+	end
+	if isSliding or slideCooldownLeft > 0 then
+		return
+	end
+	if isDashing then
+		return
+	end
+	if not Humanoid or not HRP then
+		return
+	end
+	if Humanoid.MoveDirection.Magnitude < 0.1 then
+		return -- must be moving to slide
+	end
+
+	isSliding = true
+	slideTimer = 0.0
+	slideCooldownLeft = Mv.SlideCooldown
+	slideHipHeight = Humanoid.HipHeight
+
+	-- Shrink hitbox: halve height (F09 — low-gap evasion).
+	Humanoid.HipHeight = slideHipHeight * Mv.SlideHitboxScale
+
+	-- Hold entry momentum: lock WalkSpeed at max(walk, current horizontal speed)
+	-- and add a small forward burst via AssemblyLinearVelocity (physics-safe).
+	local flatVel = Vector3.new(HRP.AssemblyLinearVelocity.X, 0, HRP.AssemblyLinearVelocity.Z)
+	local entrySpeed = math.max(Mv.RunnerWalkSpeed, flatVel.Magnitude)
+	Humanoid.WalkSpeed = entrySpeed
+	local burstDir = Vector3.new(Humanoid.MoveDirection.X, 0, Humanoid.MoveDirection.Z)
+	if burstDir.Magnitude > 0.01 then
+		burstDir = burstDir.Unit
+		local targetVel = burstDir * entrySpeed
+		HRP.AssemblyLinearVelocity = Vector3.new(targetVel.X, HRP.AssemblyLinearVelocity.Y, targetVel.Z)
+	end
+	pushAttributes(true)
+	-- NOTE: server is NOT notified (slide is client-predicted; tag validation
+	-- uses rewound server positions per TDD §4.3).
+end
+
+-- ── Cooldown & invuln ticking ────────────────────────────────────────────────
+local function tickCooldowns(dt: number)
+	if dashCooldownLeft > 0 then
+		dashCooldownLeft = math.max(0, dashCooldownLeft - dt)
+	end
+	if slideCooldownLeft > 0 then
+		slideCooldownLeft = math.max(0, slideCooldownLeft - dt)
+	end
+	if dashInvulnLeft > 0 then
+		dashInvulnLeft = math.max(0, dashInvulnLeft - dt)
+	end
+	-- Post-tag boost countdown (F08); re-apply speed when it expires.
+	if boostLeft > 0 then
+		boostLeft = math.max(0, boostLeft - dt)
+		if boostLeft <= 0 and not isSliding then
+			applySpeed()
+		end
+	end
+
+	-- Advance slide timer
+	if isSliding then
+		slideTimer += dt
+		if slideTimer >= Mv.SlideDuration then
+			endSlide()
+		end
+	end
+end
+
+-- ── Heartbeat ────────────────────────────────────────────────────────────────
+local heartbeatConn: RBXScriptConnection? = nil
+local gamepadTick = 0.0
+local function startHeartbeat()
+	if heartbeatConn then
+		heartbeatConn:Disconnect()
+		heartbeatConn = nil
+	end
+	heartbeatConn = RunService.Heartbeat:Connect(function(dt: number)
+		if not Humanoid or not HRP then
+			getCharRefs()
+			return
+		end
+		if Humanoid.Health <= 0 then
+			return
+		end
+
+		-- Gamepad sprint (throttled to 10 Hz): left stick full tilt = sprinting.
+		-- Spec-correct bindings are L2 (ButtonL2) for sprint-hold, Touch = Sprint button.
+		gamepadTick += dt
+		if gamepadTick >= 0.1 then
+			gamepadTick = 0.0
+			local found = false
+			local ok, gp = pcall(UserInputService.GetGamepadState, UserInputService, Enum.UserInputType.Gamepad1)
+			if ok and gp then
+				for _, inputObj in gp do
+					if inputObj.KeyCode == Enum.KeyCode.Thumbstick1 then
+						sprintHeld_GP = inputObj.Position.Magnitude > 0.8
+						found = true
+						break
+					end
+				end
+			end
+			if not found then
+				-- Fall back to the L2 hold flag set by ContextActionService below.
+				-- (Keeps sprint working on gamepads whose stick state isn't exposed.)
+			end
+		end
+
+		tickCooldowns(dt)
+		updateStamina(dt)
+		pushAttributes(false)
+
+		-- Process buffered inputs (resolved once per frame)
+		if dashRequested_KB or dashRequested_GP then
+			dashRequested_KB = false
+			dashRequested_GP = false
+			performDash()
+		end
+		if slideRequested_KB or slideRequested_GP then
+			slideRequested_KB = false
+			slideRequested_GP = false
+			performSlide()
+		end
+	end)
+end
+
+-- ── Server state (role / round / tag boost) ───────────────────────────────────
+-- TDD §4: StateChanged carries { state, role? }. MS_04 = Round Live.
+-- MS_03 Countdown locks movement (WalkSpeed 0); MS_01/05/06 freeze & end slides.
+StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: string? })
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local state = payload.state
+	if payload.role == "Runner" or payload.role == "Taya" then
+		local newRole = payload.role
+		if newRole ~= role then
+			-- Tag swap cleanup: cancel slide/dash visuals, drop sprint.
+			if isSliding then
+				endSlide()
+			end
+			if isDashing then
+				cancelDash()
+			end
+			isSprinting = false
+			sprintHeld_KB = false
+			sprintHeld_GP = false
+			role = newRole
+		end
+	end
+	if typeof(state) == "string" then
+		roundLive = (state == "MS_04")
+		inputLocked = (state == "MS_03") or not roundLive
+		if state == "MS_03" then
+			-- Countdown: lock in place, full stamina, abilities cooling.
+			isSprinting = false
+			sprintHeld_KB = false
+			sprintHeld_GP = false
+		end
+		if not roundLive then
+			-- End any active slide/dash when the round is not live.
+			if isSliding then
+				endSlide()
+			end
+			if isDashing then
+				cancelDash()
+			end
+		end
+		applySpeed()
+		pushAttributes(true)
+	end
+end)
+
+-- TagEvent { taggerId, targetId }: whoever was just tagged becomes Taya;
+-- the PREVIOUS Taya (us, if we were Taya before this event) is now Runner and
+-- gets the 2s +20% boost (F08). Server is authoritative — we only present it.
+TagEvent.OnClientEvent:Connect(function(payload: { taggerId: number?, targetId: number? })
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local myId = LocalPlayer.UserId
+	if payload.targetId == myId then
+		-- We are the new Taya: no boost, Taya speed applies via role update.
+		boostLeft = 0.0
+		if isSliding then
+			endSlide()
+		end
+		applySpeed()
+		pushAttributes(true)
+	elseif payload.taggerId == myId and role == "Runner" then
+		-- We were Taya and just tagged someone: ex-Taya boost starts now.
+		boostLeft = Mv.PostTagSpeedBoostDuration
+		applySpeed()
+		pushAttributes(true)
+	end
+end)
+
+-- ── PC Keyboard bindings ──────────────────────────────────────────────────────
+-- UI/UX Spec §4: Move WASD (built-in), Sprint LeftShift hold, Dash Q, Slide C.
+local function onInputBegan(input: InputObject, gameProcessed: boolean)
+	if gameProcessed then
+		return
+	end
+
+	local kc = input.KeyCode
+	if kc == Enum.KeyCode.LeftShift or kc == Enum.KeyCode.RightShift then
+		sprintHeld_KB = true
+	elseif kc == Enum.KeyCode.Q then
+		dashRequested_KB = true
+	elseif kc == Enum.KeyCode.C then
+		slideRequested_KB = true
+	end
+end
+
+local function onInputEnded(input: InputObject, _gameProcessed: boolean)
+	local kc = input.KeyCode
+	if kc == Enum.KeyCode.LeftShift or kc == Enum.KeyCode.RightShift then
+		sprintHeld_KB = false
+	end
+end
+
+UserInputService.InputBegan:Connect(onInputBegan)
+UserInputService.InputEnded:Connect(onInputEnded)
+
+-- ── Gamepad bindings (UI/UX Spec §4) ─────────────────────────────────────────
+-- Sprint: Left trigger hold (ButtonL2) OR left stick full tilt (see heartbeat).
+-- Dash:   B (ButtonB). Slide: Right bumper (ButtonR1).
+-- Diskarte Y (ButtonY) and Skill X (ButtonX) are owned by UIController/Skill UI.
+local SPRINT_GP_ACTION = "HRUSH_Sprint_GP"
+local DASH_GP_ACTION = "HRUSH_Dash_GP"
+local SLIDE_GP_ACTION = "HRUSH_Slide_GP"
+
+ContextActionService:BindAction(SPRINT_GP_ACTION, function(_name, state, _obj)
+	if state == Enum.UserInputState.Begin then
+		sprintHeld_GP = true
+	elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+		-- Stick-tilt check in heartbeat may re-assert this while tilted.
+		sprintHeld_GP = false
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.ButtonL2)
+
+ContextActionService:BindAction(DASH_GP_ACTION, function(_name, state, _obj)
+	if state == Enum.UserInputState.Begin then
+		dashRequested_GP = true
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.ButtonB)
+
+ContextActionService:BindAction(SLIDE_GP_ACTION, function(_name, state, _obj)
+	if state == Enum.UserInputState.Begin then
+		slideRequested_GP = true
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.ButtonR1)
+
+-- ── Mobile touch buttons (UI/UX Spec §4) ───────────────────────────────────────
+-- UIController creates on-screen Sprint / Dash / Slide buttons (min 64px).
+-- They fire BindableEvents in ReplicatedStorage; we hook them once they exist
+-- (retry loop covers UIController loading after us). Touch Sprint also works
+-- via ContextActionService so it shows on the touch UI automatically.
+local mobileHooked = false
+local function hookMobileBindables()
+	if mobileHooked then
+		return
+	end
+	mobileHooked = true
+
+	-- Touch buttons via ContextActionService (creates touch UI automatically).
+	ContextActionService:BindAction("HRUSH_Sprint_Touch", function(_name, state, _obj)
+		if state == Enum.UserInputState.Begin then
+			sprintHeld_KB = true
+		elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+			sprintHeld_KB = false
+		end
+		return Enum.ContextActionResult.Pass
+	end, true)
+
+	ContextActionService:BindAction("HRUSH_Dash_Touch", function(_name, state, _obj)
+		if state == Enum.UserInputState.Begin then
+			dashRequested_KB = true
+		end
+		return Enum.ContextActionResult.Pass
+	end, true)
+
+	ContextActionService:BindAction("HRUSH_Slide_Touch", function(_name, state, _obj)
+		if state == Enum.UserInputState.Begin then
+			slideRequested_KB = true
+		end
+		return Enum.ContextActionResult.Pass
+	end, true)
+
+	-- Legacy BindableEvent bridge (UIController-created buttons, if present).
+	-- Retry a few times: UIController may load after this controller.
+	task.spawn(function()
+		for _ = 1, 50 do
+			local dashBe = ReplicatedStorage:FindFirstChild("MobileDashPressed")
+			local slideBe = ReplicatedStorage:FindFirstChild("MobileSlidePressed")
+			local sprintBegin = ReplicatedStorage:FindFirstChild("MobileSprintBegan")
+			local sprintEnd = ReplicatedStorage:FindFirstChild("MobileSprintEnded")
+			if dashBe and dashBe:IsA("BindableEvent") then
+				dashBe.Event:Connect(function()
+					dashRequested_KB = true
+				end)
+			end
+			if slideBe and slideBe:IsA("BindableEvent") then
+				slideBe.Event:Connect(function()
+					slideRequested_KB = true
+				end)
+			end
+			if sprintBegin and sprintBegin:IsA("BindableEvent") then
+				sprintBegin.Event:Connect(function()
+					sprintHeld_KB = true
+				end)
+			end
+			if sprintEnd and sprintEnd:IsA("BindableEvent") then
+				sprintEnd.Event:Connect(function()
+					sprintHeld_KB = false
+				end)
+			end
+			if dashBe or slideBe or sprintBegin or sprintEnd then
+				break
+			end
+			task.wait(0.2)
+		end
+	end)
+end
+
+-- ── Character lifecycle ───────────────────────────────────────────────────────
+local function onCharacterAdded(char: Model)
+	Character = char
+	-- Cancel any in-flight dash tied to the old character.
+	if dashConn then
+		dashConn:Disconnect()
+		dashConn = nil
+	end
+	Humanoid = char:WaitForChild("Humanoid") :: Humanoid
+	HRP = char:WaitForChild("HumanoidRootPart") :: BasePart
+	buildDashFX(char) -- dash trail + burst rig (rebuilt per respawn)
+
+	-- Reset state on respawn
+	stamina = Mv.StaminaMax
+	isDepletion = false
+	isSprinting = false
+	regenTimer = 0.0
+	isDashing = false
+	dashCooldownLeft = 0.0
+	dashInvulnLeft = 0.0
+	isSliding = false
+	slideCooldownLeft = 0.0
+	slideTimer = 0.0
+	slideHipHeight = 0.0
+	boostLeft = 0.0
+	sprintHeld_KB = false
+	sprintHeld_GP = false
+	dashRequested_KB = false
+	dashRequested_GP = false
+	slideRequested_KB = false
+	slideRequested_GP = false
+
+	applySpeed()
+	pushAttributes(true)
+	startHeartbeat()
+	hookMobileBindables()
+
+	-- Death cleanup: end slide/dash visuals so respawn state is clean.
+	Humanoid.Died:Connect(function()
+		if isSliding then
+			isSliding = false
+		end
+		if dashConn then
+			dashConn:Disconnect()
+			dashConn = nil
+		end
+		isDashing = false
+		boostLeft = 0.0
+	end)
+end
+
+if LocalPlayer.Character then
+	task.spawn(onCharacterAdded, LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+pushAttributes(true)
+print("[MovementController] Loaded — T09 complete (walk/sprint/stamina/dash/slide/boost).")
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="22">
+        <Properties>
+          <string name="Name">TargetLockController</string>
+          <string name="Source"><![CDATA[--!strict
+-- StarterPlayerScripts/TargetLockController.lua
+-- Owner: Programmer B (T05)
+-- Responsibility: Soft-lock camera steering, nearest target acquisition
+--                 with line-of-sight check, overhead reticle ring indicator.
+-- See System Specification §4.3 and Config.Taya.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T16): Implement soft lock camera, lock acquisition/break, and reticle.
+
+print("[TargetLockController] Loaded — stub only. Implement T16.")
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="23">
+        <Properties>
+          <string name="Name">UIController</string>
+          <string name="Source"><![CDATA[--!strict
+-- StarterPlayerScripts/UIController.lua
+-- Owner: UI Dev (T05)
+-- Responsibility: HUD (role banner, countdown, scoreboard, stamina bar),
+--                 skill bar, Diskarte meter, clutch callouts, recap screens,
+--                 and spectator camera UI.
+-- See UI/UX Specification and Config.Match / Config.Events.
+--
+-- HUD v1 (T09 playtest slice):
+--   • Stamina bar — bottom left, Runner-only (UI/UX Spec §2), fill tween-smoothed
+--     at the bridge's 10 Hz rate, pulses red when depleted (≤ StaminaDepletedMin)
+--   • Dash cooldown chip — "Q" keycap, vertical cooldown wipe + live countdown,
+--     pops green the instant it becomes ready
+-- Data source: HRush* attribute bridge on LocalPlayer (MovementController pushes
+-- at 10 Hz + forced on role/state/tag events). Poll-free via GetAttributeChangedSignal.
+--
+-- TODO (T14): role banner, round countdown, scoreboard, skill bar.
+-- TODO (T17): Implement Skill Draft UI.
+-- TODO (T27): Implement clutch callouts and recap screens.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local TweenService      = game:GetService("TweenService")
+local RunService        = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Mv     = Config.Movement
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
+
+-- ── Palette (placeholder; Art Bible pass later in T14) ────────────────────────
+local COL_FILL_OK    = Color3.fromRGB(86, 214, 90)
+local COL_LOW        = Color3.fromRGB(226, 61, 61)
+local COL_LOW_DARK   = Color3.fromRGB(96, 24, 24)
+local COL_PANEL      = Color3.fromRGB(18, 18, 24)
+local COL_TEXT       = Color3.fromRGB(235, 235, 240)
+local COL_STROKE_CD  = Color3.fromRGB(90, 90, 100)
+local COL_STROKE_RDY = Color3.fromRGB(86, 214, 90)
+local COL_COOLDOWN   = Color3.fromRGB(8, 8, 12)
+
+local function corner(parent: Instance, r: number)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = parent
+end
+
+local function stroke(parent: Instance, color: Color3, thickness: number): UIStroke
+	local s = Instance.new("UIStroke")
+	s.Color = color
+	s.Thickness = thickness
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = parent
+	return s
+end
+
+-- ── Root HUD ──────────────────────────────────────────────────────────────────
+local gui = Instance.new("ScreenGui")
+gui.Name = "HRushHUD"
+gui.ResetOnSpawn = false -- survives respawn (attributes re-push on spawn)
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 10
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = PlayerGui
+
+-- ── Bottom-left cluster: stamina bar + dash chip ──────────────────────────────
+local cluster = Instance.new("Frame")
+cluster.Name = "MoveCluster"
+cluster.AnchorPoint = Vector2.new(0, 1)
+cluster.Position = UDim2.fromScale(0.015, 0.97)
+cluster.Size = UDim2.fromOffset(300, 56)
+cluster.BackgroundTransparency = 1
+cluster.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Name = "StaminaLabel"
+title.BackgroundTransparency = 1
+title.Position = UDim2.fromOffset(2, 0)
+title.Size = UDim2.fromOffset(140, 14)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 11
+title.Text = "STAMINA"
+title.TextColor3 = COL_TEXT
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextStrokeTransparency = 0.6
+title.Parent = cluster
+
+local barBg = Instance.new("Frame")
+barBg.Name = "BarBG"
+barBg.Position = UDim2.fromOffset(2, 18)
+barBg.Size = UDim2.fromOffset(220, 16)
+barBg.BackgroundColor3 = COL_PANEL
+barBg.BackgroundTransparency = 0.25
+barBg.BorderSizePixel = 0
+barBg.ClipsDescendants = true
+barBg.Parent = cluster
+corner(barBg, 4)
+stroke(barBg, Color3.new(0, 0, 0), 1)
+
+local fill = Instance.new("Frame")
+fill.Name = "Fill"
+fill.Size = UDim2.fromScale(1, 1) -- corrected on first attribute read
+fill.BackgroundColor3 = COL_FILL_OK
+fill.BorderSizePixel = 0
+fill.Parent = barBg
+corner(fill, 4)
+
+local pct = Instance.new("TextLabel")
+pct.Name = "Pct"
+pct.BackgroundTransparency = 1
+pct.Size = UDim2.fromScale(1, 1)
+pct.Font = Enum.Font.GothamBold
+pct.TextSize = 10
+pct.Text = "100"
+pct.TextColor3 = Color3.new(1, 1, 1)
+pct.TextStrokeTransparency = 0.5
+pct.ZIndex = 3
+pct.Parent = barBg
+
+-- Dash cooldown chip (right of the bar).
+local chip = Instance.new("Frame")
+chip.Name = "DashChip"
+chip.Position = UDim2.fromOffset(236, 10)
+chip.Size = UDim2.fromOffset(44, 44)
+chip.BackgroundColor3 = COL_PANEL
+chip.BackgroundTransparency = 0.15
+chip.BorderSizePixel = 0
+chip.Parent = cluster
+corner(chip, 8)
+local chipStroke = stroke(chip, COL_STROKE_CD, 2)
+
+local wipe = Instance.new("Frame") -- dark overlay shrinking top→bottom as CD elapses
+wipe.Name = "CooldownWipe"
+wipe.AnchorPoint = Vector2.new(0, 0)
+wipe.Position = UDim2.fromScale(0, 0)
+wipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+wipe.BackgroundColor3 = COL_COOLDOWN
+wipe.BackgroundTransparency = 0.25
+wipe.BorderSizePixel = 0
+wipe.ZIndex = 1
+wipe.Parent = chip
+corner(wipe, 8)
+
+local keyText = Instance.new("TextLabel")
+keyText.Name = "KeyOrCd"
+keyText.BackgroundTransparency = 1
+keyText.Size = UDim2.fromScale(1, 1)
+keyText.Font = Enum.Font.GothamBold
+keyText.TextSize = 18
+keyText.Text = "Q"
+keyText.TextColor3 = COL_TEXT
+keyText.TextStrokeTransparency = 0.5
+keyText.ZIndex = 2
+keyText.Parent = chip
+
+local chipCaption = Instance.new("TextLabel")
+chipCaption.Name = "DashCaption"
+chipCaption.BackgroundTransparency = 1
+chipCaption.Position = UDim2.fromOffset(232, 44)
+chipCaption.Size = UDim2.fromOffset(52, 12)
+chipCaption.Font = Enum.Font.Gotham
+chipCaption.TextSize = 9
+chipCaption.Text = "DASH"
+chipCaption.TextColor3 = COL_TEXT
+chipCaption.TextStrokeTransparency = 0.6
+chipCaption.Parent = cluster
+
+-- ── Attribute readers ─────────────────────────────────────────────────────────
+local function attrNum(name: string, fallback: number): number
+	local v = LocalPlayer:GetAttribute(name)
+	if typeof(v) == "number" then
+		return v
+	end
+	return fallback
+end
+
+local function attrStr(name: string, fallback: string): string
+	local v = LocalPlayer:GetAttribute(name)
+	if typeof(v) == "string" then
+		return v
+	end
+	return fallback
+end
+
+-- ── Stamina bar logic ─────────────────────────────────────────────────────────
+local fillTween: Tween? = nil
+local flashConn: RBXScriptConnection? = nil
+local curRole = attrStr("HRushRole", "Runner")
+
+local function setFlash(on: boolean)
+	if on and not flashConn then
+		-- Fast red pulse while depleted (~2 Hz); stops when stamina recovers.
+		flashConn = RunService.Heartbeat:Connect(function(t: number)
+			local a = math.sin(t * 12) * 0.5 + 0.5 -- 0..1
+			fill.BackgroundColor3 = COL_LOW:Lerp(COL_LOW_DARK, a)
+		end)
+	elseif not on and flashConn then
+		flashConn:Disconnect()
+		flashConn = nil
+		fill.BackgroundColor3 = COL_FILL_OK
+	end
+end
+
+local function updateStamina()
+	local stamina = attrNum("HRushStamina", Mv.StaminaMax)
+	local max = math.max(1, attrNum("HRushStaminaMax", Mv.StaminaMax))
+	local ratio = math.clamp(stamina / max, 0, 1)
+
+	-- Tween-smoothed fill: 10 Hz bridge + 0.12 s tween = continuous-looking bar.
+	if fillTween then
+		fillTween:Cancel()
+	end
+	fillTween = TweenService:Create(
+		fill,
+		TweenInfo.new(0.12, Enum.EasingStyle.Linear),
+		{ Size = UDim2.fromScale(ratio, 1) }
+	)
+	fillTween:Play()
+
+	pct.Text = tostring(math.floor(stamina + 0.5))
+	setFlash(stamina <= Mv.StaminaDepletedMin and curRole == "Runner")
+end
+
+local function updateVisibility()
+	-- UI/UX Spec §2: stamina cluster is Runner-only.
+	cluster.Visible = (curRole == "Runner")
+end
+
+-- ── Dash cooldown chip logic ──────────────────────────────────────────────────
+local lastDashCD = 0.0
+
+local function popReady()
+	-- Game-feel: brief overshoot pop on the ready transition, then rest.
+	keyText.Text = "Q"
+	chipStroke.Color = COL_STROKE_RDY
+	local up = TweenService:Create(
+		chip,
+		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(52, 52) }
+	)
+	up:Play()
+	up.Completed:Connect(function()
+		TweenService:Create(
+			chip,
+			TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.fromOffset(44, 44) }
+		):Play()
+	end)
+end
+
+local function updateDashCD()
+	local cd = attrNum("HRushDashCD", 0)
+	local total = math.max(0.01, Mv.DashCooldown)
+	local ratio = math.clamp(cd / total, 0, 1)
+
+	wipe.Size = UDim2.fromScale(1, ratio)
+	if cd > 0 then
+		keyText.Text = string.format("%.1f", cd)
+		chipStroke.Color = COL_STROKE_CD
+	elseif lastDashCD > 0 then
+		popReady() -- transition to 0: flash ready state
+	end
+	lastDashCD = cd
+end
+
+-- ── Bridge wiring (poll-free) ─────────────────────────────────────────────────
+local function hookAttr(name: string, fn: () -> ())
+	local signal = LocalPlayer:GetAttributeChangedSignal(name)
+	signal:Connect(fn)
+	fn() -- apply current value immediately (covers late UI load)
+end
+
+hookAttr("HRushStamina", updateStamina)
+hookAttr("HRushStaminaMax", updateStamina)
+hookAttr("HRushDashCD", updateDashCD)
+hookAttr("HRushRole", function()
+	curRole = attrStr("HRushRole", curRole)
+	updateVisibility()
+	updateStamina()
+end)
+hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
+
+updateVisibility()
+updateStamina()
+updateDashCD()
+
+print("[UIController] Loaded — HUD v1 (stamina bar + dash cooldown). T14 partial; T17, T27 TODO.")
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>
