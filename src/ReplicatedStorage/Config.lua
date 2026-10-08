@@ -156,6 +156,11 @@ Config.Match = {
 
 	-- Barangay Rush event warning
 	EventWarningTime = 2.5, -- seconds before phase change
+
+	-- Queue / bot fill (testing)
+	SearchTimeout = 10,
+	BotFillTarget = 4,     -- total participants after bots fill
+	AllowBots     = true,  -- set false before release
 }
 
 -- ============================================================

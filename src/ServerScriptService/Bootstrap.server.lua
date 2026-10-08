@@ -339,32 +339,27 @@ buildGreybox()
 ensureLighting()
 ensureCharacterDefaults()
 
--- TEMP DEBUG (remove when MatchService T07 lands): no match state machine exists
--- yet, so nothing ever fires StateChanged MS_04 and MovementController stays in
--- inputLocked (WalkSpeed 0). Auto-unlock shortly after each spawn so T09 movement
--- is testable in Studio Play right now. MatchService will own this event later.
-local DEBUG_AUTO_UNLOCK = true
-if DEBUG_AUTO_UNLOCK then
-	-- TEMP: mirror the debug round state so SkillService can gate casts
-	-- server-side. MatchService (T07) will own this attribute later.
-	ReplicatedStorage:SetAttribute("HRushRoundState", "MS_04")
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function()
-			task.wait(1.5)
-			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
-		end)
-	end)
-	-- Cover the player that spawned before this script ran (Play Solo).
-	for _, player in Players:GetPlayers() do
-		task.spawn(function()
-			if not player.Character then
-				player.CharacterAdded:Wait()
-			end
-			task.wait(1.5)
-			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
-		end)
-	end
-end
+-- DISABLED: MatchService v1.1 owns all match state machine events (StateChanged).
+-- Auto-unlock disabled to prevent state conflicts with MatchService.
+-- [DISABLED] local DEBUG_AUTO_UNLOCK = false
+-- [DISABLED] if DEBUG_AUTO_UNLOCK then
+-- [DISABLED] 	ReplicatedStorage:SetAttribute("HRushRoundState", "MS_04")
+-- [DISABLED] 	Players.PlayerAdded:Connect(function(player)
+-- [DISABLED] 		player.CharacterAdded:Connect(function()
+-- [DISABLED] 			task.wait(1.5)
+-- [DISABLED] 			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+-- [DISABLED] 		end)
+-- [DISABLED] 	end)
+-- [DISABLED] 	for _, player in Players:GetPlayers() do
+-- [DISABLED] 		task.spawn(function()
+-- [DISABLED] 			if not player.Character then
+-- [DISABLED] 				player.CharacterAdded:Wait()
+-- [DISABLED] 			end
+-- [DISABLED] 			task.wait(1.5)
+-- [DISABLED] 			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+-- [DISABLED] 		end)
+-- [DISABLED] 	end
+-- [DISABLED] end
 
 -- Late-join safety: if Workspace gets cleared, rebuild once.
 Workspace.ChildRemoved:Connect(function(child)
