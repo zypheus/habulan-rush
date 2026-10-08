@@ -385,3 +385,16 @@ updateDashCD()
 updateSkillCD()
 
 print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")
+
+-- ============================================================
+-- MATCH GATE: HUD only exists during a match (MS_03..MS_05)
+-- ============================================================
+local function applyHudGate()
+	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
+	local st = LocalPlayer:GetAttribute("HRushState")
+	gui.Enabled = inMatch and (st == "MS_03" or st == "MS_04" or st == "MS_05")
+end
+
+LocalPlayer:GetAttributeChangedSignal("HRushInMatch"):Connect(applyHudGate)
+LocalPlayer:GetAttributeChangedSignal("HRushState"):Connect(applyHudGate)
+applyHudGate()
