@@ -118,6 +118,21 @@ Config.TargetLock = {
 		InputDampenFactor = 0.15, -- retain 15% strength during camera input
 		InputDampenThreshold = 0.1, -- stick magnitude or pointer pixels
 	},
+	-- Reticle is drawn with UI instances only (no image assets).
+	Reticle = {
+		SizePx = 64,                          -- fixed pixel size of the billboard
+		StudsOffset = Vector3.new(0, 0.5, 0), -- lift slightly above the torso centre
+		RingColor = Color3.fromRGB(235, 64, 64),
+		RingThickness = 2,
+		RingTransparency = 0,
+		NotchColor = Color3.fromRGB(255, 255, 255),
+		NotchSizePx = 6,                      -- corner marks so the shape reads without colour
+		StartScale = 0.2,                     -- scale-in begins small
+		EndScale = 0.2,                       -- fade-out shrinks back down
+		ScaleInTime = 0.15,                   -- seconds, ease-out pop on lock
+		FadeOutTime = 0.12,                   -- seconds, ease-in on unlock
+		Animate = true,                       -- set false to skip tweens for testing
+	},
 	Keybinds = {
 		-- User-approved change: Q is dash and E is skill.
 		Toggle = Enum.KeyCode.R,
@@ -164,6 +179,11 @@ Config.Match = {
 
 	-- Barangay Rush event warning
 	EventWarningTime = 2.5, -- seconds before phase change
+
+	-- Queue / bot fill (testing)
+	SearchTimeout = 10,
+	BotFillTarget = 4,     -- total participants after bots fill
+	AllowBots     = true,  -- set false before release
 }
 
 -- ============================================================
@@ -183,6 +203,8 @@ Config.Events = {
 Config.Debug = {
 	-- TODO: set to false before submission
 	AllowAnyRoleTargetLock = true,
+	-- TODO: remove before submission (delete this flag and all ShowLockDebug blocks)
+	ShowLockDebug = true, -- T16: prove toggle fire count, reticle, acquire blocking
 	-- TODO: set to false before submission
 	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
 	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
@@ -452,51 +474,56 @@ return Config
       </Item>
       <Item class="RemoteEvent" referent="7">
         <Properties>
-          <string name="Name">RequestDash</string>
+          <string name="Name">QueueEvent</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="8">
         <Properties>
-          <string name="Name">RequestPounce</string>
+          <string name="Name">RequestDash</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="9">
         <Properties>
-          <string name="Name">RequestSkill</string>
+          <string name="Name">RequestPounce</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="10">
         <Properties>
-          <string name="Name">SkillApproved</string>
+          <string name="Name">RequestSkill</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="11">
         <Properties>
-          <string name="Name">SkillEvent</string>
+          <string name="Name">SkillApproved</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="12">
         <Properties>
-          <string name="Name">SkillLanded</string>
+          <string name="Name">SkillEvent</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="13">
         <Properties>
-          <string name="Name">SkillVFX</string>
+          <string name="Name">SkillLanded</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="14">
         <Properties>
-          <string name="Name">StateChanged</string>
+          <string name="Name">SkillVFX</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="15">
+        <Properties>
+          <string name="Name">StateChanged</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="16">
         <Properties>
           <string name="Name">TagEvent</string>
         </Properties>
       </Item>
     </Item>
-    <Item class="ModuleScript" referent="16">
+    <Item class="ModuleScript" referent="17">
       <Properties>
         <string name="Name">TagRules</string>
         <string name="Source">--!strict
@@ -536,11 +563,11 @@ return TagRules</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="17">
+  <Item class="ServerScriptService" referent="18">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="18">
+    <Item class="Script" referent="19">
       <Properties>
         <string name="Name">Bootstrap</string>
         <token name="RunContext">0</token>
@@ -885,32 +912,27 @@ buildGreybox()
 ensureLighting()
 ensureCharacterDefaults()
 
--- TEMP DEBUG (remove when MatchService T07 lands): no match state machine exists
--- yet, so nothing ever fires StateChanged MS_04 and MovementController stays in
--- inputLocked (WalkSpeed 0). Auto-unlock shortly after each spawn so T09 movement
--- is testable in Studio Play right now. MatchService will own this event later.
-local DEBUG_AUTO_UNLOCK = true
-if DEBUG_AUTO_UNLOCK then
-	-- TEMP: mirror the debug round state so SkillService can gate casts
-	-- server-side. MatchService (T07) will own this attribute later.
-	ReplicatedStorage:SetAttribute("HRushRoundState", "MS_04")
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function()
-			task.wait(1.5)
-			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
-		end)
-	end)
-	-- Cover the player that spawned before this script ran (Play Solo).
-	for _, player in Players:GetPlayers() do
-		task.spawn(function()
-			if not player.Character then
-				player.CharacterAdded:Wait()
-			end
-			task.wait(1.5)
-			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
-		end)
-	end
-end
+-- DISABLED: MatchService v1.1 owns all match state machine events (StateChanged).
+-- Auto-unlock disabled to prevent state conflicts with MatchService.
+-- [DISABLED] local DEBUG_AUTO_UNLOCK = false
+-- [DISABLED] if DEBUG_AUTO_UNLOCK then
+-- [DISABLED] 	ReplicatedStorage:SetAttribute("HRushRoundState", "MS_04")
+-- [DISABLED] 	Players.PlayerAdded:Connect(function(player)
+-- [DISABLED] 		player.CharacterAdded:Connect(function()
+-- [DISABLED] 			task.wait(1.5)
+-- [DISABLED] 			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+-- [DISABLED] 		end)
+-- [DISABLED] 	end)
+-- [DISABLED] 	for _, player in Players:GetPlayers() do
+-- [DISABLED] 		task.spawn(function()
+-- [DISABLED] 			if not player.Character then
+-- [DISABLED] 				player.CharacterAdded:Wait()
+-- [DISABLED] 			end
+-- [DISABLED] 			task.wait(1.5)
+-- [DISABLED] 			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+-- [DISABLED] 		end)
+-- [DISABLED] 	end
+-- [DISABLED] end
 
 -- Late-join safety: if Workspace gets cleared, rebuild once.
 Workspace.ChildRemoved:Connect(function(child)
@@ -931,7 +953,7 @@ print(string.format(
 ))</string>
       </Properties>
     </Item>
-    <Item class="Script" referent="19">
+    <Item class="Script" referent="20">
       <Properties>
         <string name="Name">EventService</string>
         <token name="RunContext">0</token>
@@ -953,29 +975,822 @@ print("[EventService] Loaded — stub only. Implement T24–T26.")
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="20">
+    <Item class="Script" referent="21">
       <Properties>
         <string name="Name">MatchService</string>
         <token name="RunContext">0</token>
         <string name="Source"><![CDATA[--!strict
--- ServerScriptService/MatchService.lua
--- Owner: Programmer A (T05)
--- Responsibility: State machine (MS_01→MS_06), shuffle bag, scoring,
---                 phase timers, and disconnect handling.
--- See PLANNING.md §3 and System Specification §2 for full rules.
+-- ServerScriptService/MatchService.server.lua   (v1.1 - queue + bot fill + lobby/match separation)
+-- Owner: Programmer A (T07)
+-- Responsibility: State machine (MS_01->MS_06), shuffle bag, scoring,
+--                 phase timers, disconnect handling, PLAY queue and test bots.
+--
+-- NEW IN v1.1
+--   * Match no longer auto-starts. A player must press FIND MATCH (client fires
+--     Remotes.QueueEvent "Play"). A 10 s search begins; if the lobby is not full
+--     when it ends, bots fill the match (testing). Set Config.Match.AllowBots=false to disable.
+--   * Only players who queued take part in a match ("inMatch"). Everyone else stays in lobby.
+--   * Per-player attributes drive the client UI:
+--       HRushInMatch (bool)        -> lobby UI hidden / match HUD (stamina, dash, role) shown
+--       HRushQueue   (string)      -> "Idle" | "Searching" | "InMatch" | "Busy"
+--       HRushSearchEndsAt (number) -> workspace:GetServerTimeNow() when search ends
+--       HRushState   (string)      -> "MS_01" for anyone not in the match, real state otherwise
+--   * Bots are Models in Workspace.Bots (attribute IsBot=true). Roles/scores are keyed by Instance
+--     (Player or bot Model), so everything below treats them as "participants".
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace         = game:GetService("Workspace")
+local RunService        = game:GetService("RunService")
 
-local Config = require(ReplicatedStorage.Config)
+local Config       = require(ReplicatedStorage:WaitForChild("Config"))
+local Remotes      = ReplicatedStorage:WaitForChild("Remotes")
+local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
+local TagEvent     = Remotes:WaitForChild("TagEvent") :: RemoteEvent
 
--- TODO (T07): Implement match state machine and shuffle bag.
+-- QueueEvent is created here if your Remotes setup script doesn't define it yet
+local QueueEvent: RemoteEvent
+do
+	local existing = Remotes:FindFirstChild("QueueEvent")
+	if existing and existing:IsA("RemoteEvent") then
+		QueueEvent = existing
+	else
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = "QueueEvent"
+		ev.Parent = Remotes
+		QueueEvent = ev
+	end
+end
 
-print("[MatchService] Loaded — stub only. Implement T07.")
+local IS_STUDIO = RunService:IsStudio()
+local MATCH = Config.Match
+local MIN_PLAYERS = IS_STUDIO and 1 or MATCH.MinPlayers
+local MAX_PLAYERS: number = MATCH.MaxPlayers or 8
+local SEARCH_TIMEOUT: number = MATCH.SearchTimeout or 10
+local BOT_FILL_TARGET: number = MATCH.BotFillTarget or 4 -- total participants after bot fill
+local ALLOW_BOTS: boolean = (MATCH.AllowBots == nil) and true or MATCH.AllowBots -- set false for release
+local TAG_RANGE: number = (Config.Tag.TouchTagRange or 3) + 1.5 -- centre-to-centre studs (HRP distance is larger than hand reach)
+local TAG_IMMUNITY: number = Config.Tag.SafeWindowDuration or 2 -- Safe Window: ex-Taya cannot be re-tagged for this long
+local ARENA_RADIUS: number = (Config.Maps and Config.Maps.Kalsada and Config.Maps.Kalsada.greybox and Config.Maps.Kalsada.greybox.spawnRadius) or 55
+
+-- ============================================================
+-- HELPERS (participants = Player or bot Model)
+-- ============================================================
+local function isPresent(inst: Instance): boolean
+	return inst:IsDescendantOf(Players) or inst:IsDescendantOf(Workspace)
+end
+
+local function getRoot(inst: Instance): BasePart?
+	if inst:IsA("Player") then
+		local c = inst.Character
+		return c and c.PrimaryPart
+	elseif inst:IsA("Model") then
+		return inst.PrimaryPart
+	end
+	return nil
+end
+
+-- ============================================================
+-- SHUFFLE BAG CLASS (§2.1 / T-CORE-03)
+-- ============================================================
+local ShuffleBag = {}
+ShuffleBag.__index = ShuffleBag
+
+type ShuffleBagImpl = {
+	bag: { Instance },
+	Refill: (self: ShuffleBagImpl, active: { Instance }) -> (),
+	Draw: (self: ShuffleBagImpl, active: { Instance }) -> Instance?,
+	RemovePlayer: (self: ShuffleBagImpl, who: Instance) -> (),
+	Reset: (self: ShuffleBagImpl) -> (),
+	GetRemainingCount: (self: ShuffleBagImpl) -> number,
+}
+
+function ShuffleBag.new(): ShuffleBagImpl
+	local self = setmetatable({}, ShuffleBag)
+	self.bag = {}
+	return (self :: any) :: ShuffleBagImpl
+end
+
+function ShuffleBag:Refill(active: { Instance })
+	self.bag = {}
+	for _, p in ipairs(active) do
+		if isPresent(p) then
+			table.insert(self.bag, p)
+		end
+	end
+	local rng = Random.new()
+	for i = #self.bag, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		self.bag[i], self.bag[j] = self.bag[j], self.bag[i]
+	end
+	print(string.format("[MatchService.ShuffleBag] Refilled and shuffled bag with %d participants.", #self.bag))
+end
+
+function ShuffleBag:Draw(active: { Instance }): Instance?
+	for i = #self.bag, 1, -1 do
+		if not isPresent(self.bag[i]) then
+			table.remove(self.bag, i)
+		end
+	end
+	if #self.bag == 0 then
+		self:Refill(active)
+	end
+	if #self.bag == 0 then
+		return nil
+	end
+	local picked = table.remove(self.bag) :: Instance
+	print(string.format("[MatchService.ShuffleBag] Picked '%s' as initial Taya (%d remaining in bag).", picked.Name, #self.bag))
+	return picked
+end
+
+function ShuffleBag:RemovePlayer(who: Instance)
+	for i = #self.bag, 1, -1 do
+		if self.bag[i] == who then
+			table.remove(self.bag, i)
+			print(string.format("[MatchService.ShuffleBag] Removed leaver '%s' from bag (%d left).", who.Name, #self.bag))
+		end
+	end
+end
+
+function ShuffleBag:Reset()
+	self.bag = {}
+end
+
+function ShuffleBag:GetRemainingCount(): number
+	return #self.bag
+end
+
+-- ============================================================
+-- STATE
+-- ============================================================
+local tayaBag = ShuffleBag.new()
+local matchState: string = "MS_01" -- MS_01 Lobby, MS_02 Draft, MS_03 Countdown, MS_04 Live, MS_05 RoundEnd, MS_06 MatchEnd
+local currentRound: number = 1
+local currentTaya: Instance? = nil
+local playerRoles: { [Instance]: string } = {}
+local tayaTimeThisRound: { [Instance]: number } = {}
+local totalTayaTime: { [Instance]: number } = {}
+local matchPoints: { [Instance]: number } = {}
+local immuneUntil: { [Instance]: number } = {}
+local matchRunning = false
+local roundActive = false
+
+local queued: { [Player]: boolean } = {}   -- pressed FIND MATCH, waiting for search to finish
+local inMatch: { [Player]: boolean } = {}  -- real players taking part in the current match
+local bots: { Model } = {}
+local searchEndsAt: number? = nil
+
+local botsFolder = Workspace:FindFirstChild("Bots")
+if not botsFolder then
+	local f = Instance.new("Folder")
+	f.Name = "Bots"
+	f.Parent = Workspace
+	botsFolder = f
+end
+local botsFolderRef = botsFolder :: Instance
+
+local function getParticipants(): { Instance }
+	local list: { Instance } = {}
+	for p in pairs(inMatch) do
+		if p:IsDescendantOf(Players) then
+			table.insert(list, p)
+		end
+	end
+	for _, b in ipairs(bots) do
+		if b.Parent then
+			table.insert(list, b)
+		end
+	end
+	return list
+end
+
+local function realParticipantCount(): number
+	local n = 0
+	for p in pairs(inMatch) do
+		if p:IsDescendantOf(Players) then
+			n += 1
+		end
+	end
+	return n
+end
+
+local function countQueued(): number
+	local n = 0
+	for p in pairs(queued) do
+		if p:IsDescendantOf(Players) then
+			n += 1
+		else
+			queued[p] = nil
+		end
+	end
+	return n
+end
+
+-- Broadcast state & roles. Players outside the match always see MS_01 (lobby).
+local function broadcastState(targetPlayer: Player?, optionalTimer: number?)
+	local serverTime = optionalTimer or workspace:GetServerTimeNow()
+	local targets = targetPlayer and { targetPlayer } or Players:GetPlayers()
+	ReplicatedStorage:SetAttribute("HRushMatchState", matchState)
+	ReplicatedStorage:SetAttribute("HRushRoundState", matchState)
+
+	for _, p in ipairs(targets) do
+		local isIn = inMatch[p] == true
+		local shownState = isIn and matchState or "MS_01"
+		local role = isIn and (playerRoles[p] or "Runner") or "Runner"
+		p:SetAttribute("HRushInMatch", isIn)
+		p:SetAttribute("HRushState", shownState)
+		p:SetAttribute("HRushRole", role)
+		p:SetAttribute("HRushRound", currentRound)
+
+		StateChanged:FireClient(p, {
+			state = shownState,
+			role = role,
+			round = currentRound,
+			timer = serverTime,
+		})
+	end
+end
+
+local function setRoles(initialTaya: Instance)
+	currentTaya = initialTaya
+	for _, p in ipairs(getParticipants()) do
+		local role = (p == initialTaya) and "Taya" or "Runner"
+		playerRoles[p] = role
+		p:SetAttribute("HRushRole", role)
+	end
+	broadcastState(nil)
+	print(string.format("[MatchService] Round %d roles assigned: Taya = %s", currentRound, initialTaya.Name))
+end
+
+local function transferTaya(from: Instance, to: Instance)
+	playerRoles[from] = "Runner"
+	playerRoles[to] = "Taya"
+	currentTaya = to
+	immuneUntil[from] = os.clock() + TAG_IMMUNITY
+	from:SetAttribute("HRushRole", "Runner")
+	to:SetAttribute("HRushRole", "Taya")
+	broadcastState(nil)
+
+	-- MovementController listens for { taggerId, targetId } to give the ex-Taya the +20% boost (F08).
+	-- Bots have no UserId, so they are sent as 0.
+	local payload = {
+		taggerId = from:IsA("Player") and from.UserId or 0,
+		targetId = to:IsA("Player") and to.UserId or 0,
+	}
+	for p in pairs(inMatch) do
+		if p:IsDescendantOf(Players) then
+			TagEvent:FireClient(p, payload)
+		end
+	end
+	print(string.format("[MatchService] Tag transfer: %s tagged %s (new Taya)", from.Name, to.Name))
+end
+
+-- ============================================================
+-- BOTS (testing only)
+-- ============================================================
+local BOT_NAMES = { "Bot_Juan", "Bot_Maria", "Bot_Pedro", "Bot_Ana", "Bot_Lito", "Bot_Cora", "Bot_Dodong" }
+
+-- The rig is built ONCE (a web call that can take seconds) and cloned per bot,
+-- so spawning bots at match start is instant. It is also pre-built at server start.
+local botTemplate: Model? = nil
+local function getBotTemplate(): Model?
+	if botTemplate then
+		return botTemplate
+	end
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+	end)
+	if ok and model then
+		botTemplate = model
+	else
+		warn("[MatchService] Failed to create bot template: " .. tostring(model))
+	end
+	return botTemplate
+end
+
+if ALLOW_BOTS then
+	task.spawn(getBotTemplate)
+end
+
+local function spawnBots(count: number)
+	local template = getBotTemplate()
+	if not template then
+		return
+	end
+	for i = 1, count do
+		local model = template:Clone()
+		model.Name = BOT_NAMES[i] or ("Bot_" .. i)
+		model:SetAttribute("IsBot", true)
+		local hum = model:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.DisplayName = model.Name
+		end
+		model.Parent = botsFolderRef
+		pcall(function()
+			local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
+			hrp:SetNetworkOwner(nil)
+		end)
+		table.insert(bots, model)
+	end
+	print(string.format("[MatchService] Spawned %d bot(s).", #bots))
+end
+
+local function clearBots()
+	for _, b in ipairs(bots) do
+		b:Destroy()
+	end
+	bots = {}
+end
+
+local wanderUntil: { [Model]: number } = {}
+
+local function updateBots(now: number)
+	for _, bot in ipairs(bots) do
+		local hum = bot:FindFirstChildOfClass("Humanoid")
+		local root = bot.PrimaryPart
+		if bot.Parent and hum and root then
+			if playerRoles[bot] == "Taya" then
+				local best: Instance? = nil
+				local bestDist = math.huge
+				for _, other in ipairs(getParticipants()) do
+					if other ~= bot and playerRoles[other] == "Runner" and (immuneUntil[other] or 0) < now then
+						local r = getRoot(other)
+						if r then
+							local d = (r.Position - root.Position).Magnitude
+							if d < bestDist then
+								bestDist = d
+								best = other
+							end
+						end
+					end
+				end
+				if best then
+					local br = getRoot(best)
+					hum.WalkSpeed = Config.Movement.TayaSpeed
+					if br then
+						hum:MoveTo(br.Position)
+					end
+					if bestDist <= TAG_RANGE and (immuneUntil[bot] or 0) < now then
+						transferTaya(bot, best)
+					end
+				end
+			else
+				hum.WalkSpeed = Config.Movement.RunnerWalkSpeed
+				local tayaRoot = currentTaya and getRoot(currentTaya)
+				if tayaRoot and (tayaRoot.Position - root.Position).Magnitude < 28 then
+					-- flee from Taya, clamped to the arena
+					local away = (root.Position - tayaRoot.Position) * Vector3.new(1, 0, 1)
+					local dir = away.Magnitude > 0.1 and away.Unit or Vector3.new(1, 0, 0)
+					local target = root.Position + dir * 18
+					local flat = Vector3.new(target.X, 0, target.Z)
+					if flat.Magnitude > ARENA_RADIUS then
+						flat = flat.Unit * ARENA_RADIUS
+						target = Vector3.new(flat.X, root.Position.Y, flat.Z)
+					end
+					hum:MoveTo(target)
+				elseif (wanderUntil[bot] or 0) < now then
+					local ang = math.random() * math.pi * 2
+					local rad = math.random() * ARENA_RADIUS * 0.8
+					hum:MoveTo(Vector3.new(math.cos(ang) * rad, root.Position.Y, math.sin(ang) * rad))
+					wanderUntil[bot] = now + 3
+				end
+			end
+		end
+	end
+end
+
+-- ============================================================
+-- TELEPORT
+-- ============================================================
+local function teleportToSpawns(list: { Instance })
+	local spawnFolder = Workspace:FindFirstChild("SpawnLocations")
+	local n = #list
+
+	for idx, inst in ipairs(list) do
+		task.spawn(function()
+			local model: Model? = nil
+			if inst:IsA("Player") then
+				local char = inst.Character
+				if not char then
+					char = inst.CharacterAdded:Wait()
+				end
+				model = char
+			elseif inst:IsA("Model") then
+				model = inst
+			end
+
+			if model then
+				model:WaitForChild("HumanoidRootPart", 5)
+				local spawnName = string.format("Spawn%02d", ((idx - 1) % 8) + 1)
+				local spawnObj = spawnFolder and spawnFolder:FindFirstChild(spawnName)
+				local spawnPos: Vector3
+				if spawnObj and spawnObj:IsA("BasePart") then
+					spawnPos = spawnObj.Position + Vector3.new(0, 3, 0)
+				else
+					local angle = math.rad((idx - 1) * (360 / math.max(1, n)))
+					spawnPos = Vector3.new(math.cos(angle) * ARENA_RADIUS, 3, math.sin(angle) * ARENA_RADIUS)
+				end
+				model:PivotTo(CFrame.new(spawnPos, Vector3.new(0, 3, 0)))
+			end
+		end)
+	end
+end
+
+-- ============================================================
+-- DISCONNECT / JOIN HANDLING (§8 / F18)
+-- ============================================================
+local function promoteNearestRunnerToTaya(gone: Instance)
+	if not roundActive then return end
+
+	local nearest: Instance? = nil
+	local shortest = math.huge
+	local goneRoot = getRoot(gone)
+	local lastPos = goneRoot and goneRoot.Position or Vector3.zero
+
+	for _, p in ipairs(getParticipants()) do
+		if p ~= gone and playerRoles[p] == "Runner" then
+			local r = getRoot(p)
+			if r then
+				local d = (r.Position - lastPos).Magnitude
+				if d < shortest then
+					shortest = d
+					nearest = p
+				end
+			end
+		end
+	end
+
+	if nearest then
+		print(string.format("[MatchService] Taya left! Nearest Runner '%s' promoted to Taya.", nearest.Name))
+		currentTaya = nearest
+		playerRoles[nearest] = "Taya"
+		nearest:SetAttribute("HRushRole", "Taya")
+		broadcastState(nil)
+	end
+end
+
+local function initPlayer(player: Player)
+	player:SetAttribute("HRushInMatch", false)
+	player:SetAttribute("HRushQueue", "Idle")
+	player:SetAttribute("HRushState", "MS_01")
+	player:SetAttribute("HRushRole", "Runner")
+end
+
+Players.PlayerAdded:Connect(initPlayer)
+for _, p in ipairs(Players:GetPlayers()) do
+	initPlayer(p)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	tayaBag:RemovePlayer(player)
+	queued[player] = nil
+
+	if currentTaya == player and matchState == "MS_04" then
+		promoteNearestRunnerToTaya(player)
+	end
+
+	inMatch[player] = nil
+	playerRoles[player] = nil
+end)
+
+-- ============================================================
+-- REMOTES
+-- ============================================================
+QueueEvent.OnServerEvent:Connect(function(player, action)
+	if action == "Play" then
+		if matchState ~= "MS_01" or inMatch[player] then
+			-- match already running: tell the client, then reset
+			player:SetAttribute("HRushQueue", "Busy")
+			task.delay(2, function()
+				if player.Parent and player:GetAttribute("HRushQueue") == "Busy" then
+					player:SetAttribute("HRushQueue", "Idle")
+				end
+			end)
+			return
+		end
+		queued[player] = true
+		player:SetAttribute("HRushQueue", "Searching")
+		player:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+	elseif action == "Cancel" then
+		if queued[player] then
+			queued[player] = nil
+			player:SetAttribute("HRushQueue", "Idle")
+			player:SetAttribute("HRushSearchEndsAt", nil)
+		end
+	end
+end)
+
+-- Tag requests from the Taya's client. Validated on the server (sender must be the Taya, in range).
+-- Payload: { targetId = UserId } for players, or { targetBot = "Bot_Juan" } for bots.
+TagEvent.OnServerEvent:Connect(function(player, payload)
+	if matchState ~= "MS_04" or typeof(payload) ~= "table" then return end
+	if currentTaya ~= player or playerRoles[player] ~= "Taya" then return end
+
+	local target: Instance? = nil
+	if payload.targetId then
+		target = Players:GetPlayerByUserId(payload.targetId)
+	elseif typeof(payload.targetBot) == "string" then
+		target = botsFolderRef:FindFirstChild(payload.targetBot)
+	end
+
+	if not target or playerRoles[target] ~= "Runner" then return end
+	if (immuneUntil[target] or 0) > os.clock() then return end
+
+	local a, b = getRoot(player), getRoot(target)
+	if a and b and (a.Position - b.Position).Magnitude > TAG_RANGE * 3 then return end
+
+	transferTaya(player, target)
+end)
+
+-- ============================================================
+-- MATCH LOOP (MS_01 -> MS_06)
+-- ============================================================
+-- TEMPORARY server-side touch tag for a real-player Taya (bots tag inside updateBots).
+-- TagService (T11) is still a stub; when it is implemented, delete this and have TagService
+-- call the transfer logic instead.
+local function checkPlayerTouchTag(now: number)
+	local taya = currentTaya
+	if not taya or not taya:IsA("Player") or playerRoles[taya] ~= "Taya" then
+		return
+	end
+	local tr = getRoot(taya)
+	if not tr then
+		return
+	end
+
+	local best: Instance? = nil
+	local bestDist = TAG_RANGE
+	for _, other in ipairs(getParticipants()) do
+		if other ~= taya and playerRoles[other] == "Runner" and (immuneUntil[other] or 0) < now then
+			local r = getRoot(other)
+			if r then
+				local d = (r.Position - tr.Position).Magnitude
+				if d <= bestDist then
+					bestDist = d
+					best = other
+				end
+			end
+		end
+	end
+	if best then
+		transferTaya(taya, best)
+	end
+end
+
+-- Waits for a phase and publishes its end time so the client loading screen can show an accurate countdown.
+local function waitPhase(seconds: number)
+	ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", workspace:GetServerTimeNow() + seconds)
+	task.wait(seconds)
+end
+
+local function returnToLobby()
+	local returning: { Player } = {}
+	for p in pairs(inMatch) do
+		table.insert(returning, p)
+	end
+
+	matchState = "MS_01"
+	currentRound = 1
+	currentTaya = nil
+	roundActive = false
+	searchEndsAt = nil
+	tayaBag:Reset()
+	totalTayaTime = {}
+	matchPoints = {}
+	tayaTimeThisRound = {}
+	playerRoles = {}
+	immuneUntil = {}
+	inMatch = {}
+	clearBots()
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if not queued[p] then
+			p:SetAttribute("HRushQueue", "Idle")
+		end
+		p:SetAttribute("HRushSearchEndsAt", nil)
+	end
+	broadcastState(nil)
+
+	-- respawn finished players at the lobby spawn
+	for _, p in ipairs(returning) do
+		if p.Parent then
+			task.spawn(function()
+				pcall(function()
+					p:LoadCharacter()
+				end)
+			end)
+		end
+	end
+end
+
+local function runMatch()
+	if matchRunning then return end
+	matchRunning = true
+	print("[MatchService] Match loop initialized.")
+
+	while true do
+		returnToLobby()
+		print("[MatchService] In Lobby. Waiting for a player to press FIND MATCH...")
+
+		-- wait for someone to queue
+		while countQueued() == 0 do
+			task.wait(0.25)
+		end
+
+		-- ===== SEARCH PHASE =====
+		searchEndsAt = workspace:GetServerTimeNow() + SEARCH_TIMEOUT
+		local searchStart = os.clock()
+		local botsNeeded = 0
+		local aborted = false
+
+		while true do
+			task.wait(0.25)
+			local q = countQueued()
+			if q == 0 then
+				aborted = true
+				break
+			end
+			for p in pairs(queued) do
+				p:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+			end
+			if q >= MAX_PLAYERS then
+				break
+			end
+			if os.clock() - searchStart >= SEARCH_TIMEOUT then
+				if ALLOW_BOTS then
+					botsNeeded = math.max(0, BOT_FILL_TARGET - q)
+					break
+				elseif q >= MIN_PLAYERS then
+					break
+				else
+					-- not enough real players and no bots: keep searching
+					searchStart = os.clock()
+					searchEndsAt = workspace:GetServerTimeNow() + SEARCH_TIMEOUT
+				end
+			end
+		end
+		searchEndsAt = nil
+		if aborted then
+			continue
+		end
+
+		-- ===== BUILD THE MATCH =====
+		for p in pairs(queued) do
+			if p:IsDescendantOf(Players) then
+				inMatch[p] = true
+				p:SetAttribute("HRushQueue", "InMatch")
+				p:SetAttribute("HRushSearchEndsAt", nil)
+			end
+		end
+		queued = {}
+		broadcastState(nil) -- clients show the LOADING SCREEN immediately (HRushInMatch = true)
+		if botsNeeded > 0 then
+			print(string.format("[MatchService] Search timed out. Filling with %d bot(s).", botsNeeded))
+			spawnBots(botsNeeded)
+		end
+		-- Place everyone in the arena while the loading screen still covers the view.
+		teleportToSpawns(getParticipants())
+		task.wait(0.5)
+
+		local totalRounds: number = MATCH.TotalRounds or 3
+		local abort = false
+
+		for roundNum = 1, totalRounds do
+			currentRound = roundNum
+			tayaTimeThisRound = {}
+			for _, p in ipairs(getParticipants()) do
+				tayaTimeThisRound[p] = 0
+				totalTayaTime[p] = totalTayaTime[p] or 0
+				matchPoints[p] = matchPoints[p] or 0
+			end
+
+			-- MS_02 SKILL DRAFT
+			matchState = "MS_02"
+			broadcastState(nil)
+			local draftDuration: number = MATCH.DraftDuration or 12
+			print(string.format("[MatchService] Round %d: MS_02 Skill Draft (%d s)", currentRound, draftDuration))
+			waitPhase(IS_STUDIO and 2 or draftDuration)
+
+			-- MS_03 COUNTDOWN
+			matchState = "MS_03"
+			local participants = getParticipants()
+			if realParticipantCount() == 0 then
+				print("[MatchService] No real players left; aborting match.")
+				abort = true
+				break
+			end
+
+			teleportToSpawns(participants)
+
+			-- randomized Taya via shuffle bag (§2.1 / T-CORE-03)
+			local startingTaya = tayaBag:Draw(participants) or participants[1]
+			setRoles(startingTaya)
+			local cdDuration: number = MATCH.CountdownDuration or 5
+			print(string.format("[MatchService] Round %d: MS_03 Countdown (%d s). Starting Taya: %s", currentRound, cdDuration, startingTaya.Name))
+			waitPhase(IS_STUDIO and 3 or cdDuration)
+
+			-- MS_04 ROUND LIVE
+			matchState = "MS_04"
+			roundActive = true
+			broadcastState(nil)
+			local roundDuration: number = MATCH.RoundDuration or 150
+			print(string.format("[MatchService] Round %d: MS_04 Round Live (%d s)!", currentRound, roundDuration))
+
+			local startTime = os.clock()
+			local lastBotThink = 0.0
+
+			while (os.clock() - startTime) < roundDuration do
+				task.wait(0.1)
+				local now = os.clock()
+
+				local taya = currentTaya
+				if taya and playerRoles[taya] == "Taya" then
+					tayaTimeThisRound[taya] = (tayaTimeThisRound[taya] or 0) + 0.1
+					totalTayaTime[taya] = (totalTayaTime[taya] or 0) + 0.1
+					taya:SetAttribute("HRushTayaTime", math.floor(tayaTimeThisRound[taya] * 10) / 10)
+				end
+
+				checkPlayerTouchTag(now)
+
+				if #bots > 0 and now - lastBotThink >= 0.25 then
+					lastBotThink = now
+					updateBots(now)
+				end
+
+				if realParticipantCount() == 0 then
+					print("[MatchService] All real players left during Round Live; aborting match.")
+					abort = true
+					break
+				end
+			end
+			roundActive = false
+			if abort then
+				break
+			end
+
+			-- MS_05 ROUND END
+			matchState = "MS_05"
+			broadcastState(nil)
+			local roundEndDuration: number = MATCH.RoundEndDuration or 8
+			print(string.format("[MatchService] Round %d: MS_05 Round End (%d s). Calculating scores...", currentRound, roundEndDuration))
+
+			local ranked: { { player: Instance, tayaTime: number } } = {}
+			for _, p in ipairs(getParticipants()) do
+				table.insert(ranked, { player = p, tayaTime = tayaTimeThisRound[p] or 0 })
+			end
+			table.sort(ranked, function(a, b)
+				return a.tayaTime < b.tayaTime
+			end)
+
+			local pointsTable: { number } = MATCH.RoundPoints or { 8, 6, 5, 4, 3, 2, 1, 0 }
+			for rankIdx, entry in ipairs(ranked) do
+				local pts = pointsTable[rankIdx] or 0
+				matchPoints[entry.player] = (matchPoints[entry.player] or 0) + pts
+				print(string.format("  Rank %d: %s (TayaTime: %.1fs, +%d pts, total: %d)", rankIdx, entry.player.Name, entry.tayaTime, pts, matchPoints[entry.player]))
+			end
+
+			task.wait(IS_STUDIO and 3 or roundEndDuration)
+		end
+
+		-- MS_06 MATCH END
+		if not abort then
+			matchState = "MS_06"
+			broadcastState(nil)
+			local matchEndDuration: number = MATCH.MatchEndDuration or 15
+			print(string.format("[MatchService] MS_06 Match End (%d s). Determining Match MVP...", matchEndDuration))
+
+			local finalRankings: { { player: Instance, points: number, totalTaya: number } } = {}
+			for _, p in ipairs(getParticipants()) do
+				table.insert(finalRankings, {
+					player = p,
+					points = matchPoints[p] or 0,
+					totalTaya = totalTayaTime[p] or 0,
+				})
+			end
+			table.sort(finalRankings, function(a, b)
+				if a.points ~= b.points then
+					return a.points > b.points
+				end
+				return a.totalTaya < b.totalTaya
+			end)
+
+			if #finalRankings > 0 then
+				local winner = finalRankings[1]
+				print(string.format("[MatchService] MATCH WINNER: %s with %d points!", winner.player.Name, winner.points))
+			end
+
+			task.wait(IS_STUDIO and 5 or matchEndDuration)
+		end
+		print("[MatchService] Returning to lobby.")
+	end
+end
+
+task.defer(runMatch)
+print("[MatchService] MatchService v1.1 initialized (queue + bot fill + ShuffleBag Taya selection).")
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="21">
+    <Item class="Script" referent="22">
       <Properties>
         <string name="Name">SkillService</string>
         <token name="RunContext">0</token>
@@ -1190,7 +2005,7 @@ debugPrint("Loaded - RS_01 slice (validation + SkillApproved/SkillVFX split + Sk
 print("[SkillService] Loaded - RS_01 slice (validation + server CD + approved/VFX split). T17 draft, RS_02/03, TS_*: TODO.")</string>
       </Properties>
     </Item>
-    <Item class="Script" referent="22">
+    <Item class="Script" referent="23">
       <Properties>
         <string name="Name">TagService</string>
         <token name="RunContext">0</token>
@@ -1220,15 +2035,1766 @@ print("[TagService] Loaded — stub only. Implement T11–T13.")
       </Properties>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="23">
+  <Item class="StarterPlayer" referent="24">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="24">
+    <Item class="StarterPlayerScripts" referent="25">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="25">
+      <Item class="LocalScript" referent="26">
+        <Properties>
+          <string name="Name">LobbyUI</string>
+          <string name="Source"><![CDATA[--[[
+	HABULAN RUSH - Lobby UI
+	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
+
+	Builds the whole lobby UI at runtime (no manual hierarchy needed).
+	Reference layout: 1380 x 778 mock-up. Every group below is authored in
+	"design pixels" of that mock-up, anchored to the screen with scale
+	positions, then multiplied by a UIScale so proportions stay consistent.
+]]
+
+--------------------------------------------------------------------------
+-- CONFIG
+--------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local CONFIG = {
+	-- Display-only placeholder values (no real currency system is implemented)
+	CoinsText = "2,450",
+	GemsText = "120",
+	PlayerLevel = 12,
+	Region = "PHILIPPINES",
+	Version = "v. 0.9.2",
+	LocationText = "BARANGAY MALIGAYA",
+	LocationSub = "LOBBY",
+	PlayerNameOverride = nil, -- e.g. "JuanDelaRush". nil = your real Roblox display name
+
+	-- Lobby camera (the character stays a real 3D character)
+	EnableLobbyCamera = true,
+	DisableMovement = true,
+	HideDefaultCoreGui = true,
+	CameraDistance = 9.5,
+	CameraHeight = 1.4,
+	CameraYawDegrees = 18, -- turns the camera so the character is in 3/4 view
+	CameraShiftX = 1.5, -- pushes the character left of screen centre (landscape only)
+	CameraFOV = 42,
+}
+
+local COLORS = {
+	Lime = Color3.fromRGB(221, 247, 100),
+	LimeLight = Color3.fromRGB(236, 255, 130),
+	LimeEdge = Color3.fromRGB(122, 150, 36),
+	Navy = Color3.fromRGB(29, 43, 52),
+	Slate = Color3.fromRGB(53, 79, 89),
+	SlateEdge = Color3.fromRGB(34, 52, 60),
+	SlateLight = Color3.fromRGB(78, 106, 117),
+	Pill = Color3.fromRGB(46, 70, 82),
+	PlusBox = Color3.fromRGB(86, 104, 114),
+	Cream = Color3.fromRGB(245, 243, 226),
+	CreamEdge = Color3.fromRGB(190, 186, 160),
+	Orange = Color3.fromRGB(238, 152, 88),
+	White = Color3.fromRGB(255, 255, 255),
+	TextDim = Color3.fromRGB(176, 194, 200),
+	Shadow = Color3.fromRGB(20, 34, 44),
+	Gold = Color3.fromRGB(246, 190, 50),
+	GoldDark = Color3.fromRGB(190, 128, 16),
+	Cyan = Color3.fromRGB(110, 225, 240),
+	PanelBg = Color3.fromRGB(40, 62, 72),
+	GearGray = Color3.fromRGB(78, 90, 96),
+}
+
+-- FONTS: swap these to change typography later.
+-- Logo/labels use GothamSSm (closest bundled font to the reference),
+-- PLAY + panel titles use Oswald (condensed display face).
+local FONTS = {
+	HeavyItalic = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic),
+	Heavy = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Normal),
+	Bold = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal),
+	SemiBold = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+	Display = Font.fromEnum(Enum.Font.Oswald), -- change me for a different PLAY / title font
+}
+
+-- ASSET PLACEHOLDERS: paste "rbxassetid://123" to replace a drawn icon with your own image.
+-- Empty string = the script draws the icon from simple UI shapes.
+local ASSETS = {
+	Settings = "",
+	Profile = "",
+	Collection = "",
+	Shop = "",
+	Coin = "",
+	Gem = "",
+}
+
+--------------------------------------------------------------------------
+-- HELPERS
+--------------------------------------------------------------------------
+local INFO_FAST = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function tween(obj, info, goal)
+	local t = TweenService:Create(obj, info, goal)
+	t:Play()
+	return t
+end
+
+local function create(className, props, parent)
+	local inst = Instance.new(className)
+	for k, v in pairs(props or {}) do
+		inst[k] = v
+	end
+	inst.Parent = parent
+	return inst
+end
+
+local function createFrame(props, parent)
+	local p = { BorderSizePixel = 0, BackgroundColor3 = COLORS.Slate }
+	for k, v in pairs(props or {}) do
+		p[k] = v
+	end
+	return create("Frame", p, parent)
+end
+
+local function createLabel(props, parent)
+	local p = {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Text = "",
+		FontFace = FONTS.Bold,
+		TextSize = 14,
+		TextColor3 = COLORS.White,
+	}
+	for k, v in pairs(props or {}) do
+		p[k] = v
+	end
+	return create("TextLabel", p, parent)
+end
+
+local function createButton(props, parent)
+	local p = {
+		BorderSizePixel = 0,
+		Text = "",
+		AutoButtonColor = false,
+		FontFace = FONTS.Bold,
+		TextSize = 14,
+		TextColor3 = COLORS.White,
+	}
+	for k, v in pairs(props or {}) do
+		p[k] = v
+	end
+	return create("TextButton", p, parent)
+end
+
+local FULL = UDim.new(0.5, 0)
+
+local function corner(obj, r)
+	local radius = typeof(r) == "UDim" and r or UDim.new(0, r)
+	return create("UICorner", { CornerRadius = radius }, obj)
+end
+
+local function stroke(obj, color, thickness, transparency)
+	return create("UIStroke", {
+		Color = color,
+		Thickness = thickness or 1,
+		Transparency = transparency or 0,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, obj)
+end
+
+-- Label with a hard offset drop shadow (logo, captions)
+local function createShadowLabel(props, parent, offset)
+	local sp = table.clone(props)
+	sp.Name = "Shadow"
+	sp.TextColor3 = COLORS.Shadow
+	sp.TextTransparency = 0.35
+	sp.Position = props.Position + UDim2.fromOffset(offset.X, offset.Y)
+	createLabel(sp, parent)
+	return createLabel(props, parent)
+end
+
+-- hover / press scale feedback + click callback
+local function bindButton(button, scaleObj, onClick, hoverScale, pressScale)
+	hoverScale = hoverScale or 1.05
+	pressScale = pressScale or 0.94
+	local hovered = false
+	button.MouseEnter:Connect(function()
+		hovered = true
+		tween(scaleObj, INFO_FAST, { Scale = hoverScale })
+	end)
+	button.MouseLeave:Connect(function()
+		hovered = false
+		tween(scaleObj, INFO_FAST, { Scale = 1 })
+	end)
+	button.MouseButton1Down:Connect(function()
+		tween(scaleObj, INFO_FAST, { Scale = pressScale })
+	end)
+	button.MouseButton1Up:Connect(function()
+		tween(scaleObj, INFO_FAST, { Scale = hovered and hoverScale or 1 })
+	end)
+	button.Activated:Connect(function()
+		tween(scaleObj, INFO_FAST, { Scale = 1 })
+		if onClick then
+			onClick()
+		end
+	end)
+end
+
+--------------------------------------------------------------------------
+-- ICONS (drawn from UI shapes unless an ASSETS id is provided)
+--------------------------------------------------------------------------
+local function iconContainer(parent, S, pos)
+	return createFrame({
+		Name = "Icon",
+		Size = UDim2.fromOffset(S, S),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = pos or UDim2.fromScale(0.5, 0.5),
+		BackgroundTransparency = 1,
+	}, parent)
+end
+
+local function centered(parent, w, h, color, pos)
+	return createFrame({
+		Size = UDim2.fromOffset(w, h),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = pos or UDim2.fromScale(0.5, 0.5),
+		BackgroundColor3 = color,
+	}, parent)
+end
+
+local function outline(parent, w, h, color, thick, pos, anchor, fill)
+	local f = createFrame({
+		Size = UDim2.fromOffset(w, h),
+		AnchorPoint = anchor or Vector2.new(0.5, 0.5),
+		Position = pos or UDim2.fromScale(0.5, 0.5),
+		BackgroundColor3 = fill or color,
+		BackgroundTransparency = fill and 0 or 1,
+	}, parent)
+	stroke(f, color, thick)
+	return f
+end
+
+local ICON_BUILDERS = {}
+
+function ICON_BUILDERS.Settings(c, S, color, bg)
+	for i = 0, 3 do
+		local tooth = centered(c, S * 0.2, S * 0.96, color)
+		tooth.Rotation = i * 45
+		corner(tooth, 2)
+	end
+	corner(centered(c, S * 0.66, S * 0.66, color), FULL)
+	corner(centered(c, S * 0.3, S * 0.3, bg or COLORS.Cream), FULL)
+end
+
+function ICON_BUILDERS.Profile(c, S, color)
+	local t = math.max(1.5, S * 0.09)
+	corner(outline(c, S * 0.36, S * 0.36, color, t, UDim2.fromScale(0.5, 0.3)), FULL)
+	corner(outline(c, S * 0.78, S * 0.42, color, t, UDim2.fromScale(0.5, 0.95), Vector2.new(0.5, 1)), FULL)
+end
+
+function ICON_BUILDERS.Collection(c, S, color, bg)
+	local t = math.max(1.5, S * 0.08)
+	corner(outline(c, S * 0.56, S * 0.68, color, t, UDim2.fromScale(0.6, 0.4)), 3)
+	corner(outline(c, S * 0.56, S * 0.68, color, t, UDim2.fromScale(0.42, 0.58), nil, bg or COLORS.Slate), 3)
+end
+
+function ICON_BUILDERS.Shop(c, S, color)
+	local t = math.max(1.5, S * 0.08)
+	corner(outline(c, S * 0.84, S * 0.3, color, t, UDim2.fromScale(0.5, 0.22)), 3)
+	corner(outline(c, S * 0.7, S * 0.46, color, t, UDim2.fromScale(0.5, 0.96), Vector2.new(0.5, 1)), 2)
+	corner(outline(c, S * 0.22, S * 0.3, color, t, UDim2.fromScale(0.5, 0.96), Vector2.new(0.5, 1)), 2)
+end
+
+function ICON_BUILDERS.Coin(c, S)
+	local coin = centered(c, S, S, COLORS.Gold)
+	corner(coin, FULL)
+	stroke(coin, COLORS.GoldDark, math.max(2, S * 0.1))
+	createLabel({
+		Size = UDim2.fromScale(1, 1),
+		Text = "P",
+		FontFace = FONTS.Heavy,
+		TextSize = S * 0.55,
+		TextColor3 = COLORS.GoldDark,
+	}, coin)
+end
+
+function ICON_BUILDERS.Gem(c, S)
+	local d = centered(c, S * 0.62, S * 0.62, COLORS.Cyan)
+	d.Rotation = 45
+	corner(d, 3)
+	corner(centered(d, S * 0.3, S * 0.3, Color3.fromRGB(190, 245, 252)), 2)
+end
+
+local function makeIcon(kind, parent, S, color, bg, pos)
+	local c = iconContainer(parent, S, pos)
+	if ASSETS[kind] and ASSETS[kind] ~= "" then
+		create("ImageLabel", {
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			Image = ASSETS[kind],
+			ImageColor3 = (kind == "Coin" or kind == "Gem") and COLORS.White or color,
+		}, c)
+	else
+		ICON_BUILDERS[kind](c, S, color, bg)
+	end
+	return c
+end
+
+--------------------------------------------------------------------------
+-- CREATE SCREEN GUI
+--------------------------------------------------------------------------
+local old = playerGui:FindFirstChild("LobbyUI")
+if old then
+	old:Destroy()
+end
+
+local gui = create("ScreenGui", {
+	Name = "LobbyUI",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = true,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	DisplayOrder = 5,
+}, playerGui)
+
+local panels = {}
+local groups = {}
+
+-- A "group" is a fixed design-pixel frame anchored with scale and multiplied by a UIScale.
+-- Landscape and portrait placements are both stored; setupResponsiveUI() picks one.
+local function createGroup(name, designSize, lAnchor, lPos, pAnchor, pPos)
+	local frame = createFrame({
+		Name = name,
+		Size = UDim2.fromOffset(designSize.X, designSize.Y),
+		BackgroundTransparency = 1,
+	}, gui)
+	local scale = create("UIScale", {}, frame)
+	table.insert(groups, {
+		Frame = frame,
+		Scale = scale,
+		LAnchor = lAnchor,
+		LPos = lPos,
+		PAnchor = pAnchor,
+		PPos = pPos,
+	})
+	return frame
+end
+
+local displayName = CONFIG.PlayerNameOverride or player.DisplayName
+
+-- Handles filled in below, wired up in BUTTON EVENTS
+local playHolderScale, settingsHolderScale, chevronLabel
+local playButton, settingsButton
+
+--------------------------------------------------------------------------
+-- TOP BAR (logo + location top-left, currency + avatar top-right)
+--------------------------------------------------------------------------
+local logoGroup = createGroup(
+	"LogoGroup",
+	Vector2.new(300, 200),
+	Vector2.new(0, 0), UDim2.fromScale(0.029, 0.11),
+	Vector2.new(0, 0), UDim2.fromScale(0.05, 0.03)
+)
+
+do
+	local textBlock = createFrame({
+		Name = "LogoText",
+		Size = UDim2.fromOffset(240, 140),
+		BackgroundTransparency = 1,
+		Rotation = -3,
+	}, logoGroup)
+
+	createShadowLabel({
+		Name = "Habulan",
+		Position = UDim2.fromOffset(2, 6),
+		Size = UDim2.fromOffset(172, 42),
+		Text = "HABULAN",
+		FontFace = FONTS.HeavyItalic,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, textBlock, Vector2.new(2, 3))
+
+	createShadowLabel({
+		Name = "Rush",
+		Position = UDim2.fromOffset(4, 44),
+		Size = UDim2.fromOffset(150, 72),
+		Text = "RUSH",
+		FontFace = FONTS.HeavyItalic,
+		TextScaled = true,
+		TextColor3 = COLORS.Lime,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, textBlock, Vector2.new(3, 4))
+
+	createShadowLabel({
+		Name = "Chevrons",
+		Position = UDim2.fromOffset(160, 58),
+		Size = UDim2.fromOffset(44, 44),
+		Text = "»",
+		FontFace = FONTS.HeavyItalic,
+		TextScaled = true,
+		TextColor3 = COLORS.Lime,
+	}, textBlock, Vector2.new(2, 3))
+
+	createShadowLabel({
+		Name = "Tagline",
+		Position = UDim2.fromOffset(14, 120),
+		Size = UDim2.fromOffset(190, 14),
+		Text = "TAKBO. TAGO. PANALO.",
+		FontFace = FONTS.Bold,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, textBlock, Vector2.new(1, 1))
+
+	-- location line
+	corner(createFrame({
+		Position = UDim2.fromOffset(5, 181),
+		Size = UDim2.fromOffset(6, 6),
+		BackgroundColor3 = COLORS.Lime,
+	}, logoGroup), FULL)
+	createShadowLabel({
+		Name = "Location",
+		Position = UDim2.fromOffset(20, 176),
+		Size = UDim2.fromOffset(280, 16),
+		Text = string.format('%s<font color="#9fb6bd">   /   </font>%s', CONFIG.LocationText, CONFIG.LocationSub),
+		RichText = true,
+		FontFace = FONTS.Heavy,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, logoGroup, Vector2.new(1, 1))
+end
+
+local topRightGroup = createGroup(
+	"TopRightGroup",
+	Vector2.new(376, 50),
+	Vector2.new(1, 0), UDim2.fromScale(0.976, 0.049),
+	Vector2.new(1, 0), UDim2.fromScale(0.96, 0.235)
+)
+
+local function createCurrencyPill(x, w, kind, text)
+	local holder = createFrame({
+		Name = kind .. "Pill",
+		Position = UDim2.fromOffset(x + w / 2, 25),
+		Size = UDim2.fromOffset(w, 50),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+	}, topRightGroup)
+
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 3),
+		Size = UDim2.fromOffset(w, 47),
+		BackgroundColor3 = COLORS.SlateEdge,
+	}, holder), 12)
+	local body = createFrame({
+		Size = UDim2.fromOffset(w, 47),
+		BackgroundColor3 = COLORS.Pill,
+	}, holder)
+	corner(body, 12)
+	stroke(body, COLORS.SlateLight, 1, 0.6)
+
+	makeIcon(kind, body, 32, COLORS.White, nil, UDim2.fromOffset(25, 23))
+	createLabel({
+		Position = UDim2.fromOffset(48, 0),
+		Size = UDim2.fromOffset(w - 48 - 38, 47),
+		Text = text,
+		FontFace = FONTS.Bold,
+		TextSize = 20,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, body)
+
+	local plus = createButton({
+		Position = UDim2.fromOffset(w - 33, 9),
+		Size = UDim2.fromOffset(24, 29),
+		BackgroundColor3 = COLORS.PlusBox,
+		Text = "+",
+		FontFace = FONTS.Heavy,
+		TextSize = 20,
+		TextColor3 = COLORS.Navy,
+	}, body)
+	corner(plus, 5)
+	-- UI prototype only: "+" has hover/press feedback but no purchase flow
+	bindButton(plus, create("UIScale", {}, plus), nil, 1.1, 0.9)
+end
+
+createCurrencyPill(0, 148, "Coin", CONFIG.CoinsText)
+createCurrencyPill(162, 142, "Gem", CONFIG.GemsText)
+
+do
+	local avatar = createFrame({
+		Name = "AvatarBadge",
+		Position = UDim2.fromOffset(324, 0),
+		Size = UDim2.fromOffset(52, 50),
+		BackgroundColor3 = COLORS.Orange,
+	}, topRightGroup)
+	corner(avatar, 10)
+	stroke(avatar, COLORS.Cream, 1.5, 0.4)
+	createLabel({
+		Size = UDim2.fromScale(1, 1),
+		Text = string.upper(string.sub(displayName, 1, 1)),
+		FontFace = FONTS.Heavy,
+		TextSize = 26,
+		TextColor3 = COLORS.Navy,
+	}, avatar)
+	local badge = createFrame({
+		Position = UDim2.fromOffset(27, 34),
+		Size = UDim2.fromOffset(28, 21),
+		BackgroundColor3 = COLORS.Slate,
+	}, avatar)
+	corner(badge, 6)
+	stroke(badge, COLORS.Cream, 1.5)
+	createLabel({
+		Size = UDim2.fromScale(1, 1),
+		Text = tostring(CONFIG.PlayerLevel),
+		FontFace = FONTS.Heavy,
+		TextSize = 13,
+	}, badge)
+end
+
+--------------------------------------------------------------------------
+-- MAIN ACTIONS: [ PLAY ] [ gear ]  + player nameplate
+--------------------------------------------------------------------------
+local playGroup = createGroup(
+	"PlayGroup",
+	Vector2.new(362, 172),
+	Vector2.new(1, 0), UDim2.fromScale(0.951, 0.553),
+	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.8)
+)
+
+do
+	-- caption above PLAY
+	createFrame({
+		Position = UDim2.fromOffset(0, 7),
+		Size = UDim2.fromOffset(20, 2),
+		BackgroundColor3 = Color3.fromRGB(220, 235, 150),
+	}, playGroup)
+	createShadowLabel({
+		Name = "Caption",
+		Position = UDim2.fromOffset(32, 0),
+		Size = UDim2.fromOffset(300, 16),
+		Text = "THE STREETS ARE CALLING",
+		FontFace = FONTS.Heavy,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, playGroup, Vector2.new(1, 1))
+
+	-- PLAY (large)
+	local holder = createFrame({
+		Name = "PlayHolder",
+		Position = UDim2.fromOffset(140.5, 82),
+		Size = UDim2.fromOffset(281, 96),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+	}, playGroup)
+	playHolderScale = create("UIScale", {}, holder)
+
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 9),
+		Size = UDim2.fromOffset(281, 89),
+		BackgroundColor3 = COLORS.Shadow,
+		BackgroundTransparency = 0.7,
+	}, holder), 17)
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 7),
+		Size = UDim2.fromOffset(281, 89),
+		BackgroundColor3 = COLORS.LimeEdge,
+	}, holder), 17)
+
+	playButton = createButton({
+		Name = "PlayButton",
+		Size = UDim2.fromOffset(281, 89),
+		BackgroundColor3 = COLORS.Lime,
+	}, holder)
+	corner(playButton, 17)
+	stroke(playButton, COLORS.LimeLight, 2, 0.2)
+	create("UIGradient", {
+		Color = ColorSequence.new(COLORS.LimeLight, COLORS.Lime),
+		Rotation = 90,
+	}, playButton)
+
+	createLabel({
+		Position = UDim2.fromOffset(40, 0),
+		Size = UDim2.fromOffset(34, 89),
+		Text = "▶",
+		FontFace = FONTS.Bold,
+		TextSize = 28,
+		TextColor3 = COLORS.Navy,
+	}, playButton)
+	createLabel({
+		Position = UDim2.fromOffset(88, 0),
+		Size = UDim2.fromOffset(110, 89),
+		Text = "PLAY",
+		FontFace = FONTS.Display,
+		TextSize = 58,
+		TextColor3 = COLORS.Navy,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, playButton)
+	chevronLabel = createLabel({
+		Position = UDim2.fromOffset(216, 0),
+		Size = UDim2.fromOffset(24, 89),
+		Text = "›",
+		FontFace = FONTS.Bold,
+		TextSize = 36,
+		TextColor3 = COLORS.LimeEdge,
+	}, playButton)
+
+	-- SETTINGS (small, immediately beside PLAY)
+	local sHolder = createFrame({
+		Name = "SettingsHolder",
+		Position = UDim2.fromOffset(328, 82),
+		Size = UDim2.fromOffset(68, 74),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+	}, playGroup)
+	settingsHolderScale = create("UIScale", {}, sHolder)
+
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 9),
+		Size = UDim2.fromOffset(68, 69),
+		BackgroundColor3 = COLORS.Shadow,
+		BackgroundTransparency = 0.7,
+	}, sHolder), 15)
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 5),
+		Size = UDim2.fromOffset(68, 69),
+		BackgroundColor3 = COLORS.CreamEdge,
+	}, sHolder), 15)
+	settingsButton = createButton({
+		Name = "SettingsButton",
+		Size = UDim2.fromOffset(68, 69),
+		BackgroundColor3 = COLORS.Cream,
+	}, sHolder)
+	corner(settingsButton, 15)
+	stroke(settingsButton, COLORS.White, 2, 0.3)
+	makeIcon("Settings", settingsButton, 30, COLORS.GearGray, COLORS.Cream)
+
+	-- subtitle
+	createShadowLabel({
+		Name = "Subtitle",
+		Position = UDim2.fromOffset(2, 148),
+		Size = UDim2.fromOffset(300, 18),
+		Text = "One neighborhood. Endless chases.",
+		FontFace = FONTS.SemiBold,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, playGroup, Vector2.new(1, 1))
+end
+
+local nameplateGroup = createGroup(
+	"NameplateGroup",
+	Vector2.new(217, 61),
+	Vector2.new(0.5, 0), UDim2.fromScale(0.412, 0.7558),
+	Vector2.new(0.5, 0), UDim2.fromScale(0.5, 0.56)
+)
+
+do
+	local card = createFrame({
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = COLORS.Slate,
+	}, nameplateGroup)
+	corner(card, 9)
+	stroke(card, COLORS.SlateLight, 1, 0.5)
+
+	local num = createFrame({
+		Position = UDim2.fromOffset(12, 13),
+		Size = UDim2.fromOffset(34, 34),
+		BackgroundColor3 = COLORS.SlateEdge,
+	}, card)
+	corner(num, 7)
+	stroke(num, COLORS.Lime, 1.5)
+	createLabel({
+		Size = UDim2.fromScale(1, 1),
+		Text = tostring(CONFIG.PlayerLevel),
+		FontFace = FONTS.Heavy,
+		TextSize = 18,
+		TextColor3 = COLORS.Lime,
+	}, num)
+
+	createLabel({
+		Position = UDim2.fromOffset(57, 11),
+		Size = UDim2.fromOffset(120, 20),
+		Text = displayName,
+		FontFace = FONTS.Bold,
+		TextSize = 16,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	}, card)
+	createLabel({
+		Position = UDim2.fromOffset(57, 33),
+		Size = UDim2.fromOffset(120, 14),
+		Text = "READY TO RUN",
+		FontFace = FONTS.Heavy,
+		TextSize = 10,
+		TextColor3 = COLORS.TextDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, card)
+	createLabel({
+		Position = UDim2.fromOffset(181, 0),
+		Size = UDim2.fromOffset(26, 61),
+		Text = "✓",
+		FontFace = FONTS.Bold,
+		TextSize = 18,
+		TextColor3 = COLORS.Lime,
+	}, card)
+end
+
+--------------------------------------------------------------------------
+-- BOTTOM NAVIGATION (PROFILE / COLLECTION / SHOP + region/ping/version)
+--------------------------------------------------------------------------
+local navGroup = createGroup(
+	"NavGroup",
+	Vector2.new(467, 60),
+	Vector2.new(0, 1), UDim2.fromScale(0.033, 0.97),
+	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.975)
+)
+
+local navButtons = {}
+
+local function createNavButton(name, text, iconKind, x, w, showDot)
+	local holder = createFrame({
+		Name = name .. "Holder",
+		Position = UDim2.fromOffset(x + w / 2, 28),
+		Size = UDim2.fromOffset(w, 56),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+	}, navGroup)
+	local scale = create("UIScale", {}, holder)
+
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 6),
+		Size = UDim2.fromOffset(w, 52),
+		BackgroundColor3 = COLORS.Shadow,
+		BackgroundTransparency = 0.7,
+	}, holder), 11)
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 4),
+		Size = UDim2.fromOffset(w, 52),
+		BackgroundColor3 = COLORS.SlateEdge,
+	}, holder), 11)
+	local btn = createButton({
+		Name = name,
+		Size = UDim2.fromOffset(w, 52),
+		BackgroundColor3 = COLORS.Slate,
+	}, holder)
+	corner(btn, 11)
+	stroke(btn, COLORS.SlateLight, 1, 0.6)
+
+	makeIcon(iconKind, btn, 22, COLORS.White, COLORS.Slate, UDim2.fromOffset(35, 26))
+	createLabel({
+		Position = UDim2.fromOffset(60, 0),
+		Size = UDim2.fromOffset(w - 62, 52),
+		Text = text,
+		FontFace = FONTS.Heavy,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, btn)
+
+	if showDot then
+		corner(createFrame({
+			Position = UDim2.fromOffset(w - 17, 10),
+			Size = UDim2.fromOffset(6, 6),
+			BackgroundColor3 = COLORS.Lime,
+		}, btn), FULL)
+	end
+	navButtons[name] = { Button = btn, Scale = scale }
+end
+
+createNavButton("Profile", "PROFILE", "Profile", 0, 144, false)
+createNavButton("Collection", "COLLECTION", "Collection", 156, 175, false)
+createNavButton("Shop", "SHOP", "Shop", 343, 124, true)
+
+local infoGroup = createGroup(
+	"InfoGroup",
+	Vector2.new(340, 20),
+	Vector2.new(1, 0.5), UDim2.fromScale(0.976, 0.929),
+	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.905)
+)
+
+local infoLabel = createLabel({
+	Size = UDim2.fromScale(1, 1),
+	RichText = true,
+	FontFace = FONTS.Heavy,
+	TextSize = 11,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	TextStrokeColor3 = COLORS.Shadow,
+	TextStrokeTransparency = 0.75,
+}, infoGroup)
+
+local function refreshInfo()
+	local ping = 32
+	local ok, v = pcall(function()
+		return player:GetNetworkPing()
+	end)
+	if ok and typeof(v) == "number" and v > 0 then
+		ping = math.floor(v * 2000)
+	end
+	infoLabel.Text = string.format(
+		'<font color="#DDF764">●</font>  %s   •   %d MS      <font color="#9fb0b6">%s</font>',
+		CONFIG.Region,
+		ping,
+		CONFIG.Version
+	)
+end
+refreshInfo()
+task.spawn(function()
+	while gui.Parent do
+		task.wait(3)
+		refreshInfo()
+	end
+end)
+
+--------------------------------------------------------------------------
+-- PANELS
+--------------------------------------------------------------------------
+local overlay = createButton({
+	Name = "Overlay",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.fromRGB(8, 16, 22),
+	BackgroundTransparency = 1,
+	Visible = false,
+	ZIndex = 10,
+}, gui)
+
+local currentPanel = nil
+local overlayToken = 0
+
+local function createPanel(name, title, width, height)
+	local holder = createFrame({
+		Name = name .. "Panel",
+		Size = UDim2.fromOffset(width, height),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 20,
+	}, gui)
+	local fit = create("UIScale", {}, holder)
+
+	local canvas = create("CanvasGroup", {
+		Name = "Canvas",
+		Size = UDim2.fromScale(1, 1),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundColor3 = COLORS.PanelBg,
+		BorderSizePixel = 0,
+		GroupTransparency = 1,
+	}, holder)
+	corner(canvas, 18)
+	stroke(canvas, COLORS.SlateLight, 2, 0.4)
+	local pop = create("UIScale", { Scale = 0.92 }, canvas)
+
+	corner(createFrame({
+		Position = UDim2.fromOffset(28, 24),
+		Size = UDim2.fromOffset(6, 30),
+		BackgroundColor3 = COLORS.Lime,
+	}, canvas), 3)
+	createLabel({
+		Position = UDim2.fromOffset(46, 18),
+		Size = UDim2.fromOffset(width - 140, 42),
+		Text = title,
+		FontFace = FONTS.Display,
+		TextSize = 34,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, canvas)
+	createFrame({
+		Position = UDim2.fromOffset(28, 70),
+		Size = UDim2.fromOffset(width - 56, 2),
+		BackgroundColor3 = COLORS.SlateLight,
+		BackgroundTransparency = 0.6,
+	}, canvas)
+
+	local closeBtn = createButton({
+		Position = UDim2.fromOffset(width - 66, 18),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = COLORS.Slate,
+		Text = "X",
+		FontFace = FONTS.Heavy,
+		TextSize = 16,
+	}, canvas)
+	corner(closeBtn, 10)
+	stroke(closeBtn, COLORS.SlateLight, 1, 0.5)
+
+	local content = createFrame({
+		Name = "Content",
+		Position = UDim2.fromOffset(28, 90),
+		Size = UDim2.fromOffset(width - 56, height - 90 - 28),
+		BackgroundTransparency = 1,
+	}, canvas)
+
+	local panel = {
+		Name = name,
+		Holder = holder,
+		Fit = fit,
+		Canvas = canvas,
+		Pop = pop,
+		Content = content,
+		Close = closeBtn,
+		Width = width,
+		Height = height,
+		Token = 0,
+	}
+	panels[name] = panel
+	return panel
+end
+
+-- generic action button (lime / cream / slate) used inside panels
+local function createActionButton(parent, text, style, x, y, w, h, onClick, textSize)
+	local face, edge, textColor
+	if style == "lime" then
+		face, edge, textColor = COLORS.Lime, COLORS.LimeEdge, COLORS.Navy
+	elseif style == "cream" then
+		face, edge, textColor = COLORS.Cream, COLORS.CreamEdge, COLORS.Navy
+	else
+		face, edge, textColor = COLORS.SlateLight, COLORS.SlateEdge, COLORS.White
+	end
+	local holder = createFrame({
+		Position = UDim2.fromOffset(x + w / 2, y + (h + 5) / 2),
+		Size = UDim2.fromOffset(w, h + 5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+	}, parent)
+	local scale = create("UIScale", {}, holder)
+	corner(createFrame({
+		Position = UDim2.fromOffset(0, 5),
+		Size = UDim2.fromOffset(w, h),
+		BackgroundColor3 = edge,
+	}, holder), 12)
+	local top = createButton({
+		Size = UDim2.fromOffset(w, h),
+		BackgroundColor3 = face,
+		Text = text,
+		FontFace = FONTS.Heavy,
+		TextSize = textSize or 16,
+		TextColor3 = textColor,
+	}, holder)
+	corner(top, 12)
+	bindButton(top, scale, onClick, 1.03, 0.96)
+	return top
+end
+
+local function createCard(parent, x, y, w, h, titleText)
+	local card = createFrame({
+		Position = UDim2.fromOffset(x, y),
+		Size = UDim2.fromOffset(w, h),
+		BackgroundColor3 = COLORS.Slate,
+	}, parent)
+	corner(card, 12)
+	stroke(card, COLORS.SlateLight, 1, 0.6)
+	if titleText then
+		createLabel({
+			Position = UDim2.fromOffset(16, 10),
+			Size = UDim2.fromOffset(w - 32, 18),
+			Text = titleText,
+			FontFace = FONTS.Heavy,
+			TextSize = 12,
+			TextColor3 = COLORS.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, card)
+	end
+	return card
+end
+
+-- ANIMATIONS (panel open / close) -----------------------------------------
+local function tweenOpen(p)
+	p.Token += 1
+	p.Holder.Visible = true
+	p.Canvas.GroupTransparency = 1
+	p.Canvas.Position = UDim2.fromScale(0.5, 0.54)
+	p.Pop.Scale = 0.92
+	tween(p.Canvas, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 })
+	tween(p.Canvas, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) })
+	tween(p.Pop, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+end
+
+local function tweenClose(p)
+	p.Token += 1
+	local token = p.Token
+	local t = tween(p.Canvas, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { GroupTransparency = 1 })
+	tween(p.Pop, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0.94 })
+	t.Completed:Connect(function()
+		if p.Token == token then
+			p.Holder.Visible = false
+		end
+	end)
+end
+
+local function showOverlay()
+	overlayToken += 1
+	overlay.Visible = true
+	tween(overlay, TweenInfo.new(0.2), { BackgroundTransparency = 0.45 })
+end
+
+local function hideOverlay()
+	overlayToken += 1
+	local token = overlayToken
+	local t = tween(overlay, TweenInfo.new(0.18), { BackgroundTransparency = 1 })
+	t.Completed:Connect(function()
+		if overlayToken == token then
+			overlay.Visible = false
+		end
+	end)
+end
+
+local function closePanel()
+	if currentPanel then
+		tweenClose(currentPanel)
+		currentPanel = nil
+		hideOverlay()
+	end
+end
+
+local function openPanel(p)
+	if currentPanel == p then
+		return
+	end
+	if currentPanel then
+		tweenClose(currentPanel)
+	else
+		showOverlay()
+	end
+	currentPanel = p
+	tweenOpen(p)
+end
+
+-- PLAY PANEL ----------------------------------------------------------------
+local playPanel = createPanel("Play", "PLAY", 720, 440)
+do
+	local c = playPanel.Content -- 664 x 322
+
+	-- Matchmaking placeholder
+	local mm = createCard(c, 0, 0, 324, 242, "MATCHMAKING")
+	local mmBox = createFrame({
+		Position = UDim2.fromOffset(16, 40),
+		Size = UDim2.fromOffset(292, 150),
+		BackgroundColor3 = COLORS.SlateEdge,
+		BackgroundTransparency = 0.3,
+	}, mm)
+	corner(mmBox, 10)
+	stroke(mmBox, COLORS.SlateLight, 1, 0.6)
+	createLabel({
+		Size = UDim2.fromScale(1, 1),
+		Text = "MATCH SETTINGS\n(placeholder area)",
+		FontFace = FONTS.Bold,
+		TextSize = 14,
+		TextColor3 = COLORS.TextDim,
+	}, mmBox)
+	local statusLabel = createLabel({
+		Position = UDim2.fromOffset(16, 204),
+		Size = UDim2.fromOffset(292, 24),
+		Text = "STATUS: IDLE",
+		FontFace = FONTS.Heavy,
+		TextSize = 12,
+		TextColor3 = COLORS.Lime,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, mm)
+
+	-- Party members placeholder
+	local party = createCard(c, 340, 0, 324, 190, "PARTY  1 / 4")
+	for i = 1, 4 do
+		local row = createFrame({
+			Position = UDim2.fromOffset(16, 34 + (i - 1) * 36),
+			Size = UDim2.fromOffset(292, 32),
+			BackgroundColor3 = COLORS.SlateEdge,
+			BackgroundTransparency = i == 1 and 0 or 0.4,
+		}, party)
+		corner(row, 8)
+		local av = createFrame({
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.fromOffset(24, 24),
+			BackgroundColor3 = i == 1 and COLORS.Orange or COLORS.SlateLight,
+		}, row)
+		corner(av, 6)
+		createLabel({
+			Size = UDim2.fromScale(1, 1),
+			Text = i == 1 and string.upper(string.sub(displayName, 1, 1)) or "+",
+			FontFace = FONTS.Heavy,
+			TextSize = 14,
+			TextColor3 = COLORS.Navy,
+		}, av)
+		createLabel({
+			Position = UDim2.fromOffset(38, 0),
+			Size = UDim2.fromOffset(180, 32),
+			Text = i == 1 and displayName or "Empty slot",
+			FontFace = i == 1 and FONTS.Bold or FONTS.SemiBold,
+			TextSize = 13,
+			TextColor3 = i == 1 and COLORS.White or COLORS.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, row)
+		if i == 1 then
+			createLabel({
+				Position = UDim2.fromOffset(222, 0),
+				Size = UDim2.fromOffset(62, 32),
+				Text = "YOU",
+				FontFace = FONTS.Heavy,
+				TextSize = 11,
+				TextColor3 = COLORS.Lime,
+				TextXAlignment = Enum.TextXAlignment.Right,
+			}, row)
+		end
+	end
+
+	createActionButton(c, "INVITE FRIENDS", "cream", 340, 198, 324, 40, function()
+		statusLabel.Text = "STATUS: INVITE (PLACEHOLDER)"
+	end, 15)
+
+	-- FIND MATCH: server-driven queue (MatchService fires attributes HRushQueue / HRushSearchEndsAt)
+	local queueRemotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
+	local QueueEvent = queueRemotes and queueRemotes:WaitForChild("QueueEvent", 10)
+
+	local findBtn
+	local animToken = 0
+
+	local function refreshQueueUI()
+		animToken += 1
+		local token = animToken
+		local q = player:GetAttribute("HRushQueue") or "Idle"
+
+		if q == "Searching" then
+			statusLabel.Text = "STATUS: SEARCHING..."
+			task.spawn(function()
+				local dots = 0
+				while token == animToken and gui.Parent do
+					dots = (dots % 3) + 1
+					local endsAt = player:GetAttribute("HRushSearchEndsAt")
+					local left = endsAt and math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) or nil
+					findBtn.Text = "SEARCHING" .. string.rep(".", dots)
+						.. (left and ("  " .. left .. "s") or "") .. "  (TAP TO CANCEL)"
+					task.wait(0.4)
+				end
+			end)
+		elseif q == "Busy" then
+			statusLabel.Text = "STATUS: MATCH IN PROGRESS"
+			findBtn.Text = "MATCH IN PROGRESS"
+		elseif q == "InMatch" then
+			statusLabel.Text = "STATUS: STARTING"
+			findBtn.Text = "STARTING..."
+		else
+			statusLabel.Text = "STATUS: IDLE"
+			findBtn.Text = "FIND MATCH"
+		end
+	end
+
+	findBtn = createActionButton(c, "FIND MATCH", "lime", 0, 254, 664, 60, function()
+		if not QueueEvent then
+			return
+		end
+		local q = player:GetAttribute("HRushQueue") or "Idle"
+		QueueEvent:FireServer(q == "Searching" and "Cancel" or "Play")
+	end, 22)
+
+	player:GetAttributeChangedSignal("HRushQueue"):Connect(refreshQueueUI)
+	refreshQueueUI()
+end
+
+-- SETTINGS PANEL ------------------------------------------------------------
+local settingsPanel = createPanel("Settings", "SETTINGS", 520, 360)
+do
+	local c = settingsPanel.Content -- 464 x 242
+
+	local function createRow(index, labelText)
+		local row = createCard(c, 0, (index - 1) * 76, 464, 64)
+		createLabel({
+			Position = UDim2.fromOffset(20, 0),
+			Size = UDim2.fromOffset(240, 64),
+			Text = labelText,
+			FontFace = FONTS.Bold,
+			TextSize = 17,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		return row
+	end
+
+	local function createToggle(row, initial)
+		local state = initial
+		local track = createButton({
+			Position = UDim2.fromOffset(464 - 20 - 64, 16),
+			Size = UDim2.fromOffset(64, 32),
+			BackgroundColor3 = state and COLORS.Lime or COLORS.SlateEdge,
+		}, row)
+		corner(track, FULL)
+		local knob = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = state and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 18, 0.5, 0),
+			Size = UDim2.fromOffset(24, 24),
+			BackgroundColor3 = state and COLORS.Navy or COLORS.TextDim,
+		}, track)
+		corner(knob, FULL)
+		track.Activated:Connect(function()
+			state = not state
+			tween(track, INFO_FAST, { BackgroundColor3 = state and COLORS.Lime or COLORS.SlateEdge })
+			tween(knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Position = state and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 18, 0.5, 0),
+				BackgroundColor3 = state and COLORS.Navy or COLORS.TextDim,
+			})
+		end)
+	end
+
+	createToggle(createRow(1, "Music"), true)
+	createToggle(createRow(2, "Sound Effects"), true)
+
+	local gfxRow = createRow(3, "Graphics")
+	local options = { "LOW", "MED", "HIGH" }
+	local optButtons = {}
+	local function selectGraphics(idx)
+		for i, b in ipairs(optButtons) do
+			local on = i == idx
+			tween(b, INFO_FAST, {
+				BackgroundColor3 = on and COLORS.Lime or COLORS.SlateEdge,
+				TextColor3 = on and COLORS.Navy or COLORS.TextDim,
+			})
+		end
+	end
+	for i, text in ipairs(options) do
+		local b = createButton({
+			Position = UDim2.fromOffset(464 - 20 - 3 * 66 + (i - 1) * 66, 16),
+			Size = UDim2.fromOffset(62, 32),
+			BackgroundColor3 = COLORS.SlateEdge,
+			Text = text,
+			FontFace = FONTS.Heavy,
+			TextSize = 12,
+			TextColor3 = COLORS.TextDim,
+		}, gfxRow)
+		corner(b, 8)
+		b.Activated:Connect(function()
+			selectGraphics(i)
+		end)
+		optButtons[i] = b
+	end
+	selectGraphics(3)
+end
+
+-- PROFILE PANEL -------------------------------------------------------------
+local profilePanel = createPanel("Profile", "PROFILE", 600, 400)
+do
+	local c = profilePanel.Content -- 544 x 282
+	local left = createCard(c, 0, 0, 190, 282)
+	local avatarBox = createFrame({
+		Position = UDim2.fromOffset(25, 24),
+		Size = UDim2.fromOffset(140, 140),
+		BackgroundColor3 = COLORS.Orange,
+	}, left)
+	corner(avatarBox, 16)
+	local img = create("ImageLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Image = "",
+	}, avatarBox)
+	corner(img, 16)
+	task.spawn(function()
+		local ok, content = pcall(function()
+			return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+		end)
+		if ok and content then
+			img.Image = content
+		end
+	end)
+	createLabel({
+		Position = UDim2.fromOffset(10, 180),
+		Size = UDim2.fromOffset(170, 26),
+		Text = displayName,
+		FontFace = FONTS.Bold,
+		TextSize = 18,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+	}, left)
+	createLabel({
+		Position = UDim2.fromOffset(10, 208),
+		Size = UDim2.fromOffset(170, 18),
+		Text = "LEVEL " .. CONFIG.PlayerLevel,
+		FontFace = FONTS.Heavy,
+		TextSize = 12,
+		TextColor3 = COLORS.Lime,
+	}, left)
+
+	local stats = { "STAT 1", "STAT 2", "STAT 3" }
+	for i, s in ipairs(stats) do
+		local card = createCard(c, 206, (i - 1) * 96, 338, 86, s .. "  (PLACEHOLDER)")
+		createLabel({
+			Position = UDim2.fromOffset(16, 34),
+			Size = UDim2.fromOffset(300, 40),
+			Text = "—",
+			FontFace = FONTS.Display,
+			TextSize = 32,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, card)
+	end
+end
+
+-- COLLECTION PANEL ----------------------------------------------------------
+local collectionPanel = createPanel("Collection", "COLLECTION", 680, 460)
+do
+	local c = collectionPanel.Content -- 624 x 342
+	local scroll = create("ScrollingFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 4,
+		ScrollBarImageColor3 = COLORS.SlateLight,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, c)
+	create("UIGridLayout", {
+		CellSize = UDim2.fromOffset(112, 112),
+		CellPadding = UDim2.fromOffset(12, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, scroll)
+	create("UIPadding", { PaddingRight = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, scroll)
+	for i = 1, 15 do
+		local slot = createFrame({ LayoutOrder = i, BackgroundColor3 = COLORS.Slate }, scroll)
+		corner(slot, 12)
+		stroke(slot, COLORS.SlateLight, 1, 0.6)
+		createLabel({
+			Size = UDim2.new(1, 0, 0.6, 0),
+			Text = "?",
+			FontFace = FONTS.Display,
+			TextSize = 40,
+			TextColor3 = COLORS.SlateLight,
+		}, slot)
+		createLabel({
+			Position = UDim2.fromScale(0, 0.62),
+			Size = UDim2.new(1, 0, 0.3, 0),
+			Text = "LOCKED",
+			FontFace = FONTS.Heavy,
+			TextSize = 11,
+			TextColor3 = COLORS.TextDim,
+		}, slot)
+	end
+end
+
+-- SHOP PANEL ----------------------------------------------------------------
+local shopPanel = createPanel("Shop", "SHOP", 680, 460)
+do
+	local c = shopPanel.Content
+	local scroll = create("ScrollingFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 4,
+		ScrollBarImageColor3 = COLORS.SlateLight,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, c)
+	create("UIGridLayout", {
+		CellSize = UDim2.fromOffset(196, 160),
+		CellPadding = UDim2.fromOffset(18, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, scroll)
+	for i = 1, 6 do
+		local card = createFrame({ LayoutOrder = i, BackgroundColor3 = COLORS.Slate }, scroll)
+		corner(card, 12)
+		stroke(card, COLORS.SlateLight, 1, 0.6)
+		local preview = createFrame({
+			Position = UDim2.fromOffset(10, 10),
+			Size = UDim2.new(1, -20, 0, 78),
+			BackgroundColor3 = COLORS.SlateEdge,
+			BackgroundTransparency = 0.3,
+		}, card)
+		corner(preview, 8)
+		createLabel({
+			Position = UDim2.fromOffset(12, 94),
+			Size = UDim2.new(1, -24, 0, 18),
+			Text = "ITEM " .. i,
+			FontFace = FONTS.Bold,
+			TextSize = 13,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, card)
+		local tag = createFrame({
+			Position = UDim2.fromOffset(12, 118),
+			Size = UDim2.new(1, -24, 0, 28),
+			BackgroundColor3 = COLORS.SlateLight,
+		}, card)
+		corner(tag, 8)
+		createLabel({
+			Size = UDim2.fromScale(1, 1),
+			Text = "COMING SOON",
+			FontFace = FONTS.Heavy,
+			TextSize = 11,
+			TextColor3 = COLORS.TextDim,
+		}, tag)
+	end
+end
+
+--------------------------------------------------------------------------
+-- BUTTON EVENTS
+--------------------------------------------------------------------------
+bindButton(playButton, playHolderScale, function()
+	openPanel(playPanel)
+end, 1.04, 0.96)
+
+bindButton(settingsButton, settingsHolderScale, function()
+	openPanel(settingsPanel)
+end, 1.08, 0.92)
+
+bindButton(navButtons.Profile.Button, navButtons.Profile.Scale, function()
+	openPanel(profilePanel)
+end, 1.06, 0.94)
+bindButton(navButtons.Collection.Button, navButtons.Collection.Scale, function()
+	openPanel(collectionPanel)
+end, 1.06, 0.94)
+bindButton(navButtons.Shop.Button, navButtons.Shop.Scale, function()
+	openPanel(shopPanel)
+end, 1.06, 0.94)
+
+overlay.Activated:Connect(closePanel)
+for _, p in pairs(panels) do
+	p.Close.Activated:Connect(closePanel)
+end
+
+-- gentle idle nudge on the PLAY chevron
+tween(chevronLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+	Position = UDim2.fromOffset(222, 0),
+})
+
+--------------------------------------------------------------------------
+-- CAMERA
+--------------------------------------------------------------------------
+local isPortrait = false
+
+local function setupLobbyCamera()
+	if not CONFIG.EnableLobbyCamera then
+		return
+	end
+
+	if CONFIG.HideDefaultCoreGui then
+		task.spawn(function()
+			pcall(function()
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+			end)
+		end)
+	end
+
+	if CONFIG.DisableMovement then
+		task.spawn(function()
+			local ok, module = pcall(function()
+				return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+			end)
+			if ok and module then
+				pcall(function()
+					module:GetControls():Disable()
+				end)
+			end
+		end)
+	end
+
+	RunService:BindToRenderStep("HabulanLobbyCamera", Enum.RenderPriority.Camera.Value + 1, function()
+		local cam = workspace.CurrentCamera
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if not cam or not hrp then
+			return
+		end
+		cam.CameraType = Enum.CameraType.Scriptable
+		cam.FieldOfView = CONFIG.CameraFOV
+
+		local sway = math.sin(os.clock() * 0.45) * 1.5
+		local yaw = math.rad(CONFIG.CameraYawDegrees + sway)
+		local focus = hrp.Position + Vector3.new(0, 0.6, 0)
+		local dir = (CFrame.Angles(0, yaw, 0) * hrp.CFrame.LookVector.Unit)
+		local camPos = focus + dir * CONFIG.CameraDistance + Vector3.new(0, CONFIG.CameraHeight, 0)
+		local base = CFrame.lookAt(camPos, focus)
+		local shift = isPortrait and 0 or CONFIG.CameraShiftX
+		cam.CFrame = base * CFrame.new(shift, 0, 0)
+	end)
+end
+
+--------------------------------------------------------------------------
+-- RESPONSIVE UI
+--------------------------------------------------------------------------
+local function setupResponsiveUI()
+	local cam = workspace.CurrentCamera
+	local vp = cam and cam.ViewportSize or Vector2.new(1380, 778)
+	isPortrait = vp.Y > vp.X
+	local touch = UserInputService.TouchEnabled
+
+	local s
+	if isPortrait then
+		s = vp.X / 520
+	else
+		s = math.min(vp.X / 1380, vp.Y / 778)
+		if touch then
+			s = s * 1.3
+		end
+	end
+	s = math.clamp(s, 0.4, 2)
+
+	for _, g in ipairs(groups) do
+		g.Scale.Scale = s
+		g.Frame.AnchorPoint = isPortrait and g.PAnchor or g.LAnchor
+		g.Frame.Position = isPortrait and g.PPos or g.LPos
+	end
+
+	for _, p in pairs(panels) do
+		p.Fit.Scale = math.clamp(math.min(vp.X * 0.94 / p.Width, vp.Y * 0.9 / p.Height), 0.35, 1.4)
+	end
+end
+
+local function watchViewport()
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(setupResponsiveUI)
+	end
+end
+
+watchViewport()
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	watchViewport()
+	setupResponsiveUI()
+end)
+setupResponsiveUI()
+setupLobbyCamera()
+
+--------------------------------------------------------------------------
+-- MATCH INTEGRATION (lobby <-> match gate)
+-- Lobby UI + lobby camera exist only while NOT in a match (HRushInMatch).
+-- The in-match HUD (HRushHUD from UIController) hides itself; we don't touch it.
+--------------------------------------------------------------------------
+local function setControlsEnabled(enabled)
+	task.spawn(function()
+		local ok, module = pcall(function()
+			return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+		end)
+		if ok and module then
+			pcall(function()
+				local controls = module:GetControls()
+				if enabled then
+					controls:Enable()
+				else
+					controls:Disable()
+				end
+			end)
+		end
+	end)
+end
+
+local function applyMatchGate()
+	local inMatch = player:GetAttribute("HRushInMatch") == true
+
+	gui.Enabled = not inMatch
+
+	pcall(function()
+		RunService:UnbindFromRenderStep("HabulanLobbyCamera")
+	end)
+
+	if inMatch then
+		closePanel()
+		local cam = workspace.CurrentCamera
+		if cam then
+			cam.CameraType = Enum.CameraType.Custom
+			cam.FieldOfView = 70
+			local char = player.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				cam.CameraSubject = hum
+			end
+		end
+		setControlsEnabled(true)
+	else
+		setupLobbyCamera() -- re-binds the lobby camera and disables movement
+	end
+end
+
+player:GetAttributeChangedSignal("HRushInMatch"):Connect(applyMatchGate)
+player.CharacterAdded:Connect(function()
+	task.wait(0.2)
+	applyMatchGate()
+end)
+applyMatchGate()
+
+--------------------------------------------------------------------------
+-- LOADING SCREEN (match found -> arena reveal)
+-- Shown while you are in a match but the arena isn't ready yet (MS_01 right after
+-- match creation, and MS_02 draft). It fades out when the countdown (MS_03) begins.
+-- When the Skill Draft UI (T17) exists, change LOADING_WAIT_STATES to { MS_01 = true }.
+--------------------------------------------------------------------------
+local LOADING_WAIT_STATES = { MS_01 = true, MS_02 = true }
+local LOADING_MIN_SECONDS = 1.5
+local LOADING_TIPS = {
+	"Hold Shift to sprint. Watch your stamina.",
+	"Press Q to dash. 6 second cooldown.",
+	"Press C to slide under low gaps.",
+	"Taya time counts against you. Lowest wins.",
+}
+
+local loadingGui = create("ScreenGui", {
+	Name = "LobbyLoading",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = true,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	DisplayOrder = 100,
+	Enabled = false,
+}, playerGui)
+
+local loadingGroup = create("CanvasGroup", {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = COLORS.Navy,
+	BorderSizePixel = 0,
+	GroupTransparency = 1,
+}, loadingGui)
+create("UIGradient", {
+	Color = ColorSequence.new(COLORS.Slate, COLORS.Navy),
+	Rotation = 90,
+}, loadingGroup)
+
+local loadingCenter = createFrame({
+	Size = UDim2.fromOffset(600, 360),
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	BackgroundTransparency = 1,
+}, loadingGroup)
+local loadingScale = create("UIScale", {}, loadingCenter)
+
+createLabel({
+	Position = UDim2.fromOffset(0, 0),
+	Size = UDim2.fromOffset(600, 60),
+	Text = "HABULAN",
+	FontFace = FONTS.HeavyItalic,
+	TextSize = 54,
+}, loadingCenter)
+createLabel({
+	Position = UDim2.fromOffset(0, 50),
+	Size = UDim2.fromOffset(600, 100),
+	Text = "RUSH »",
+	FontFace = FONTS.HeavyItalic,
+	TextSize = 88,
+	TextColor3 = COLORS.Lime,
+}, loadingCenter)
+createLabel({
+	Position = UDim2.fromOffset(0, 170),
+	Size = UDim2.fromOffset(600, 20),
+	Text = "MATCH FOUND",
+	FontFace = FONTS.Heavy,
+	TextSize = 14,
+	TextColor3 = COLORS.Lime,
+}, loadingCenter)
+local loadingStatus = createLabel({
+	Position = UDim2.fromOffset(0, 194),
+	Size = UDim2.fromOffset(600, 34),
+	Text = "GETTING READY...",
+	FontFace = FONTS.Display,
+	TextSize = 30,
+}, loadingCenter)
+
+local barTrack = createFrame({
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.fromOffset(300, 244),
+	Size = UDim2.fromOffset(360, 8),
+	BackgroundColor3 = COLORS.SlateEdge,
+	ClipsDescendants = true,
+}, loadingCenter)
+corner(barTrack, FULL)
+local barFill = createFrame({
+	Size = UDim2.fromScale(0.3, 1),
+	Position = UDim2.fromScale(-0.3, 0),
+	BackgroundColor3 = COLORS.Lime,
+}, barTrack)
+corner(barFill, FULL)
+
+local loadingTip = createLabel({
+	Position = UDim2.fromOffset(0, 280),
+	Size = UDim2.fromOffset(600, 20),
+	Text = LOADING_TIPS[1],
+	FontFace = FONTS.SemiBold,
+	TextSize = 14,
+	TextColor3 = COLORS.TextDim,
+}, loadingCenter)
+
+local function updateLoadingScale()
+	local cam = workspace.CurrentCamera
+	local vp = cam and cam.ViewportSize or Vector2.new(1380, 778)
+	loadingScale.Scale = math.clamp(math.min(vp.X / 700, vp.Y / 420), 0.5, 1.6)
+end
+updateLoadingScale()
+if workspace.CurrentCamera then
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateLoadingScale)
+end
+
+local loadingVisible = false
+local loadingShownAt = 0
+local loadingToken = 0
+
+local function runLoadingAnimation(token)
+	local tipIndex = 1
+	local lastTipChange = os.clock()
+	local lastBar = 0
+	while loadingToken == token and loadingVisible do
+		-- sliding progress segment
+		if os.clock() - lastBar >= 1.0 then
+			lastBar = os.clock()
+			barFill.Position = UDim2.fromScale(-0.3, 0)
+			tween(barFill, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+				Position = UDim2.fromScale(1, 0),
+			})
+		end
+
+		-- countdown to arena reveal (server-published phase end, only meaningful during MS_02)
+		local text = "GETTING READY..."
+		if player:GetAttribute("HRushState") == "MS_02" then
+			local endsAt = game:GetService("ReplicatedStorage"):GetAttribute("HRushPhaseEndsAt")
+			if typeof(endsAt) == "number" then
+				local left = math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow()))
+				text = "STARTING IN " .. left .. "s"
+			end
+		end
+		loadingStatus.Text = text
+
+		if os.clock() - lastTipChange >= 3 then
+			lastTipChange = os.clock()
+			tipIndex = (tipIndex % #LOADING_TIPS) + 1
+			loadingTip.Text = LOADING_TIPS[tipIndex]
+		end
+		task.wait(0.2)
+	end
+end
+
+local function setLoadingVisible(visible)
+	if visible == loadingVisible then
+		return
+	end
+	loadingVisible = visible
+	loadingToken += 1
+	local token = loadingToken
+
+	if visible then
+		loadingShownAt = os.clock()
+		loadingGui.Enabled = true
+		loadingTip.Text = LOADING_TIPS[math.random(1, #LOADING_TIPS)]
+		tween(loadingGroup, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 })
+		task.spawn(runLoadingAnimation, token)
+	else
+		-- never flash: keep it up for a minimum time, then fade out
+		local remaining = math.max(0, LOADING_MIN_SECONDS - (os.clock() - loadingShownAt))
+		task.delay(remaining, function()
+			if loadingToken ~= token then
+				return
+			end
+			local t = tween(loadingGroup, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { GroupTransparency = 1 })
+			t.Completed:Connect(function()
+				if loadingToken == token then
+					loadingGui.Enabled = false
+				end
+			end)
+		end)
+	end
+end
+
+local function refreshLoading()
+	local inMatch = player:GetAttribute("HRushInMatch") == true
+	local st = player:GetAttribute("HRushState")
+	setLoadingVisible(inMatch and typeof(st) == "string" and LOADING_WAIT_STATES[st] == true)
+end
+
+player:GetAttributeChangedSignal("HRushInMatch"):Connect(refreshLoading)
+player:GetAttributeChangedSignal("HRushState"):Connect(refreshLoading)
+refreshLoading()
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="27">
         <Properties>
           <string name="Name">MovementController</string>
           <string name="Source"><![CDATA[--!strict
@@ -2854,7 +5420,7 @@ print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/da
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="26">
+      <Item class="LocalScript" referent="28">
         <Properties>
           <string name="Name">TargetLockBootstrap</string>
           <string name="Source"><![CDATA[--!strict
@@ -2869,7 +5435,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">TargetLockController</string>
           <string name="Source"><![CDATA[--!strict
@@ -2880,7 +5446,8 @@ end)
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
 -- IsDashing / IsHidden: target flags that break locks (Stage E).
 -- RS_02 client effects can require this module and call :BreakLock("DecoySwap").
--- Stage B: acquisition only. Attribute gates and automatic breaks follow in E.
+-- Implemented: acquisition, manual toggle, cycle, reticle (Stage B).
+-- Pending: camera assist (C), break rules (E), attribute hooks (E).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2888,6 +5455,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Settings = Config.TargetLock
@@ -2900,11 +5468,14 @@ local roundLive = false
 local cooldownUntil = 0
 local scanElapsed = 0
 local acquireRequested = false
+local toggleFireCount = 0 -- diagnostic: counts toggle Begin events (Stage A)
 local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
 local CYCLE_ACTION = "HRUSH_TargetLockCycle"
 
 type Candidate = { player: Player, character: Model, root: BasePart, aimPart: BasePart }
 local candidates: { Candidate } = {}
+local reticleGui: BillboardGui? = nil
+local targetConnections: { RBXScriptConnection } = {}
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 -- Respect CanQuery rather than treating non-collidable cover as invisible.
@@ -2936,6 +5507,216 @@ local function aimPart(character: Model): BasePart?
 		return part
 	end
 	return nil
+end
+
+-- Reticle lifecycle helpers. The GUI lives in this client's PlayerGui, so only
+-- this player ever sees it.
+local function unbindTargetConnections()
+	for _, connection in targetConnections do
+		connection:Disconnect()
+	end
+	table.clear(targetConnections)
+end
+
+local function destroyReticleNow()
+	if reticleGui then
+		reticleGui:Destroy()
+		reticleGui = nil
+	end
+end
+
+-- Draw the ring with UI instances only (Frame + UICorner + UIStroke + notches)
+-- so it needs no image asset and still reads without colour.
+local function createReticle(aim: BasePart?)
+	destroyReticleNow()
+	if not aim then
+		return
+	end
+	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return
+	end
+	local rc = Settings.Reticle
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "HRUSH_TargetLockReticle"
+	gui.ResetOnSpawn = false
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Size = UDim2.fromOffset(rc.SizePx, rc.SizePx)
+	gui.StudsOffset = rc.StudsOffset
+	gui.Adornee = aim
+
+	local ring = Instance.new("Frame")
+	ring.Name = "Ring"
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromScale(1, 1)
+	ring.BackgroundTransparency = 1
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0) -- full radius turns the square frame into a circle
+	corner.Parent = ring
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = rc.RingColor
+	stroke.Thickness = rc.RingThickness
+	stroke.Transparency = rc.RingTransparency
+	stroke.Parent = ring
+
+	-- Four notch marks keep the ring readable in grayscale.
+	local function makeNotch(name: string, x: number, y: number, ax: number, ay: number)
+		local mark = Instance.new("Frame")
+		mark.Name = name
+		mark.AnchorPoint = Vector2.new(ax, ay)
+		mark.Position = UDim2.fromScale(x, y)
+		mark.Size = UDim2.fromOffset(rc.NotchSizePx, rc.NotchSizePx)
+		mark.BackgroundColor3 = rc.NotchColor
+		mark.BorderSizePixel = 0
+		mark.Parent = ring
+	end
+	makeNotch("Top", 0.5, 0, 0.5, 0)
+	makeNotch("Bottom", 0.5, 1, 0.5, 1)
+	makeNotch("Left", 0, 0.5, 0, 0.5)
+	makeNotch("Right", 1, 0.5, 1, 0.5)
+
+	local scale = Instance.new("UIScale")
+	scale.Scale = rc.StartScale
+	scale.Parent = ring
+
+	ring.Parent = gui
+	gui.Parent = playerGui
+	reticleGui = gui
+
+	if Config.Debug.ShowLockDebug then
+		print("[TargetLock] reticle created on " .. aim.Name)
+	end
+
+	if rc.Animate then
+		TweenService:Create(
+			scale,
+			TweenInfo.new(rc.ScaleInTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		):Play()
+	else
+		scale.Scale = 1
+	end
+end
+
+-- Remove the reticle, fading it first when animated. The reference is cleared
+-- immediately so a fresh lock can build a new one while the old fades out.
+local function destroyReticle(animated: boolean?)
+	local gui = reticleGui
+	reticleGui = nil
+	if not gui then
+		return
+	end
+	if animated ~= true or Settings.Reticle.Animate ~= true then
+		gui:Destroy()
+		return
+	end
+	local rc = Settings.Reticle
+	local ring = gui:FindFirstChild("Ring")
+	local stroke = ring and ring:FindFirstChildOfClass("UIStroke")
+	local scale = ring and ring:FindFirstChildOfClass("UIScale")
+	if scale then
+		TweenService:Create(scale, TweenInfo.new(rc.FadeOutTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = rc.EndScale }):Play()
+	end
+	if stroke then
+		TweenService:Create(stroke, TweenInfo.new(rc.FadeOutTime), { Transparency = 1 }):Play()
+	end
+	if ring then
+		for _, child in ring:GetChildren() do
+			if child:IsA("Frame") then
+				TweenService:Create(child, TweenInfo.new(rc.FadeOutTime), { BackgroundTransparency = 1 }):Play()
+			end
+		end
+	end
+	task.delay(rc.FadeOutTime + 0.05, function()
+		if gui.Parent then
+			gui:Destroy()
+		end
+	end)
+end
+
+-- Break the lock when the target dies, leaves, or its character is removed.
+local function bindTargetLifecycle(targetPlayer: Player)
+	local character = targetPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		table.insert(targetConnections, humanoid.Died:Once(function()
+			TargetLockController:BreakLock("TargetDied")
+		end))
+	end
+	if character then
+		table.insert(targetConnections, character.AncestryChanged:Connect(function(_child, parent)
+			if parent == nil then
+				TargetLockController:BreakLock("TargetCharacterRemoved")
+			end
+		end))
+	end
+	table.insert(targetConnections, Players.PlayerRemoving:Connect(function(leaver)
+		if leaver == targetPlayer then
+			TargetLockController:BreakLock("TargetLeft")
+		end
+	end))
+end
+
+-- Clear the active target and tear down its reticle and connections.
+-- Returns true if a target was actually cleared.
+local function clearTarget(_reason: string, animated: boolean?): boolean
+	acquireRequested = false
+	local wasLocked = target ~= nil
+	target = nil
+	unbindTargetConnections()
+	destroyReticle(animated)
+	return wasLocked
+end
+
+local function lockOn(best: Player)
+	unbindTargetConnections()
+	target = best
+	local character = best.Character
+	local part = character and aimPart(character)
+	createReticle(part)
+	bindTargetLifecycle(best)
+	debugPrint("Locked " .. best.Name)
+end
+
+-- Move the lock to the next nearest candidate; lockOn re-adorns the reticle.
+local function cycleTarget()
+	if not target then
+		return
+	end
+	local root = livingRoot(LocalPlayer.Character)
+	if not root or #candidates < 2 then
+		debugPrint("Cycle: only one target")
+		return
+	end
+	-- Sort by distance; candidates is at most the player count, so this is cheap.
+	local order: { Candidate } = {}
+	for _, candidate in candidates do
+		table.insert(order, candidate)
+	end
+	table.sort(order, function(a, b)
+		return (a.root.Position - root.Position).Magnitude < (b.root.Position - root.Position).Magnitude
+	end)
+	local index = 0
+	for i, candidate in order do
+		if candidate.player == target then
+			index = i
+			break
+		end
+	end
+	if index == 0 then
+		lockOn(order[1].player)
+		return
+	end
+	local nextCandidate = order[(index % #order) + 1]
+	if nextCandidate.player ~= target then
+		lockOn(nextCandidate.player)
+		debugPrint("Cycle -> " .. nextCandidate.player.Name)
+	end
 end
 
 local function passesRole(player: Player): boolean
@@ -2982,6 +5763,11 @@ local function acquire()
 	local camera = Workspace.CurrentCamera
 	local root = livingRoot(LocalPlayer.Character)
 	if not camera or not root or not roundLive or Workspace:GetServerTimeNow() < cooldownUntil then
+		-- TODO: remove before submission (explains a silent R press: round state / cooldown).
+		if Config.Debug.ShowLockDebug then
+			print(("[TargetLock] acquire BLOCKED  roundLive=%s  onCooldown=%s  hasRoot=%s")
+				:format(tostring(roundLive), tostring(Workspace:GetServerTimeNow() < cooldownUntil), tostring(root ~= nil)))
+		end
 		return
 	end
 	local best: Player? = nil
@@ -3001,11 +5787,9 @@ local function acquire()
 			bestDistance = distance
 		end
 	end
-	target = best
 	if best then
-		debugPrint("Locked " .. best.Name)
+		lockOn(best)
 	else
-		-- Output feedback for Stage B. Player-facing feedback comes with the UI.
 		debugPrint("No target")
 	end
 end
@@ -3015,13 +5799,11 @@ function TargetLockController:GetTarget(): Player?
 end
 
 function TargetLockController:BreakLock(reason: string)
-	acquireRequested = false
-	if not target then
-		return
+	local wasLocked = clearTarget(reason, true)
+	if wasLocked then
+		cooldownUntil = Workspace:GetServerTimeNow() + Settings.BreakCooldown
+		debugPrint("Broken: " .. reason)
 	end
-	target = nil
-	cooldownUntil = Workspace:GetServerTimeNow() + Settings.BreakCooldown
-	debugPrint("Broken: " .. reason)
 end
 
 function TargetLockController:Init()
@@ -3040,11 +5822,24 @@ function TargetLockController:Init()
 			roundLive = payload.state == "MS_04"
 		end
 	end))
+	table.insert(connections, LocalPlayer.CharacterRemoving:Connect(function()
+		if target then
+			clearTarget("LocalRespawn", false)
+			debugPrint("Broken: LocalRespawn")
+		end
+	end))
 	ContextActionService:BindAction(TOGGLE_ACTION, function(_name, state, _input)
+		if state == Enum.UserInputState.Begin then
+			toggleFireCount += 1
+			-- TODO: remove before submission (proves one press fires Begin exactly once)
+			if Config.Debug.ShowLockDebug then
+				print(("[TargetLock] toggle Begin #%d  t=%.3f  key=%s")
+					:format(toggleFireCount, tick(), tostring(_input.KeyCode)))
+			end
+		end
 		if state == Enum.UserInputState.Begin and not UserInputService:GetFocusedTextBox() then
 			if target then
-				target = nil
-				acquireRequested = false
+				clearTarget("ManualUnlock", true)
 				debugPrint("Unlocked manually (no cooldown)")
 			else
 				acquireRequested = not acquireRequested
@@ -3054,7 +5849,7 @@ function TargetLockController:Init()
 	end, false, Settings.Keybinds.Toggle, Settings.Keybinds.GamepadToggle)
 	ContextActionService:BindAction(CYCLE_ACTION, function(_name, state, _input)
 		if state == Enum.UserInputState.Begin and target then
-			debugPrint("Cycle arrives in Stage C")
+			cycleTarget()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Settings.Keybinds.Cycle, Settings.Keybinds.GamepadCycle)
@@ -3082,6 +5877,8 @@ function TargetLockController:Destroy()
 	end
 	table.clear(connections)
 	table.clear(candidates)
+	unbindTargetConnections()
+	destroyReticleNow()
 	ContextActionService:UnbindAction(TOGGLE_ACTION)
 	ContextActionService:UnbindAction(CYCLE_ACTION)
 	target = nil
@@ -3095,7 +5892,7 @@ return TargetLockController
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="28">
+      <Item class="LocalScript" referent="30">
         <Properties>
           <string name="Name">UIController</string>
           <string name="Source"><![CDATA[--!strict
@@ -3514,22 +6311,35 @@ updateDashCD()
 updateSkillCD()
 
 print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")
+
+-- ============================================================
+-- MATCH GATE: HUD only exists during a match (MS_03..MS_05)
+-- ============================================================
+local function applyHudGate()
+	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
+	local st = LocalPlayer:GetAttribute("HRushState")
+	gui.Enabled = inMatch and (st == "MS_03" or st == "MS_04" or st == "MS_05")
+end
+
+LocalPlayer:GetAttributeChangedSignal("HRushInMatch"):Connect(applyHudGate)
+LocalPlayer:GetAttributeChangedSignal("HRushState"):Connect(applyHudGate)
+applyHudGate()
 ]]></string>
         </Properties>
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="29">
+  <Item class="Workspace" referent="31">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
     </Properties>
-    <Item class="Model" referent="30">
+    <Item class="Model" referent="32">
       <Properties>
         <string name="Name">Map</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Part" referent="31">
+      <Item class="Part" referent="33">
         <Properties>
           <string name="Name">Baseplate</string>
           <bool name="Anchored">true</bool>
@@ -3556,7 +6366,7 @@ print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill c
           <token name="TopSurface">0</token>
         </Properties>
       </Item>
-      <Item class="SpawnLocation" referent="32">
+      <Item class="SpawnLocation" referent="34">
         <Properties>
           <string name="Name">Spawn</string>
           <bool name="Anchored">true</bool>

@@ -6,7 +6,8 @@
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
 -- IsDashing / IsHidden: target flags that break locks (Stage E).
 -- RS_02 client effects can require this module and call :BreakLock("DecoySwap").
--- Stage B: acquisition only. Attribute gates and automatic breaks follow in E.
+-- Implemented: acquisition, manual toggle, cycle, reticle (Stage B).
+-- Pending: camera assist (C), break rules (E), attribute hooks (E).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +15,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Settings = Config.TargetLock
@@ -26,11 +28,14 @@ local roundLive = false
 local cooldownUntil = 0
 local scanElapsed = 0
 local acquireRequested = false
+local toggleFireCount = 0 -- diagnostic: counts toggle Begin events (Stage A)
 local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
 local CYCLE_ACTION = "HRUSH_TargetLockCycle"
 
 type Candidate = { player: Player, character: Model, root: BasePart, aimPart: BasePart }
 local candidates: { Candidate } = {}
+local reticleGui: BillboardGui? = nil
+local targetConnections: { RBXScriptConnection } = {}
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 -- Respect CanQuery rather than treating non-collidable cover as invisible.
@@ -62,6 +67,216 @@ local function aimPart(character: Model): BasePart?
 		return part
 	end
 	return nil
+end
+
+-- Reticle lifecycle helpers. The GUI lives in this client's PlayerGui, so only
+-- this player ever sees it.
+local function unbindTargetConnections()
+	for _, connection in targetConnections do
+		connection:Disconnect()
+	end
+	table.clear(targetConnections)
+end
+
+local function destroyReticleNow()
+	if reticleGui then
+		reticleGui:Destroy()
+		reticleGui = nil
+	end
+end
+
+-- Draw the ring with UI instances only (Frame + UICorner + UIStroke + notches)
+-- so it needs no image asset and still reads without colour.
+local function createReticle(aim: BasePart?)
+	destroyReticleNow()
+	if not aim then
+		return
+	end
+	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return
+	end
+	local rc = Settings.Reticle
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "HRUSH_TargetLockReticle"
+	gui.ResetOnSpawn = false
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Size = UDim2.fromOffset(rc.SizePx, rc.SizePx)
+	gui.StudsOffset = rc.StudsOffset
+	gui.Adornee = aim
+
+	local ring = Instance.new("Frame")
+	ring.Name = "Ring"
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromScale(1, 1)
+	ring.BackgroundTransparency = 1
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0) -- full radius turns the square frame into a circle
+	corner.Parent = ring
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = rc.RingColor
+	stroke.Thickness = rc.RingThickness
+	stroke.Transparency = rc.RingTransparency
+	stroke.Parent = ring
+
+	-- Four notch marks keep the ring readable in grayscale.
+	local function makeNotch(name: string, x: number, y: number, ax: number, ay: number)
+		local mark = Instance.new("Frame")
+		mark.Name = name
+		mark.AnchorPoint = Vector2.new(ax, ay)
+		mark.Position = UDim2.fromScale(x, y)
+		mark.Size = UDim2.fromOffset(rc.NotchSizePx, rc.NotchSizePx)
+		mark.BackgroundColor3 = rc.NotchColor
+		mark.BorderSizePixel = 0
+		mark.Parent = ring
+	end
+	makeNotch("Top", 0.5, 0, 0.5, 0)
+	makeNotch("Bottom", 0.5, 1, 0.5, 1)
+	makeNotch("Left", 0, 0.5, 0, 0.5)
+	makeNotch("Right", 1, 0.5, 1, 0.5)
+
+	local scale = Instance.new("UIScale")
+	scale.Scale = rc.StartScale
+	scale.Parent = ring
+
+	ring.Parent = gui
+	gui.Parent = playerGui
+	reticleGui = gui
+
+	if Config.Debug.ShowLockDebug then
+		print("[TargetLock] reticle created on " .. aim.Name)
+	end
+
+	if rc.Animate then
+		TweenService:Create(
+			scale,
+			TweenInfo.new(rc.ScaleInTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		):Play()
+	else
+		scale.Scale = 1
+	end
+end
+
+-- Remove the reticle, fading it first when animated. The reference is cleared
+-- immediately so a fresh lock can build a new one while the old fades out.
+local function destroyReticle(animated: boolean?)
+	local gui = reticleGui
+	reticleGui = nil
+	if not gui then
+		return
+	end
+	if animated ~= true or Settings.Reticle.Animate ~= true then
+		gui:Destroy()
+		return
+	end
+	local rc = Settings.Reticle
+	local ring = gui:FindFirstChild("Ring")
+	local stroke = ring and ring:FindFirstChildOfClass("UIStroke")
+	local scale = ring and ring:FindFirstChildOfClass("UIScale")
+	if scale then
+		TweenService:Create(scale, TweenInfo.new(rc.FadeOutTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = rc.EndScale }):Play()
+	end
+	if stroke then
+		TweenService:Create(stroke, TweenInfo.new(rc.FadeOutTime), { Transparency = 1 }):Play()
+	end
+	if ring then
+		for _, child in ring:GetChildren() do
+			if child:IsA("Frame") then
+				TweenService:Create(child, TweenInfo.new(rc.FadeOutTime), { BackgroundTransparency = 1 }):Play()
+			end
+		end
+	end
+	task.delay(rc.FadeOutTime + 0.05, function()
+		if gui.Parent then
+			gui:Destroy()
+		end
+	end)
+end
+
+-- Break the lock when the target dies, leaves, or its character is removed.
+local function bindTargetLifecycle(targetPlayer: Player)
+	local character = targetPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		table.insert(targetConnections, humanoid.Died:Once(function()
+			TargetLockController:BreakLock("TargetDied")
+		end))
+	end
+	if character then
+		table.insert(targetConnections, character.AncestryChanged:Connect(function(_child, parent)
+			if parent == nil then
+				TargetLockController:BreakLock("TargetCharacterRemoved")
+			end
+		end))
+	end
+	table.insert(targetConnections, Players.PlayerRemoving:Connect(function(leaver)
+		if leaver == targetPlayer then
+			TargetLockController:BreakLock("TargetLeft")
+		end
+	end))
+end
+
+-- Clear the active target and tear down its reticle and connections.
+-- Returns true if a target was actually cleared.
+local function clearTarget(_reason: string, animated: boolean?): boolean
+	acquireRequested = false
+	local wasLocked = target ~= nil
+	target = nil
+	unbindTargetConnections()
+	destroyReticle(animated)
+	return wasLocked
+end
+
+local function lockOn(best: Player)
+	unbindTargetConnections()
+	target = best
+	local character = best.Character
+	local part = character and aimPart(character)
+	createReticle(part)
+	bindTargetLifecycle(best)
+	debugPrint("Locked " .. best.Name)
+end
+
+-- Move the lock to the next nearest candidate; lockOn re-adorns the reticle.
+local function cycleTarget()
+	if not target then
+		return
+	end
+	local root = livingRoot(LocalPlayer.Character)
+	if not root or #candidates < 2 then
+		debugPrint("Cycle: only one target")
+		return
+	end
+	-- Sort by distance; candidates is at most the player count, so this is cheap.
+	local order: { Candidate } = {}
+	for _, candidate in candidates do
+		table.insert(order, candidate)
+	end
+	table.sort(order, function(a, b)
+		return (a.root.Position - root.Position).Magnitude < (b.root.Position - root.Position).Magnitude
+	end)
+	local index = 0
+	for i, candidate in order do
+		if candidate.player == target then
+			index = i
+			break
+		end
+	end
+	if index == 0 then
+		lockOn(order[1].player)
+		return
+	end
+	local nextCandidate = order[(index % #order) + 1]
+	if nextCandidate.player ~= target then
+		lockOn(nextCandidate.player)
+		debugPrint("Cycle -> " .. nextCandidate.player.Name)
+	end
 end
 
 local function passesRole(player: Player): boolean
@@ -108,6 +323,11 @@ local function acquire()
 	local camera = Workspace.CurrentCamera
 	local root = livingRoot(LocalPlayer.Character)
 	if not camera or not root or not roundLive or Workspace:GetServerTimeNow() < cooldownUntil then
+		-- TODO: remove before submission (explains a silent R press: round state / cooldown).
+		if Config.Debug.ShowLockDebug then
+			print(("[TargetLock] acquire BLOCKED  roundLive=%s  onCooldown=%s  hasRoot=%s")
+				:format(tostring(roundLive), tostring(Workspace:GetServerTimeNow() < cooldownUntil), tostring(root ~= nil)))
+		end
 		return
 	end
 	local best: Player? = nil
@@ -127,11 +347,9 @@ local function acquire()
 			bestDistance = distance
 		end
 	end
-	target = best
 	if best then
-		debugPrint("Locked " .. best.Name)
+		lockOn(best)
 	else
-		-- Output feedback for Stage B. Player-facing feedback comes with the UI.
 		debugPrint("No target")
 	end
 end
@@ -141,13 +359,11 @@ function TargetLockController:GetTarget(): Player?
 end
 
 function TargetLockController:BreakLock(reason: string)
-	acquireRequested = false
-	if not target then
-		return
+	local wasLocked = clearTarget(reason, true)
+	if wasLocked then
+		cooldownUntil = Workspace:GetServerTimeNow() + Settings.BreakCooldown
+		debugPrint("Broken: " .. reason)
 	end
-	target = nil
-	cooldownUntil = Workspace:GetServerTimeNow() + Settings.BreakCooldown
-	debugPrint("Broken: " .. reason)
 end
 
 function TargetLockController:Init()
@@ -166,11 +382,24 @@ function TargetLockController:Init()
 			roundLive = payload.state == "MS_04"
 		end
 	end))
+	table.insert(connections, LocalPlayer.CharacterRemoving:Connect(function()
+		if target then
+			clearTarget("LocalRespawn", false)
+			debugPrint("Broken: LocalRespawn")
+		end
+	end))
 	ContextActionService:BindAction(TOGGLE_ACTION, function(_name, state, _input)
+		if state == Enum.UserInputState.Begin then
+			toggleFireCount += 1
+			-- TODO: remove before submission (proves one press fires Begin exactly once)
+			if Config.Debug.ShowLockDebug then
+				print(("[TargetLock] toggle Begin #%d  t=%.3f  key=%s")
+					:format(toggleFireCount, tick(), tostring(_input.KeyCode)))
+			end
+		end
 		if state == Enum.UserInputState.Begin and not UserInputService:GetFocusedTextBox() then
 			if target then
-				target = nil
-				acquireRequested = false
+				clearTarget("ManualUnlock", true)
 				debugPrint("Unlocked manually (no cooldown)")
 			else
 				acquireRequested = not acquireRequested
@@ -180,7 +409,7 @@ function TargetLockController:Init()
 	end, false, Settings.Keybinds.Toggle, Settings.Keybinds.GamepadToggle)
 	ContextActionService:BindAction(CYCLE_ACTION, function(_name, state, _input)
 		if state == Enum.UserInputState.Begin and target then
-			debugPrint("Cycle arrives in Stage C")
+			cycleTarget()
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Settings.Keybinds.Cycle, Settings.Keybinds.GamepadCycle)
@@ -208,6 +437,8 @@ function TargetLockController:Destroy()
 	end
 	table.clear(connections)
 	table.clear(candidates)
+	unbindTargetConnections()
+	destroyReticleNow()
 	ContextActionService:UnbindAction(TOGGLE_ACTION)
 	ContextActionService:UnbindAction(CYCLE_ACTION)
 	target = nil

@@ -110,6 +110,21 @@ Config.TargetLock = {
 		InputDampenFactor = 0.15, -- retain 15% strength during camera input
 		InputDampenThreshold = 0.1, -- stick magnitude or pointer pixels
 	},
+	-- Reticle is drawn with UI instances only (no image assets).
+	Reticle = {
+		SizePx = 64,                          -- fixed pixel size of the billboard
+		StudsOffset = Vector3.new(0, 0.5, 0), -- lift slightly above the torso centre
+		RingColor = Color3.fromRGB(235, 64, 64),
+		RingThickness = 2,
+		RingTransparency = 0,
+		NotchColor = Color3.fromRGB(255, 255, 255),
+		NotchSizePx = 6,                      -- corner marks so the shape reads without colour
+		StartScale = 0.2,                     -- scale-in begins small
+		EndScale = 0.2,                       -- fade-out shrinks back down
+		ScaleInTime = 0.15,                   -- seconds, ease-out pop on lock
+		FadeOutTime = 0.12,                   -- seconds, ease-in on unlock
+		Animate = true,                       -- set false to skip tweens for testing
+	},
 	Keybinds = {
 		-- User-approved change: Q is dash and E is skill.
 		Toggle = Enum.KeyCode.R,
@@ -180,6 +195,8 @@ Config.Events = {
 Config.Debug = {
 	-- TODO: set to false before submission
 	AllowAnyRoleTargetLock = true,
+	-- TODO: remove before submission (delete this flag and all ShowLockDebug blocks)
+	ShowLockDebug = true, -- T16: prove toggle fire count, reticle, acquire blocking
 	-- TODO: set to false before submission
 	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
 	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
