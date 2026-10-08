@@ -104,11 +104,16 @@ Config.TargetLock = {
 	CandidateRefreshRate = 10, -- scans per second
 	AimPointOffset = Vector3.new(0, 0.5, 0), -- above torso centre
 	CameraAssist = {
-		Strength = 3.0, -- exponential response per second
-		MaxTurnRateDegPerSec = 60,
-		PitchWeight = 0.35,
-		InputDampenFactor = 0.15, -- retain 15% strength during camera input
-		InputDampenThreshold = 0.1, -- stick magnitude or pointer pixels
+		-- AssistStrength is the exponential response rate k (per second) in
+		-- 1 - exp(-k * dt). I raised the suggested 0.6 to 4.0 because 0.6/s is a
+		-- ~1.67s time constant, far too slow to visibly turn; 4.0/s eases in ~0.25s.
+		AssistStrength = 4.0,
+		MaxTurnRateDegPerSec = 180, -- cap how fast the offset may rotate
+		PitchWeight = 0.35,         -- weaker vertical pull than horizontal
+		InputDampenFactor = 0.25,   -- keep 25% strength while the player steers
+		InputDampenThreshold = 0.1, -- stick magnitude (0-1) or mouse pixel delta
+		MaxPitchDeg = 80,           -- clamp so the camera never flips over
+		Enabled = true,             -- set false to disable the camera assist
 	},
 	-- Reticle is drawn with UI instances only (no image assets).
 	Reticle = {

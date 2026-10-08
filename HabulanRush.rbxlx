@@ -112,11 +112,16 @@ Config.TargetLock = {
 	CandidateRefreshRate = 10, -- scans per second
 	AimPointOffset = Vector3.new(0, 0.5, 0), -- above torso centre
 	CameraAssist = {
-		Strength = 3.0, -- exponential response per second
-		MaxTurnRateDegPerSec = 60,
-		PitchWeight = 0.35,
-		InputDampenFactor = 0.15, -- retain 15% strength during camera input
-		InputDampenThreshold = 0.1, -- stick magnitude or pointer pixels
+		-- AssistStrength is the exponential response rate k (per second) in
+		-- 1 - exp(-k * dt). I raised the suggested 0.6 to 4.0 because 0.6/s is a
+		-- ~1.67s time constant, far too slow to visibly turn; 4.0/s eases in ~0.25s.
+		AssistStrength = 4.0,
+		MaxTurnRateDegPerSec = 180, -- cap how fast the offset may rotate
+		PitchWeight = 0.35,         -- weaker vertical pull than horizontal
+		InputDampenFactor = 0.25,   -- keep 25% strength while the player steers
+		InputDampenThreshold = 0.1, -- stick magnitude (0-1) or mouse pixel delta
+		MaxPitchDeg = 80,           -- clamp so the camera never flips over
+		Enabled = true,             -- set false to disable the camera assist
 	},
 	-- Reticle is drawn with UI instances only (no image assets).
 	Reticle = {
@@ -5446,8 +5451,8 @@ end)
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
 -- IsDashing / IsHidden: target flags that break locks (Stage E).
 -- RS_02 client effects can require this module and call :BreakLock("DecoySwap").
--- Implemented: acquisition, manual toggle, cycle, reticle (Stage B).
--- Pending: camera assist (C), break rules (E), attribute hooks (E).
+-- Implemented: acquisition, manual toggle, cycle, reticle, camera assist.
+-- Pending: break rules (E), attribute hooks (E).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -5469,6 +5474,13 @@ local cooldownUntil = 0
 local scanElapsed = 0
 local acquireRequested = false
 local toggleFireCount = 0 -- diagnostic: counts toggle Begin events (Stage A)
+-- Camera assist state: a persistent angular offset owned by the lock.
+local ASSIST_BIND = "TargetLockAssist"
+local assistBound = false
+local yawOffset = 0   -- radians, persists across frames
+local pitchOffset = 0 -- radians, persists across frames
+local steerFlag = false -- set true on any camera input this frame
+local stickMag = 0      -- right-stick magnitude, kept while held
 local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
 local CYCLE_ACTION = "HRUSH_TargetLockCycle"
 
@@ -5662,6 +5674,122 @@ local function bindTargetLifecycle(targetPlayer: Player)
 	end))
 end
 
+-- ===== Camera soft assist (Stage C) =====
+-- A persistent yaw/pitch offset owned by the lock. The default camera runs first
+-- at Camera priority and resets camera.CFrame each frame, so we read its fresh
+-- output at Camera + 1, rotate it by our stored offsets, and write it back.
+-- We never persist camera.CFrame itself (the default would overwrite it); we
+-- persist yawOffset/pitchOffset and re-apply them to the fresh default every frame.
+local assistPrintAcc = 0
+
+local function unbindAssist()
+	if not assistBound then
+		return
+	end
+	RunService:UnbindFromRenderStep(ASSIST_BIND)
+	assistBound = false
+	yawOffset = 0
+	pitchOffset = 0
+	if Config.Debug.ShowLockDebug then
+		print("[TargetLock] assist render step unbound")
+	end
+end
+
+local function onAssistRender(dt: number)
+	local ca = Settings.CameraAssist
+	if not ca.Enabled then
+		unbindAssist()
+		return
+	end
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return
+	end
+
+	-- Where the locked target's aim point is this frame, if any.
+	local aimPoint: Vector3? = nil
+	local tp = target
+	if tp then
+		local char = tp.Character
+		local part = char and aimPart(char)
+		if part then
+			aimPoint = part.Position + Settings.AimPointOffset
+		end
+	end
+
+	local base = camera.CFrame -- the default camera's fresh output this frame
+
+	if aimPoint then
+		local toTarget = aimPoint - base.Position
+		if toTarget.Magnitude > 1e-3 then
+			-- Aim point in the camera's local space. Local yaw = atan2(-X, -Z),
+			-- local pitch = asin(Y); these are the offsets that point look at target.
+			local localDir = base:VectorToObjectSpace(toTarget.Unit)
+			local errYaw = math.atan2(-localDir.X, -localDir.Z)
+			local errPitch = math.asin(math.clamp(localDir.Y, -1, 1)) * ca.PitchWeight
+
+			-- Frame-rate independent blend; weaken it while the player steers so
+			-- they can always look away.
+			local alpha = 1 - math.exp(-ca.AssistStrength * dt)
+			local steering = steerFlag or stickMag > ca.InputDampenThreshold
+			steerFlag = false
+			if steering then
+				alpha = alpha * ca.InputDampenFactor
+			end
+
+			local maxStep = math.rad(ca.MaxTurnRateDegPerSec) * dt
+			local dYaw = math.clamp((errYaw - yawOffset) * alpha, -maxStep, maxStep)
+			local dPitch = math.clamp((errPitch - pitchOffset) * alpha, -maxStep, maxStep)
+			yawOffset = yawOffset + dYaw
+			pitchOffset = math.clamp(
+				pitchOffset + dPitch,
+				-math.rad(ca.MaxPitchDeg),
+				math.rad(ca.MaxPitchDeg)
+			)
+
+			-- TODO: remove before submission (prove the render step runs and show
+			-- the angle to the target before and after assist, once per second).
+			if Config.Debug.ShowLockDebug then
+				assistPrintAcc += dt
+				if assistPrintAcc >= 1.0 then
+					assistPrintAcc = 0
+					local afterLook = (base * CFrame.Angles(pitchOffset, yawOffset, 0)).LookVector
+					local residual = math.deg(math.acos(math.clamp(afterLook:Dot(toTarget.Unit), -1, 1)))
+					print(("[TargetLock] assist yawBefore=%.1fdeg residual=%.1fdeg off=(%.2f,%.2f)")
+						:format(math.deg(errYaw), residual, yawOffset, pitchOffset))
+				end
+			end
+		end
+	else
+		-- No target (unlocking): ease offsets back to zero so there is no snap.
+		local alpha = 1 - math.exp(-ca.AssistStrength * dt)
+		yawOffset = yawOffset * (1 - alpha)
+		pitchOffset = pitchOffset * (1 - alpha)
+		steerFlag = false
+	end
+
+	-- Rotate the default camera's fresh CFrame by the persistent offsets. Keeping
+	-- base.Position means zoom and wall collision from the default camera still work.
+	camera.CFrame = base * CFrame.Angles(pitchOffset, yawOffset, 0)
+
+	-- Once fully decayed with no target, release the render step (no leak).
+	if not target and math.abs(yawOffset) < 1e-4 and math.abs(pitchOffset) < 1e-4 then
+		unbindAssist()
+	end
+end
+
+local function bindAssist()
+	local ca = Settings.CameraAssist
+	if not ca.Enabled or assistBound then
+		return
+	end
+	RunService:BindToRenderStep(ASSIST_BIND, Enum.RenderPriority.Camera.Value + 1, onAssistRender)
+	assistBound = true
+	if Config.Debug.ShowLockDebug then
+		print("[TargetLock] assist render step bound")
+	end
+end
+
 -- Clear the active target and tear down its reticle and connections.
 -- Returns true if a target was actually cleared.
 local function clearTarget(_reason: string, animated: boolean?): boolean
@@ -5680,6 +5808,7 @@ local function lockOn(best: Player)
 	local part = character and aimPart(character)
 	createReticle(part)
 	bindTargetLifecycle(best)
+	bindAssist()
 	debugPrint("Locked " .. best.Name)
 end
 
@@ -5828,6 +5957,17 @@ function TargetLockController:Init()
 			debugPrint("Broken: LocalRespawn")
 		end
 	end))
+	-- Track when the player steers the camera so the assist can step aside.
+	table.insert(connections, UserInputService.InputChanged:Connect(function(input: InputObject)
+		local ut = input.UserInputType
+		if ut == Enum.UserInputType.MouseMovement or ut == Enum.UserInputType.Touch then
+			if input.Delta.Magnitude > Settings.CameraAssist.InputDampenThreshold then
+				steerFlag = true
+			end
+		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
+			stickMag = input.Position.Magnitude
+		end
+	end))
 	ContextActionService:BindAction(TOGGLE_ACTION, function(_name, state, _input)
 		if state == Enum.UserInputState.Begin then
 			toggleFireCount += 1
@@ -5879,6 +6019,7 @@ function TargetLockController:Destroy()
 	table.clear(candidates)
 	unbindTargetConnections()
 	destroyReticleNow()
+	unbindAssist()
 	ContextActionService:UnbindAction(TOGGLE_ACTION)
 	ContextActionService:UnbindAction(CYCLE_ACTION)
 	target = nil
