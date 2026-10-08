@@ -5705,6 +5705,19 @@ local function onAssistRender(dt: number)
 	if not camera then
 		return
 	end
+	-- Only assist while the DEFAULT camera is driving (CameraType == Custom). In
+	-- that state the default camera rewrites camera.CFrame at Camera priority every
+	-- frame, so the base we read here is clean and rotating it cannot compound.
+	-- In Scriptable (or any other) mode nothing resets camera.CFrame, so rotating
+	-- what we read would compound our own previous write into a shake. LobbyUI's
+	-- lobby camera forces Scriptable, so back out cleanly if it is still active.
+	if camera.CameraType ~= Enum.CameraType.Custom then
+		if Config.Debug.ShowLockDebug then
+			print("[TargetLock] assist off, CameraType=" .. tostring(camera.CameraType))
+		end
+		unbindAssist()
+		return
+	end
 
 	-- Where the locked target's aim point is this frame, if any.
 	local aimPoint: Vector3? = nil
@@ -5786,7 +5799,8 @@ local function bindAssist()
 	RunService:BindToRenderStep(ASSIST_BIND, Enum.RenderPriority.Camera.Value + 1, onAssistRender)
 	assistBound = true
 	if Config.Debug.ShowLockDebug then
-		print("[TargetLock] assist render step bound")
+		local cam = Workspace.CurrentCamera
+		print("[TargetLock] assist render step bound, CameraType=" .. tostring(cam and cam.CameraType))
 	end
 end
 
