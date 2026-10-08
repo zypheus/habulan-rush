@@ -25,7 +25,8 @@
         "SkillVFX":        { "$className": "RemoteEvent" },
         "SkillLanded":     { "$className": "RemoteEvent" },
         "DiskarteUpdate":  { "$className": "RemoteEvent" },
-        "ClutchEvent":     { "$className": "RemoteEvent" }
+        "ClutchEvent":     { "$className": "RemoteEvent" },
+        "QueueEvent":      { "$className": "RemoteEvent" }
       }
     },
 
@@ -60,6 +61,9 @@
         },
         "UIController": {
           "$path": "src/StarterPlayerScripts/UIController.client.lua"
+        },
+        "LobbyUI": {
+          "$path": "src/StarterPlayerScripts/LobbyUI.client.lua"
         }
       }
     }
