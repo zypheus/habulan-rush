@@ -298,6 +298,28 @@ Config.Maps = {
 		size       = Vector2.new(150, 150),
 		spawnCount = 8,
 		rushEvent  = "CourtRush",
+		-- T08 greybox blockout metrics. Level-design derived from
+		-- Config.Movement: JumpPower 50 ~ 7.2 studs -> vaults <= 4 (RM_05);
+		-- slide 50% hitbox -> 3.5-stud gap clears a sliding but not a
+		-- standing character (RM_06). Centre stays open for CourtRush.
+		greybox = {
+			wallHeight     = 14,  -- jump (JP50 ~7.2) cannot clear
+			sidewalkWidth  = 8,
+			spawnRadius    = 55,  -- equidistant ring (Bootstrap)
+			spawnPadSize   = 8,
+			courtLength    = 56,  -- court X (long axis)
+			courtWidth     = 32,  -- court Z
+			buildingX      = 20,  -- sari-sari block footprint X
+			buildingZ      = 12,  -- sari-sari block footprint Z
+			buildingHeight = 10,  -- LOS cover (not vaultable)
+			jeepneyLength  = 12,  -- RM_05: roof <= 4 studs => vaultable
+			jeepneyWidth   = 5,
+			jeepneyHeight  = 4,
+			crateSize      = 4,   -- extra vault obstacle (GDD: >= 3)
+			crateHeight    = 3.5,
+			lowGapHeight   = 3.5, -- RM_06 slide clearance
+			lowGapSpan     = 12,  -- lintel length across the gap
+		},
 	},
 	Binaha = {
 		id         = "Binaha",

@@ -46,12 +46,12 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [ ] Construct 150x150 stud arena with 8 equidistant spawn points.
   - [ ] Block out central basketball court, sari-sari store obstacles, vault-height jeepneys (<=4 studs), low gaps for sliding.
   - [ ] Verify no dead ends under 10 studs to prevent corner trapping.
-- [ ] (2026-10-10) **T09 [Code/P0] MovementController (Client Movement & Stamina)**
-  - [ ] Implement Runner walk (16 studs/s) and sprint (21 studs/s).
-  - [ ] Implement stamina depletion (20/s) and regen (12/s after 1s delay; walk enforced until >=10 if fully depleted).
-  - [ ] Implement Dash (12 studs in 0.2s, 6s cooldown, sends `RequestDash`).
-  - [ ] Implement Slide (0.6s, 3s cooldown, 50% hitbox height).
-  - [ ] Implement control bindings for PC, Touch/Mobile, and Gamepad.
+- [ ] (2026-10-10) **T09 [Code/P0] MovementController (Client Movement & Stamina)** — 🟡 **PARTIAL** (code complete: walk/sprint/stamina/dash/slide/bindings + dash VFX + stamina HUD built & shipped in Studio; pending T07 MatchService state machine integration — currently runs on a temporary MS_04 auto-unlock in Bootstrap — and T15 playtest sign-off)
+  - [x] Implement Runner walk (16 studs/s) and sprint (21 studs/s).
+  - [x] Implement stamina depletion (20/s) and regen (12/s after 1s delay; walk enforced until >=10 if fully depleted).
+  - [x] Implement Dash (12 studs in 0.2s, 6s cooldown, sends `RequestDash`).
+  - [x] Implement Slide (0.6s, 3s cooldown, 50% hitbox height).
+  - [x] Implement control bindings for PC, Touch/Mobile, and Gamepad.
 - [ ] (2026-10-10) **T10 [Code/P0] Taya Timer & Scoreboard Replication**
   - [ ] Implement server-authoritative tenths-of-a-second Taya Time accumulator.
   - [ ] Replicate round timer and player rankings via `StateChanged`.
