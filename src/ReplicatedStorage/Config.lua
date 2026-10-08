@@ -93,6 +93,35 @@ Config.Taya = {
 }
 
 -- ============================================================
+-- TARGET LOCK
+-- ============================================================
+-- T16 uses this table, not the legacy Config.Taya lock fields.
+Config.TargetLock = {
+	AcquireRange = 40,
+	BreakRange = 55,
+	LosBreakTime = 1.0,
+	BreakCooldown = 4.0,
+	CandidateRefreshRate = 10, -- scans per second
+	AimPointOffset = Vector3.new(0, 0.5, 0), -- above torso centre
+	CameraAssist = {
+		Strength = 3.0, -- exponential response per second
+		MaxTurnRateDegPerSec = 60,
+		PitchWeight = 0.35,
+		InputDampenFactor = 0.15, -- retain 15% strength during camera input
+		InputDampenThreshold = 0.1, -- stick magnitude or pointer pixels
+	},
+	Keybinds = {
+		-- User-approved change: Q is dash and E is skill.
+		Toggle = Enum.KeyCode.R,
+		Cycle = Enum.KeyCode.T,
+		GamepadToggle = Enum.KeyCode.ButtonR3,
+		GamepadCycle = Enum.KeyCode.DPadRight,
+	},
+	DebugPrint = true, -- Stage B feedback in client Output
+	DependencyTimeout = 10,
+}
+
+-- ============================================================
 -- MATCH
 -- ============================================================
 Config.Match = {
@@ -144,6 +173,8 @@ Config.Events = {
 
 -- Debug switches for playtesting only.
 Config.Debug = {
+	-- TODO: set to false before submission
+	AllowAnyRoleTargetLock = true,
 	-- TODO: set to false before submission
 	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
 	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)

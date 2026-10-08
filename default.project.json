@@ -29,6 +29,13 @@
       }
     },
 
+    "Workspace": {
+      "$className": "Workspace",
+      "Map": {
+        "$path": "assets/Map.rbxmx"
+      }
+    },
+
     "ServerScriptService": {
       "$className": "ServerScriptService",
       "MatchService": {
@@ -56,6 +63,9 @@
           "$path": "src/StarterPlayerScripts/MovementController.client.lua"
         },
         "TargetLockController": {
+          "$path": "src/StarterPlayerScripts/TargetLockController.lua"
+        },
+        "TargetLockBootstrap": {
           "$path": "src/StarterPlayerScripts/TargetLockController.client.lua"
         },
         "UIController": {

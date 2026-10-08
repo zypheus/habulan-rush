@@ -83,7 +83,8 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
 ## Phase 3: Skills & Diskarte System (Days 7–9: Oct 13–15)
 
 - [ ] (2026-10-13) **T16 [Code/P0] TargetLockController (Soft Lock Camera & Indicators)**
-  - [ ] Soft lock acquisition within 40 studs with line-of-sight check.
+  - [x] Soft lock acquisition within 40 studs with line-of-sight check. (T16 Stage B implemented 2026-10-08; Studio validation pending.)
+  - Stage B: client ModuleScript plus bootstrap, R toggle and T cycle reserved, camera-angle acquisition and manual unlock. Stages C through F remain pending.
   - [ ] Break lock beyond 55 studs or after 1s behind cover; trigger 4s lock cooldown.
   - [ ] Camera steering assistance (no automated character movement).
   - [ ] Overhead reticle ring indicator on locked target.

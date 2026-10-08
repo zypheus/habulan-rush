@@ -101,6 +101,35 @@ Config.Taya = {
 }
 
 -- ============================================================
+-- TARGET LOCK
+-- ============================================================
+-- T16 uses this table, not the legacy Config.Taya lock fields.
+Config.TargetLock = {
+	AcquireRange = 40,
+	BreakRange = 55,
+	LosBreakTime = 1.0,
+	BreakCooldown = 4.0,
+	CandidateRefreshRate = 10, -- scans per second
+	AimPointOffset = Vector3.new(0, 0.5, 0), -- above torso centre
+	CameraAssist = {
+		Strength = 3.0, -- exponential response per second
+		MaxTurnRateDegPerSec = 60,
+		PitchWeight = 0.35,
+		InputDampenFactor = 0.15, -- retain 15% strength during camera input
+		InputDampenThreshold = 0.1, -- stick magnitude or pointer pixels
+	},
+	Keybinds = {
+		-- User-approved change: Q is dash and E is skill.
+		Toggle = Enum.KeyCode.R,
+		Cycle = Enum.KeyCode.T,
+		GamepadToggle = Enum.KeyCode.ButtonR3,
+		GamepadCycle = Enum.KeyCode.DPadRight,
+	},
+	DebugPrint = true, -- Stage B feedback in client Output
+	DependencyTimeout = 10,
+}
+
+-- ============================================================
 -- MATCH
 -- ============================================================
 Config.Match = {
@@ -152,6 +181,8 @@ Config.Events = {
 
 -- Debug switches for playtesting only.
 Config.Debug = {
+	-- TODO: set to false before submission
+	AllowAnyRoleTargetLock = true,
 	-- TODO: set to false before submission
 	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
 	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
@@ -2825,25 +2856,246 @@ print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/da
       </Item>
       <Item class="LocalScript" referent="26">
         <Properties>
-          <string name="Name">TargetLockController</string>
+          <string name="Name">TargetLockBootstrap</string>
           <string name="Source"><![CDATA[--!strict
--- StarterPlayerScripts/TargetLockController.lua
--- Owner: Programmer B (T05)
--- Responsibility: Soft-lock camera steering, nearest target acquisition
---                 with line-of-sight check, overhead reticle ring indicator.
--- See System Specification §4.3 and Config.Taya.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage.Config)
-
--- TODO (T16): Implement soft lock camera, lock acquisition/break, and reticle.
-
-print("[TargetLockController] Loaded — stub only. Implement T16.")
+-- Each client owns its helper. Target choices never go to the server.
+local controllerModule = script.Parent:FindFirstChild("TargetLockController")
+assert(controllerModule and controllerModule:IsA("ModuleScript"), "TargetLockController module missing")
+local TargetLockController = require(controllerModule)
+TargetLockController:Init()
+script.Destroying:Connect(function()
+	TargetLockController:Destroy()
+end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="27">
+      <Item class="ModuleScript" referent="27">
+        <Properties>
+          <string name="Name">TargetLockController</string>
+          <string name="Source"><![CDATA[--!strict
+-- Client-only aim helper. Server tag and pounce checks must never trust it.
+-- Integration attributes, set by the server on Player:
+-- IsTaya: true for Taya; false or absent for a Runner.
+-- LockDelayUntil: server timestamp; T12 blocks acquisition until it expires.
+-- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
+-- IsDashing / IsHidden: target flags that break locks (Stage E).
+-- RS_02 client effects can require this module and call :BreakLock("DecoySwap").
+-- Stage B: acquisition only. Attribute gates and automatic breaks follow in E.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Settings = Config.TargetLock
+local LocalPlayer = Players.LocalPlayer
+local TargetLockController = {}
+local initialized = false
+local connections: { RBXScriptConnection } = {}
+local target: Player? = nil
+local roundLive = false
+local cooldownUntil = 0
+local scanElapsed = 0
+local acquireRequested = false
+local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
+local CYCLE_ACTION = "HRUSH_TargetLockCycle"
+
+type Candidate = { player: Player, character: Model, root: BasePart, aimPart: BasePart }
+local candidates: { Candidate } = {}
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+-- Respect CanQuery rather than treating non-collidable cover as invisible.
+rayParams.RespectCanCollide = false
+
+local function debugPrint(message: string)
+	if Settings.DebugPrint then
+		print("[TargetLockController] " .. message)
+	end
+end
+
+local function livingRoot(character: Model?): BasePart?
+	if not character or not character.Parent then
+		return nil
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if humanoid and humanoid.Health > 0 and root and root:IsA("BasePart") then
+		return root
+	end
+	return nil
+end
+
+local function aimPart(character: Model): BasePart?
+	-- Support R15 and R6 without ever aiming at feet.
+	local part = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+		or character:FindFirstChild("Head")
+	if part and part:IsA("BasePart") then
+		return part
+	end
+	return nil
+end
+
+local function passesRole(player: Player): boolean
+	if Config.Debug.AllowAnyRoleTargetLock then
+		return true
+	end
+	return LocalPlayer:GetAttribute("IsTaya") == true and player:GetAttribute("IsTaya") ~= true
+end
+
+local function refreshCandidates()
+	table.clear(candidates)
+	local character = LocalPlayer.Character
+	local root = livingRoot(character)
+	if not roundLive or not character or not root then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return
+	end
+	for _, player in Players:GetPlayers() do
+		if player == LocalPlayer or not passesRole(player) then
+			continue
+		end
+		local otherCharacter = player.Character
+		local otherRoot = livingRoot(otherCharacter)
+		if not otherCharacter or not otherRoot then
+			continue
+		end
+		local part = aimPart(otherCharacter)
+		if not part or (otherRoot.Position - root.Position).Magnitude > Settings.AcquireRange then
+			continue
+		end
+		-- Exclude both avatars so accessories do not count as walls.
+		rayParams.FilterDescendantsInstances = { character, otherCharacter }
+		local direction = part.Position + Settings.AimPointOffset - head.Position
+		if Workspace:Raycast(head.Position, direction, rayParams) == nil then
+			table.insert(candidates, { player = player, character = otherCharacter, root = otherRoot, aimPart = part })
+		end
+	end
+end
+
+local function acquire()
+	local camera = Workspace.CurrentCamera
+	local root = livingRoot(LocalPlayer.Character)
+	if not camera or not root or not roundLive or Workspace:GetServerTimeNow() < cooldownUntil then
+		return
+	end
+	local best: Player? = nil
+	local bestDot = -math.huge
+	local bestDistance = math.huge
+	for _, candidate in candidates do
+		local direction = candidate.aimPart.Position + Settings.AimPointOffset - camera.CFrame.Position
+		if direction.Magnitude == 0 then
+			continue
+		end
+		-- Larger dot product means a smaller angle to the camera centre.
+		local dot = camera.CFrame.LookVector:Dot(direction.Unit)
+		local distance = (candidate.root.Position - root.Position).Magnitude
+		if dot > bestDot or (dot == bestDot and distance < bestDistance) then
+			best = candidate.player
+			bestDot = dot
+			bestDistance = distance
+		end
+	end
+	target = best
+	if best then
+		debugPrint("Locked " .. best.Name)
+	else
+		-- Output feedback for Stage B. Player-facing feedback comes with the UI.
+		debugPrint("No target")
+	end
+end
+
+function TargetLockController:GetTarget(): Player?
+	return target
+end
+
+function TargetLockController:BreakLock(reason: string)
+	acquireRequested = false
+	if not target then
+		return
+	end
+	target = nil
+	cooldownUntil = Workspace:GetServerTimeNow() + Settings.BreakCooldown
+	debugPrint("Broken: " .. reason)
+end
+
+function TargetLockController:Init()
+	if initialized then
+		return
+	end
+	assert(RunService:IsClient(), "TargetLockController is client-only")
+	local remotes = ReplicatedStorage:WaitForChild("Remotes", Settings.DependencyTimeout)
+	assert(remotes, "TargetLockController: Remotes missing")
+	local stateChanged = remotes:WaitForChild("StateChanged", Settings.DependencyTimeout)
+	assert(stateChanged and stateChanged:IsA("RemoteEvent"), "TargetLockController: StateChanged missing")
+	initialized = true
+	roundLive = ReplicatedStorage:GetAttribute("HRushRoundState") == "MS_04"
+	table.insert(connections, stateChanged.OnClientEvent:Connect(function(payload: any)
+		if typeof(payload) == "table" and typeof(payload.state) == "string" then
+			roundLive = payload.state == "MS_04"
+		end
+	end))
+	ContextActionService:BindAction(TOGGLE_ACTION, function(_name, state, _input)
+		if state == Enum.UserInputState.Begin and not UserInputService:GetFocusedTextBox() then
+			if target then
+				target = nil
+				acquireRequested = false
+				debugPrint("Unlocked manually (no cooldown)")
+			else
+				acquireRequested = not acquireRequested
+			end
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Settings.Keybinds.Toggle, Settings.Keybinds.GamepadToggle)
+	ContextActionService:BindAction(CYCLE_ACTION, function(_name, state, _input)
+		if state == Enum.UserInputState.Begin and target then
+			debugPrint("Cycle arrives in Stage C")
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Settings.Keybinds.Cycle, Settings.Keybinds.GamepadCycle)
+	-- Queue input until the next scan rather than raycasting on key spam.
+	scanElapsed = 1 / Settings.CandidateRefreshRate
+	table.insert(connections, RunService.Heartbeat:Connect(function(dt: number)
+		scanElapsed += dt
+		local interval = 1 / Settings.CandidateRefreshRate
+		if scanElapsed < interval then
+			return
+		end
+		scanElapsed %= interval
+		refreshCandidates()
+		if acquireRequested then
+			acquireRequested = false
+			acquire()
+		end
+	end))
+	debugPrint("Stage B ready: " .. Settings.Keybinds.Toggle.Name .. " toggle, " .. Settings.Keybinds.Cycle.Name .. " cycle reserved")
+end
+
+function TargetLockController:Destroy()
+	for _, connection in connections do
+		connection:Disconnect()
+	end
+	table.clear(connections)
+	table.clear(candidates)
+	ContextActionService:UnbindAction(TOGGLE_ACTION)
+	ContextActionService:UnbindAction(CYCLE_ACTION)
+	target = nil
+	acquireRequested = false
+	cooldownUntil = 0
+	roundLive = false
+	initialized = false
+end
+
+return TargetLockController
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="28">
         <Properties>
           <string name="Name">UIController</string>
           <string name="Source"><![CDATA[--!strict
@@ -3263,6 +3515,74 @@ updateSkillCD()
 
 print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")
 ]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="29">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="NeedsPivotMigration">false</bool>
+    </Properties>
+    <Item class="Model" referent="30">
+      <Properties>
+        <string name="Name">Map</string>
+        <bool name="NeedsPivotMigration">false</bool>
+      </Properties>
+      <Item class="Part" referent="31">
+        <Properties>
+          <string name="Name">Baseplate</string>
+          <bool name="Anchored">true</bool>
+          <token name="BottomSurface">0</token>
+          <CoordinateFrame name="CFrame">
+            <X>0</X>
+            <Y>-10</Y>
+            <Z>0</Z>
+            <R00>1</R00>
+            <R01>0</R01>
+            <R02>0</R02>
+            <R10>0</R10>
+            <R11>1</R11>
+            <R12>0</R12>
+            <R20>0</R20>
+            <R21>0</R21>
+            <R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size">
+            <X>512</X>
+            <Y>20</Y>
+            <Z>512</Z>
+          </Vector3>
+          <token name="TopSurface">0</token>
+        </Properties>
+      </Item>
+      <Item class="SpawnLocation" referent="32">
+        <Properties>
+          <string name="Name">Spawn</string>
+          <bool name="Anchored">true</bool>
+          <token name="BottomSurface">0</token>
+          <CoordinateFrame name="CFrame">
+            <X>0</X>
+            <Y>0.5</Y>
+            <Z>0</Z>
+            <R00>1</R00>
+            <R01>0</R01>
+            <R02>0</R02>
+            <R10>0</R10>
+            <R11>1</R11>
+            <R12>0</R12>
+            <R20>0</R20>
+            <R21>0</R21>
+            <R22>1</R22>
+          </CoordinateFrame>
+          <bool name="Enabled">true</bool>
+          <bool name="Neutral">true</bool>
+          <Vector3 name="size">
+            <X>8</X>
+            <Y>1</Y>
+            <Z>8</Z>
+          </Vector3>
+          <token name="TopSurface">0</token>
         </Properties>
       </Item>
     </Item>
