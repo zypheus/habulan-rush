@@ -176,7 +176,7 @@ skillChip.BackgroundColor3 = COL_PANEL
 skillChip.BackgroundTransparency = 0.15
 skillChip.BorderSizePixel = 0
 skillChip.Parent = cluster
-corner(skillChip, 8)
+corner(skillChip, 22) -- circle shape: distinct from the dash chip without color
 local skillStroke = stroke(skillChip, COL_STROKE_CD, 2)
 
 local skillWipe = Instance.new("Frame") -- dark overlay shrinking top to bottom
@@ -189,7 +189,7 @@ skillWipe.BackgroundTransparency = 0.25
 skillWipe.BorderSizePixel = 0
 skillWipe.ZIndex = 1
 skillWipe.Parent = skillChip
-corner(skillWipe, 8)
+corner(skillWipe, 22) -- follows the circular chip outline
 
 local skillKey = Instance.new("TextLabel")
 skillKey.Name = "KeyOrCd"
@@ -236,6 +236,7 @@ end
 local fillTween: Tween? = nil
 local flashConn: RBXScriptConnection? = nil
 local curRole = attrStr("HRushRole", "Runner")
+local curSkillId = "" -- granted skill id (declared early so visibility logic sees it)
 
 local function setFlash(on: boolean)
 	if on and not flashConn then
@@ -272,8 +273,17 @@ local function updateStamina()
 end
 
 local function updateVisibility()
-	-- UI/UX Spec §2: stamina cluster is Runner-only.
-	cluster.Visible = (curRole == "Runner")
+	-- Stamina and dash stay Runner-only; the skill chip follows the grant list
+	-- instead, so Config.Debug.AllowAnyRoleForSkills can show it on Taya too.
+	-- The chip is also a circle (not a rounded square), so it reads apart from
+	-- the dash chip by SHAPE, not only by color.
+	local isRunner = (curRole == "Runner")
+	local hasSkill = (curSkillId ~= "")
+	title.Visible = isRunner
+	barBg.Visible = isRunner
+	chip.Visible = isRunner
+	chipCaption.Visible = isRunner
+	cluster.Visible = isRunner or hasSkill
 end
 
 -- ── Dash cooldown chip logic ──────────────────────────────────────────────────
@@ -315,11 +325,26 @@ end
 
 -- ── Skill cooldown chip logic (RS_01 slice) ───────────────────────────────────
 local lastSkillCD = 0.0
-local curSkillId = ""
 
 local function popSkillReady()
 	skillKey.Text = "E"
 	skillStroke.Color = COL_STROKE_RDY
+	-- Ready pulse: the border thickens once, so the state reads even in
+	-- grayscale (shape/motion, not color alone).
+	skillStroke.Thickness = 2
+	local pulse = TweenService:Create(
+		skillStroke,
+		TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+		{ Thickness = 4 }
+	)
+	pulse:Play()
+	pulse.Completed:Connect(function()
+		TweenService:Create(
+			skillStroke,
+			TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+			{ Thickness = 2 }
+		):Play()
+	end)
 	local up = TweenService:Create(
 		skillChip,
 		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
@@ -337,9 +362,12 @@ end
 
 local function updateSkillCD()
 	curSkillId = attrStr("HRushSkillId", "")
-	local granted = (curRole == "Runner") and (curSkillId ~= "")
+	-- Role gating already happened in MovementController.grantedSkillId, so
+	-- "has a skill id" alone decides visibility here (debug flag aware).
+	local granted = (curSkillId ~= "")
 	skillChip.Visible = granted
 	skillCaption.Visible = granted
+	updateVisibility() -- refresh the cluster when only the skill chip remains
 	if not granted then
 		return
 	end
@@ -353,6 +381,7 @@ local function updateSkillCD()
 	if cd > 0 then
 		skillKey.Text = string.format("%.1f", cd)
 		skillStroke.Color = COL_STROKE_CD
+		skillStroke.Thickness = 2 -- cooldown state uses the resting border
 	elseif lastSkillCD > 0 then
 		popSkillReady() -- transition to 0: flash ready state
 	end

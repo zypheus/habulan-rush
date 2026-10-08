@@ -9,7 +9,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Config)
 
+-- Shared untouchable rule (RS_01 air state): BOTH tag paths must call
+-- TagRules.isUntouchable(target) before applying a hit, so the rule lives in
+-- one place and touch (TM_08) and pounce (TM_05) can never disagree.
+local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
+
 -- TODO (T11): Implement server-authoritative tag validation.
+--   First check of every tag attempt: TagRules.isUntouchable(targetModel).
 -- TODO (T12): Implement Safe Window, speed boost, and lock delay.
 -- TODO (T13): Implement pounce mechanics and validation.
 

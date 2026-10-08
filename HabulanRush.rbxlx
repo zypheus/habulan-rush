@@ -150,6 +150,14 @@ Config.Events = {
 -- Schema per skill entry (see TDD §3.1):
 --   id, role, type, cooldown, duration, range, params, tell, weakness
 
+-- Debug switches for playtesting only.
+Config.Debug = {
+	-- TODO: set to false before submission
+	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
+	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
+	ShowSkillDebug = true, -- prints + airborne label for RS_01 testing
+}
+
 Config.Skills = {
 	RS_01 = {
 		id       = "RS_01",
@@ -159,7 +167,46 @@ Config.Skills = {
 		cooldown = 12,
 		duration = 0,
 		range    = 18,
-		params   = { height = 14, distance = 18 }, -- impulse values
+		params   = {
+			height = 14,            -- impulse: apex height in studs
+			distance = 18,          -- impulse: horizontal reach in studs
+			windup = 0.1,           -- crouch time before takeoff (s)
+			airtime = 0.76,         -- flight time (s); matches height/distance at g=196.2
+			untouchableHeight = 6,  -- root higher than this cannot be tagged (TM_05/TM_08)
+			landingRecovery = 0.2,  -- sprint disabled after touchdown (s)
+			lockDirection = true,   -- heading frozen at takeoff: no air steering
+			fovBoost = 8,           -- owner camera FOV kick at takeoff
+			shakeDuration = 0.2,    -- owner landing camera shake (s)
+			fovBackTime = 0.25,     -- FOV ease-back time on landing (s)
+			crouchScale = 0.6,      -- HipHeight multiplier during windup crouch
+			pendingTimeout = 1.0,   -- drop a lost server reply after this (s)
+			flightSlack = 0.25,     -- landing-poll safety margin over airtime (s)
+			minAirtime = 0.2,       -- ignore landings shorter than this after takeoff (s)
+			wallSpeedPct = 0.2,     -- jump ends if horizontal speed < pct of launch speed
+			wallSlowTime = 0.1,     -- ...and stays that slow for this long (s)
+		},
+		vfx = { -- every burst stays under 30 particles (mobile budget)
+			windupCount = 10,
+			landingCount = 16,
+			ringStart = 3,          -- takeoff ring start diameter (studs)
+			ringEnd = 11,           -- takeoff ring end diameter (studs)
+			ringTime = 0.35,        -- ring grow duration (s)
+			trailLifetime = 0.5,    -- air trail segment fade (s)
+			previewSize = 4,        -- owner-only landing preview ring (studs)
+			shakeAmp = 0.15,        -- landing shake offset (studs)
+			fovTime = 0.15,         -- FOV tween-in time (s)
+			landingRingTime = 0.25, -- landing ring grow/fade (s)
+			dustLifeMin = 0.35,     -- dust particle lifetime low (s)
+			dustLifeMax = 0.5,      -- dust particle lifetime high (s)
+			dustSpeedMin = 4,       -- dust kick speed low (studs/s)
+			dustSpeedMax = 9,       -- dust kick speed high (studs/s)
+			dustSize = 0.7,         -- dust particle start size (studs)
+		},
+		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
+			windup = "",            -- "Hup!" voice
+			takeoff = "",           -- launch whoosh
+			landing = "",           -- soft thud
+		},
 		tell     = { vfx = "DustRing",   sfx = "Hup" },
 		weakness = "No air steering",
 		counterCondition = "Escapes a pounce or Lambat while airborne",
@@ -389,26 +436,80 @@ return Config
       </Item>
       <Item class="RemoteEvent" referent="10">
         <Properties>
-          <string name="Name">SkillEvent</string>
+          <string name="Name">SkillApproved</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="11">
         <Properties>
-          <string name="Name">StateChanged</string>
+          <string name="Name">SkillEvent</string>
         </Properties>
       </Item>
       <Item class="RemoteEvent" referent="12">
+        <Properties>
+          <string name="Name">SkillLanded</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="13">
+        <Properties>
+          <string name="Name">SkillVFX</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="14">
+        <Properties>
+          <string name="Name">StateChanged</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="15">
         <Properties>
           <string name="Name">TagEvent</string>
         </Properties>
       </Item>
     </Item>
+    <Item class="ModuleScript" referent="16">
+      <Properties>
+        <string name="Name">TagRules</string>
+        <string name="Source">--!strict
+-- ReplicatedStorage/TagRules.lua
+-- Shared tag validation rules. WHY: the touch tag (TM_08) and the pounce
+-- (TM_05) must agree on when a Runner cannot be tagged, so the check lives in
+-- ONE module that both server paths call. Server authoritative.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+
+local TagRules = {}
+
+-- Returns true when the character's root part floats higher than
+-- `untouchableHeight` above the ground under it. RS_01 makes Runners fly, and
+-- a Runner high in the air must not be tagged until they land again.
+function TagRules.isUntouchable(character: Model): boolean
+	local params = Config.Skills.RS_01.params
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not (root and root:IsA("BasePart")) then
+		return true -- no root means we cannot place a tag safely: treat as out of reach
+	end
+
+	local ray = RaycastParams.new()
+	ray.FilterType = Enum.RaycastFilterType.Exclude
+	ray.FilterDescendantsInstances = { character }
+	ray.IgnoreWater = true
+
+	local hit = Workspace:Raycast(root.Position, Vector3.new(0, -500, 0), ray)
+	if not hit then
+		return true -- nothing below to land on: also out of reach
+	end
+	return hit.Distance &gt; params.untouchableHeight
+end
+
+return TagRules</string>
+      </Properties>
+    </Item>
   </Item>
-  <Item class="ServerScriptService" referent="13">
+  <Item class="ServerScriptService" referent="17">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="14">
+    <Item class="Script" referent="18">
       <Properties>
         <string name="Name">Bootstrap</string>
         <token name="RunContext">0</token>
@@ -759,6 +860,9 @@ ensureCharacterDefaults()
 -- is testable in Studio Play right now. MatchService will own this event later.
 local DEBUG_AUTO_UNLOCK = true
 if DEBUG_AUTO_UNLOCK then
+	-- TEMP: mirror the debug round state so SkillService can gate casts
+	-- server-side. MatchService (T07) will own this attribute later.
+	ReplicatedStorage:SetAttribute("HRushRoundState", "MS_04")
 	Players.PlayerAdded:Connect(function(player)
 		player.CharacterAdded:Connect(function()
 			task.wait(1.5)
@@ -796,7 +900,7 @@ print(string.format(
 ))</string>
       </Properties>
     </Item>
-    <Item class="Script" referent="15">
+    <Item class="Script" referent="19">
       <Properties>
         <string name="Name">EventService</string>
         <token name="RunContext">0</token>
@@ -818,7 +922,7 @@ print("[EventService] Loaded — stub only. Implement T24–T26.")
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="16">
+    <Item class="Script" referent="20">
       <Properties>
         <string name="Name">MatchService</string>
         <token name="RunContext">0</token>
@@ -840,24 +944,25 @@ print("[MatchService] Loaded — stub only. Implement T07.")
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="17">
+    <Item class="Script" referent="21">
       <Properties>
         <string name="Name">SkillService</string>
         <token name="RunContext">0</token>
         <string name="Source">--!strict
 -- ServerScriptService/SkillService.server.lua
--- Owner: Programmer B (T18 slice — RS_01 only)
+-- Owner: Programmer B (T18 slice, RS_01 only)
 -- Responsibility: validate skill casts (RequestSkill), keep the server-side
---                 cooldown ledger, answer via SkillEvent (accept / deny).
--- See System Specification §5 (skill table) and Config.Skills.
+--                 cooldown ledger, set IsAirborne, then split the reply:
+--                 SkillApproved goes ONLY to the requesting player (locked
+--                 direction + params, the owning client applies movement),
+--                 SkillVFX goes to ALL players for visuals. Denies are silent.
+--                 The client reports landing via SkillLanded.
+-- See System Specification section 5 and Config.Skills.
 --
--- IN THIS SLICE: RS_01 Luksong Baka only. Grant check reads the TEMP
--- Config.Skills.testGrant list; role is trusted from the client until
--- MatchService (T07) / TagService (T11) give the server real role state.
+-- IN THIS SLICE: RS_01 only. Server role authority arrives with TagService
+-- (T11); until then the role gate is the client-side check plus the debug flag.
 -- TODO (T17): PickSkill draft + slot validation + timeout auto-pick.
--- TODO (T18/T19): effect execution for RS_02/03 and TS_01–03 (decoy, stun,
---                 slow, reveal), rate limiting and exploit hardening.
--- TODO (T22): Diskarte meter.
+-- TODO (T18/T19): effect execution for RS_02/03 and TS_01-03, stun wiring (T13).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -866,9 +971,23 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
 local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
+local SkillApproved = Remotes:WaitForChild("SkillApproved") :: RemoteEvent
+local SkillVFX = Remotes:WaitForChild("SkillVFX") :: RemoteEvent
+local SkillLanded = Remotes:WaitForChild("SkillLanded") :: RemoteEvent
 
--- readyAt[player][skillId] = os.clock() timestamp when the skill becomes usable.
+-- readyAt[player][skillId] = os.clock() when the cooldown finishes.
 local readyAt: { [Player]: { [string]: number } } = {}
+-- airborneUntil[player] = os.clock() covering windup + flight + landing slack.
+-- Backstop only: the authoritative flag is the IsAirborne attribute, cleared
+-- when the client reports landing (or by this timer if the report never comes).
+local airborneUntil: { [Player]: number } = {}
+
+-- TODO: remove before submission (debug prints for RS_01 testing)
+local function debugPrint(msg: string)
+	if Config.Debug.ShowSkillDebug then
+		print("[SkillService] " .. msg)
+	end
+end
 
 local function isGranted(skillId: string): boolean
 	-- TEMP grant list (T17 draft replaces this with picked slots).
@@ -880,33 +999,94 @@ local function isGranted(skillId: string): boolean
 	return false
 end
 
+-- Silent deny: a player mashing the key must never flood the output with
+-- warnings or errors (spec: reject spam without errors).
 local function deny(player: Player, skillId: string, reason: string)
-	warn(string.format("[SkillService] Denied %s for %s (%s)", skillId, player.Name, reason))
-	SkillEvent:FireClient(player, skillId, false)
+	debugPrint("validation DENIED for " .. player.Name .. " (" .. reason .. ")") -- TODO: remove before submission
+	SkillEvent:FireClient(player, { type = "deny", skillId = skillId })
 end
 
-RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown)
+RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, dir: unknown)
 	if typeof(skillId) ~= "string" then
 		return
 	end
+	debugPrint("request received from " .. player.Name .. " skill=" .. skillId) -- TODO: remove before submission
 	local sk = Config.Skills[skillId]
 	if sk == nil then
 		deny(player, skillId, "unknown skill")
 		return
 	end
 
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	-- Role gate: only enforced while the debug flag is off. The server cannot
+	-- see roles yet (client attributes do not replicate up), so the real check
+	-- lands with TagService T11. Flag on = skip for playtesting.
+	if not Config.Debug.AllowAnyRoleForSkills then
+		local serverRole = player:GetAttribute("ServerRole")
+		if serverRole ~= nil and serverRole ~= sk.role then
+			deny(player, skillId, "wrong role")
+			return
+		end
+	end
+
 	if not isGranted(skillId) then
 		deny(player, skillId, "not granted")
 		return
 	end
-	if humanoid == nil or humanoid.Health &lt;= 0 then
-		deny(player, skillId, "dead / no character")
+
+	-- Round state: Bootstrap mirrors MS_04 here until MatchService (T07) owns
+	-- the state machine. Missing attribute = no round = deny (fail closed).
+	local state = ReplicatedStorage:GetAttribute("HRushRoundState")
+	if state ~= "MS_04" then
+		deny(player, skillId, "round state " .. tostring(state))
+		return
+	end
+
+	-- Stun: attribute will be set by pounce/skill effects (T13/T18/T19).
+	if player:GetAttribute("HRushStunned") == true then
+		deny(player, skillId, "stunned")
+		return
+	end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid == nil or not (root and root:IsA("BasePart")) then
+		deny(player, skillId, "no character")
+		return
+	end
+	if humanoid.Health &lt;= 0 then
+		deny(player, skillId, "dead")
 		return
 	end
 
 	local now = os.clock()
+
+	-- Not already airborne: the IsAirborne attribute is the source of truth
+	-- (set at approval, cleared on SkillLanded report); the timer is backstop.
+	if player:GetAttribute("IsAirborne") == true then
+		deny(player, skillId, "already airborne (IsAirborne)")
+		return
+	end
+	local airUntil = airborneUntil[player]
+	if airUntil ~= nil and airUntil &gt; now then
+		deny(player, skillId, "airborne window active")
+		return
+	end
+
+	-- Grounded check: a standing root sits about 3 studs above the floor, so
+	-- anything further down than (untouchableHeight - 2) counts as airborne.
+	local ray = RaycastParams.new()
+	ray.FilterType = Enum.RaycastFilterType.Exclude
+	ray.FilterDescendantsInstances = { character }
+	ray.IgnoreWater = true
+	local ground = Workspace:Raycast(root.Position, Vector3.new(0, -100, 0), ray)
+	if ground == nil or ground.Distance &gt; (sk.params.untouchableHeight - 2) then
+		deny(player, skillId, "not grounded")
+		return
+	end
+
+	-- Cooldown ledger: the single source of truth; spam after a cast is denied
+	-- here regardless of what the client thinks.
 	local ledger = readyAt[player]
 	if ledger == nil then
 		ledger = {}
@@ -914,22 +1094,72 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown)
 	end
 	local ready = ledger[skillId]
 	if ready ~= nil and ready &gt; now then
-		deny(player, skillId, "server cooldown active")
+		deny(player, skillId, "cooldown " .. string.format("%.1f", ready - now) .. "s left")
 		return
 	end
-
 	ledger[skillId] = now + sk.cooldown
-	SkillEvent:FireClient(player, skillId, true)
+
+	-- Facing direction: trust the client when it sent a sane vector, otherwise
+	-- fall back to the character's look direction on the server (never trust
+	-- garbage, but never fail the cast because of it either).
+	local castDir: Vector3
+	if typeof(dir) == "Vector3" and dir.Magnitude &gt; 0.01 then
+		castDir = Vector3.new(dir.X, 0, dir.Z).Unit
+	else
+		local look = root.CFrame.LookVector
+		castDir = Vector3.new(look.X, 0, look.Z).Unit
+	end
+
+	-- Mark the player airborne (attribute = tag immunity + re-cast gate).
+	-- Backstop timer clears it if the landing report never arrives.
+	player:SetAttribute("IsAirborne", true)
+	airborneUntil[player] = now + sk.params.windup + sk.params.airtime + 1.0
+	task.delay(sk.params.windup + sk.params.airtime + 1.0, function()
+		if player.Parent and player:GetAttribute("IsAirborne") == true then
+			player:SetAttribute("IsAirborne", false) -- landing report lost: self-heal
+			airborneUntil[player] = nil
+			debugPrint("IsAirborne backstop cleared for " .. player.Name) -- TODO: remove before submission
+		end
+	end)
+
+	-- Split reply (spec architecture): approved event ONLY to the caster with
+	-- locked direction + params (owning client moves itself), VFX event to ALL.
+	SkillApproved:FireClient(player, {
+		skillId = skillId,
+		dir = castDir,
+		params = sk.params,
+	})
+	SkillVFX:FireAllClients({
+		caster = player.UserId,
+		skillId = skillId,
+		dir = castDir,
+	})
+	debugPrint("validation APPROVED for " .. player.Name .. "; SkillApproved to caster, SkillVFX to all") -- TODO: remove before submission
+end)
+
+-- Owning client reports landing; server clears IsAirborne so tag immunity and
+-- the re-cast gate end exactly when the character touches down.
+SkillLanded.OnServerEvent:Connect(function(player: Player, skillId: unknown)
+	if typeof(skillId) ~= "string" then
+		return
+	end
+	if player:GetAttribute("IsAirborne") == true then
+		player:SetAttribute("IsAirborne", false)
+		airborneUntil[player] = nil
+		debugPrint("landing reported by " .. player.Name .. " (" .. skillId .. "), IsAirborne=false") -- TODO: remove before submission
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	readyAt[player] = nil
+	airborneUntil[player] = nil
 end)
 
-print("[SkillService] Loaded — RS_01 slice (validation + server CD). T17 draft, RS_02/03, TS_*, Diskarte: TODO.")</string>
+debugPrint("Loaded - RS_01 slice (validation + SkillApproved/SkillVFX split + SkillLanded).") -- TODO: remove before submission
+print("[SkillService] Loaded - RS_01 slice (validation + server CD + approved/VFX split). T17 draft, RS_02/03, TS_*: TODO.")</string>
       </Properties>
     </Item>
-    <Item class="Script" referent="18">
+    <Item class="Script" referent="22">
       <Properties>
         <string name="Name">TagService</string>
         <token name="RunContext">0</token>
@@ -944,7 +1174,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Config)
 
+-- Shared untouchable rule (RS_01 air state): BOTH tag paths must call
+-- TagRules.isUntouchable(target) before applying a hit, so the rule lives in
+-- one place and touch (TM_08) and pounce (TM_05) can never disagree.
+local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
+
 -- TODO (T11): Implement server-authoritative tag validation.
+--   First check of every tag attempt: TagRules.isUntouchable(targetModel).
 -- TODO (T12): Implement Safe Window, speed boost, and lock delay.
 -- TODO (T13): Implement pounce mechanics and validation.
 
@@ -953,15 +1189,15 @@ print("[TagService] Loaded — stub only. Implement T11–T13.")
       </Properties>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="19">
+  <Item class="StarterPlayer" referent="23">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="20">
+    <Item class="StarterPlayerScripts" referent="24">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="21">
+      <Item class="LocalScript" referent="25">
         <Properties>
           <string name="Name">MovementController</string>
           <string name="Source"><![CDATA[--!strict
@@ -982,11 +1218,11 @@ print("[TagService] Loaded — stub only. Implement T11–T13.")
 --   • Bindings (UI/UX Spec §4): PC Shift/Q/C/E · Gamepad L2-stick/B/R1/X · Touch
 --   • Dash VFX: rear Trail ribbon + particle burst on Q (Config.Movement.DashVFX)
 --   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
---   • Skill RS_01 Luksong Baka (T18 vertical slice): ballistic arc derived from
---     Config.Skills.RS_01.params (height 14 / distance 18), no air steering
---     (WalkSpeed 0) for the whole flight, 12s cooldown, cast on E / ButtonX /
---     touch; executed locally (dash precedent) + RequestSkill → SkillService
---     server CD ledger. Grant list: Config.Skills.testGrant (TEMP → T17).
+--   • Skill RS_01 Luksong Baka (T18 slice): request + facing to SkillService,
+--     server validates (round/stun/ground/airborne/CD) and broadcasts SkillEvent,
+--     caster runs windup (0.1s crouch) -> takeoff (single impulse, CD starts)
+--     -> locked-direction flight -> landing recovery (0.2s no sprint).
+--     Grant list: Config.Skills.testGrant, role gate via Config.Debug flag.
 --
 -- Does NOT handle: tag detection/validation (TagService owns truth),
 -- skill draft/unlocks (T17), remaining skills (RS_02/03, TS_*) and Diskarte
@@ -998,6 +1234,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -1018,6 +1256,9 @@ local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent = Remotes:WaitForChild("TagEvent") :: RemoteEvent
 local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
 local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
+local SkillApproved = Remotes:WaitForChild("SkillApproved") :: RemoteEvent
+local SkillVFX = Remotes:WaitForChild("SkillVFX") :: RemoteEvent
+local SkillLanded = Remotes:WaitForChild("SkillLanded") :: RemoteEvent
 
 -- ── State ────────────────────────────────────────────────────────────────────
 -- Stamina
@@ -1038,11 +1279,52 @@ local slideCooldownLeft = 0.0
 local slideTimer = 0.0
 local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
 
--- Skill (RS_01 slice; server-side CD ledger lives in SkillService)
+-- Skill (RS_01; server validates, SkillApproved moves the owning client only)
 local skillId = "" -- skill granted to the current role ("" = none)
 local skillCooldownLeft = 0.0
-local skillFlightLeft = 0.0 -- no-air-steering window (ballistic airtime + margin)
+local skillFlightLeft = 0.0 -- air time left after takeoff (ballistic window)
 local skillRequested = false -- buffered E / ButtonX / touch press
+local skillPending = false -- request sent, waiting for the server reply
+local skillPendingLeft = 0.0 -- clears a lost reply so input cannot wedge
+local skillWindupLeft = 0.0 -- crouch countdown before takeoff (s)
+local skillRecoveryLeft = 0.0 -- sprint lockout after landing (s)
+local skillCastDir = Vector3.new(0, 0, -1) -- heading fixed by the approved event
+local skillCastHip = 0.0 -- HipHeight saved for the crouch restore
+local skillWallConn: RBXScriptConnection? = nil -- wall hit ends the jump
+local skillFOVOn = false -- owner FOV kick active (restore on landing)
+local skillPreviewRing: BasePart? = nil -- owner-only landing preview
+-- Leap (Stage B): queued takeoff, flight measurement, wall/landing detection.
+local skillPendingVelocity: Vector3? = nil -- set on ChangeState, applied next Heartbeat
+local skillFwdSpeed = 0.0 -- locked horizontal launch speed (steering lock + wall check)
+local skillFlightStartedAt = 0.0 -- os.clock() at takeoff (min-airtime gate)
+local skillWallSlowLeft = 0.0 -- seconds spent below the wall slow threshold
+local skillTakeoffPos: Vector3? = nil -- takeoff position for measured distance
+local skillPeakY = 0.0 -- highest root Y seen during flight (measured height)
+local skillApprovedActive = false -- true from SkillApproved until SkillLanded sent
+local skillDebugTick = 0.0 -- throttles the debug label text update
+local skillDebugLabel: BillboardGui? = nil -- airborne debug label (ShowSkillDebug)
+local skillStateConn: RBXScriptConnection? = nil -- Humanoid.StateChanged landing hook
+
+-- TODO: remove before submission (debug prints for RS_01 testing)
+local function debugPrint(msg: string)
+	if Config.Debug.ShowSkillDebug then
+		print("[RS_01] " .. msg)
+	end
+end
+
+-- Character mass summed from parts: used in the launch debug print and to
+-- document the impulse math (velocity-set method does not need it).
+local function characterMass(): number
+	local mass = 0
+	if Character then
+		for _, d in Character:GetDescendants() do
+			if d:IsA("BasePart") then
+				mass += d.Mass
+			end
+		end
+	end
+	return mass
+end
 
 -- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s, stamina rules unchanged.
 local boostLeft = 0.0
@@ -1083,10 +1365,14 @@ local function applySpeed()
 	if not Humanoid then
 		return
 	end
-	if skillFlightLeft > 0 then
-		-- RS_01 "no air steering": hold WalkSpeed 0 for the whole skill flight.
-		Humanoid.WalkSpeed = 0
-		return
+	if skillFlightLeft > 0 or skillWindupLeft > 0 then
+		-- Windup: hold still while crouched on the ground. During FLIGHT we do
+		-- NOT zero WalkSpeed (it fights the launch); direction is locked by
+		-- re-applying the takeoff velocity each Heartbeat instead.
+		if skillWindupLeft > 0 then
+			Humanoid.WalkSpeed = 0
+			return
+		end
 	end
 	if inputLocked then
 		Humanoid.WalkSpeed = 0
@@ -1133,8 +1419,10 @@ local function updateStamina(dt: number)
 		isMoving = Humanoid.MoveDirection.Magnitude > 0.1
 	end
 
-	-- Decide if we're actually sprinting this frame
+	-- Decide if we're actually sprinting this frame.
+	-- Landing recovery (RS_01) keeps sprint off briefly without blocking walk.
 	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing
+		and skillRecoveryLeft <= 0
 	if isDepletion and stamina < Mv.StaminaDepletedMin then
 		wantSprint = false -- forced walk until stamina recovers enough
 	elseif isDepletion and stamina >= Mv.StaminaDepletedMin then
@@ -1170,18 +1458,32 @@ end
 --   HRushDashing (bool), HRushSliding (bool), HRushBoost (seconds left),
 --   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar),
 --   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left).
--- Grant lookup (TEMP list until T17 draft owns unlocks).
+-- Grant lookup (TEMP list until T17 draft owns unlocks). The role check stays
+-- but is skipped while Config.Debug.AllowAnyRoleForSkills is on, so any role
+-- can test skills; flip the flag off to restore the Runner-only rule.
 local function grantedSkillId(): string
-	if role ~= "Runner" then
+	if role ~= "Runner" and not Config.Debug.AllowAnyRoleForSkills then
 		return ""
 	end
 	for _, id in Config.Skills.testGrant do
 		local sk = Config.Skills[id]
-		if sk and sk.role == role then
+		if sk and (Config.Debug.AllowAnyRoleForSkills or sk.role == role) then
 			return id
 		end
 	end
 	return ""
+end
+
+-- Params of the currently granted skill (nil when nothing is granted).
+local function skillParams(): any?
+	if skillId == "" then
+		skillId = grantedSkillId()
+	end
+	local sk = Config.Skills[skillId]
+	if sk then
+		return sk.params
+	end
+	return nil
 end
 
 local lastPush = 0.0
@@ -1451,26 +1753,365 @@ local function performSlide()
 end
 
 -- ── Skill: RS_01 Luksong Baka (T18 vertical slice) ───────────────────────────
--- Spec §5 / System Spec: impulse to params.height (14) studs high and
--- params.distance (18) studs forward, NO air steering, Config cooldown (12s).
--- Ballistics derive from Workspace.Gravity so the arc genuinely reaches the
--- configured height: vY = sqrt(2*g*H), airtime = 2*vY/g, vX = D / airtime.
--- Cast is ground-only (v1 assumption — air-cast is a T18 balance question).
--- Flow mirrors dash: local execution + RequestSkill notify for the server CD
--- ledger (SkillService replies via SkillEvent; a deny re-arms the cooldown).
-local function endSkillFlight()
-	skillFlightLeft = 0
-	applySpeed() -- restores walk/sprint (or 0 when inputLocked)
+-- Spec section 5: height 14, distance 18, NO air steering, 12s cooldown,
+-- 0.1s windup crouch, 0.2s landing recovery, untouchable above 6 studs.
+-- Ballistics derive from Config + engine gravity so the numbers stay tunable.
+-- Flow: client sends request + facing -> SkillService validates -> broadcast
+-- SkillEvent -> caster runs windup/launch, every client plays the VFX.
+-- Cast is ground-only (v1 assumption: air-cast is a T18 balance question).
+-- Camera feel (owner only): FOV kick at takeoff, eased back on landing, tiny
+-- shake after touchdown. The shake never adds vertical motion, so the camera
+-- can never snap upward (spec rule).
+local skillFOVBase: number? = nil
+local SHAKE_BIND = "HRUSH_SkillShake"
+
+local function startSkillFOV()
+	local cam = Workspace.CurrentCamera
+	local p = skillParams()
+	if cam == nil or p == nil then
+		return
+	end
+	skillFOVBase = cam.FieldOfView
+	skillFOVOn = true
+	-- fovTime lives in the vfx table (the Stage A crash was reading it from
+	-- params; always take the tween seconds from vfx like stopSkillFOV does).
+	local fx = Config.Skills.RS_01.vfx
+	TweenService:Create(
+		cam,
+		TweenInfo.new(fx.fovTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ FieldOfView = skillFOVBase + p.fovBoost }
+	):Play()
 end
 
-local function performSkill()
+local function stopSkillFOV(withShake: boolean)
+	local cam = Workspace.CurrentCamera
+	local p = skillParams()
+	skillFOVOn = false
+	if cam ~= nil and skillFOVBase ~= nil and p ~= nil then
+		TweenService:Create(
+			cam,
+			TweenInfo.new(p.fovBackTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ FieldOfView = skillFOVBase }
+		):Play()
+	end
+	skillFOVBase = nil
+	if not withShake or cam == nil or p == nil then
+		return
+	end
+	local duration = p.shakeDuration
+	local amp = Config.Skills.RS_01.vfx.shakeAmp
+	local endTime = os.clock() + duration
+	RunService:BindToRenderStep(SHAKE_BIND, Enum.RenderPriority.Camera.Value + 1, function()
+		local left = endTime - os.clock()
+		if left <= 0 then
+			RunService:UnbindFromRenderStep(SHAKE_BIND)
+			return
+		end
+		-- Horizontal jitter plus tiny roll, decaying to rest. Vertical offset
+		-- is deliberately zero so the camera never moves sharply upward.
+		local k = (left / duration) * amp
+		cam.CFrame = cam.CFrame
+			* CFrame.Angles(
+				(math.random() - 0.5) * k * 0.05,
+				(math.random() - 0.5) * k * 0.05,
+				(math.random() - 0.5) * k * 0.08
+			)
+			* CFrame.new((math.random() - 0.5) * k, 0, (math.random() - 0.5) * k)
+	end)
+end
+
+local function cancelWindup()
+	if skillWindupLeft > 0 and Humanoid then
+		Humanoid.HipHeight = skillCastHip -- undo the crouch before anything else
+	end
+	skillWindupLeft = 0
+end
+
+-- Tell the server the jump is over: clears IsAirborne (tag immunity + re-cast
+-- gate). One shot per approval, safe to call from every end path.
+local function reportLanded()
+	if skillApprovedActive then
+		skillApprovedActive = false
+		SkillLanded:FireServer(skillId)
+		debugPrint("landing reported to server (SkillLanded)") -- TODO: remove before submission
+	end
+end
+
+local function endSkillFlight(withShake: boolean?)
+	reportLanded() -- clear server IsAirborne before local cleanup
+	skillFlightLeft = 0
+	skillPendingVelocity = nil -- a queued launch must not fire after cleanup
+	skillFwdSpeed = 0.0
+	skillFlightStartedAt = 0.0
+	skillWallSlowLeft = 0.0
+	skillTakeoffPos = nil
+	cancelWindup() -- never leave a crouch behind on cancel paths
+	if skillPreviewRing then
+		skillPreviewRing:Destroy()
+		skillPreviewRing = nil
+	end
+	if skillFOVOn then
+		stopSkillFOV(withShake == true)
+	end
+	-- Landing recovery keeps sprint off for a short beat (Config: landingRecovery).
+	local sk = Config.Skills[skillId]
+	if sk then
+		skillRecoveryLeft = sk.params.landingRecovery
+	end
+	applySpeed() -- restores walk/sprint (or 0 when inputLocked)
+	pushAttributes(true)
+end
+
+-- One dust puff burst at the character (windup or landing). Uses the engine
+-- builtin sparkle texture, so no Toolbox asset and no license risk.
+local function emitBurst(hrp: BasePart, count: number)
+	local fx = Config.Skills.RS_01.vfx
+	local att = Instance.new("Attachment")
+	att.Position = Vector3.new(0, -2, 0) -- near the feet where dust kicks up
+	att.Parent = hrp
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Rate = 0 -- burst only, never a stream (mobile particle budget)
+	emitter.Lifetime = NumberRange.new(fx.dustLifeMin, fx.dustLifeMax)
+	emitter.Speed = NumberRange.new(fx.dustSpeedMin, fx.dustSpeedMax)
+	emitter.SpreadAngle = Vector2.new(55, 55)
+	emitter.EmissionDirection = Enum.NormalId.Top
+	emitter.Acceleration = Vector3.new(0, -12, 0) -- dust settles, it does not float
+	emitter.Color = ColorSequence.new(Color3.fromRGB(214, 200, 176))
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, fx.dustSize),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emitter.Parent = att
+	emitter:Emit(count)
+	Debris:AddItem(att, 1.2) -- cleanup margin only, not a gameplay number
+end
+
+-- Flat neon ring on the ground: grows and fades with TweenService (spec asked
+-- for a tweened cylinder instead of more particles, so mobile stays cheap).
+local function spawnGroundRing(at: Vector3, sizeA: number, sizeB: number, duration: number, exclude: Model?)
+	local ray = RaycastParams.new()
+	ray.FilterType = Enum.RaycastFilterType.Exclude
+	local skip: { Instance } = { Character }
+	if exclude then
+		table.insert(skip, exclude)
+	end
+	ray.FilterDescendantsInstances = skip
+	ray.IgnoreWater = true
+	local hit = Workspace:Raycast(at + Vector3.new(0, 2, 0), Vector3.new(0, -80, 0), ray)
+	local y = if hit then hit.Position.Y + 0.1 else at.Y - 2.9
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.25, sizeA, sizeA)
+	ring.CFrame = CFrame.new(at.X, y, at.Z) * CFrame.Angles(0, 0, math.rad(90)) -- lie flat
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = Color3.fromRGB(226, 214, 190)
+	ring.Transparency = 0.3
+	ring.Parent = Workspace
+	TweenService:Create(
+		ring,
+		TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(0.25, sizeB, sizeB), Transparency = 1 }
+	):Play()
+	Debris:AddItem(ring, duration + 0.2)
+end
+
+-- Owner-only landing preview: a soft ring where the arc will end. Parts made
+-- by this client never replicate, so other players cannot see it.
+local function spawnLandingPreview(at: Vector3, size: number, dir: Vector3, distance: number)
+	local predicted = at + Vector3.new(dir.X, 0, dir.Z) * distance
+	local ray = RaycastParams.new()
+	ray.FilterType = Enum.RaycastFilterType.Exclude
+	ray.FilterDescendantsInstances = { Character }
+	ray.IgnoreWater = true
+	local hit = Workspace:Raycast(predicted + Vector3.new(0, 2, 0), Vector3.new(0, -80, 0), ray)
+	local y = if hit then hit.Position.Y + 0.12 else predicted.Y - 2.9
+	local ring = Instance.new("Part")
+	ring.Name = "SkillPreviewRing"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.2, size, size)
+	ring.CFrame = CFrame.new(predicted.X, y, predicted.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = Color3.fromRGB(140, 220, 255)
+	ring.Transparency = 0.55
+	ring.Parent = Workspace
+	return ring
+end
+
+-- Air trail: attachments sit on HumanoidRootPart because it exists on every
+-- rig (R6 and R15) at torso height, unlike torso parts which differ per rig.
+local function startAirTrail(hrp: BasePart, lifetime: number)
+	if hrp:FindFirstChild("SkillTrail") then
+		return -- duplicate broadcast must not double the trail
+	end
+	local attA = Instance.new("Attachment")
+	attA.Name = "SkillTrailA"
+	attA.Position = Vector3.new(-0.7, 0.4, 0.6) -- rear edge of the torso block
+	attA.Parent = hrp
+	local attB = Instance.new("Attachment")
+	attB.Name = "SkillTrailB"
+	attB.Position = Vector3.new(0.7, 0.4, 0.6)
+	attB.Parent = hrp
+	local trail = Instance.new("Trail")
+	trail.Name = "SkillTrail"
+	trail.Attachment0 = attA
+	trail.Attachment1 = attB
+	trail.FaceCamera = true
+	trail.Lifetime = lifetime
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 244, 214))
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.Enabled = true
+	trail.Parent = hrp
+end
+
+local function stopAirTrail(hrp: BasePart)
+	local trail = hrp:FindFirstChild("SkillTrail")
+	if trail and trail:IsA("Trail") then
+		trail.Enabled = false -- remaining segments fade out over Lifetime
+		Debris:AddItem(trail, 1.0) -- cleanup margin only
+	end
+	for _, name in { "SkillTrailA", "SkillTrailB" } do
+		local att = hrp:FindFirstChild(name)
+		if att then
+			Debris:AddItem(att, 1.0)
+		end
+	end
+end
+
+-- Sound hook: an empty id in Config is skipped, so the game stays silent but
+-- the hook is ready until licensed audio lands (ASSET_LOG rule).
+local function playSkillSound(hrp: BasePart, soundId: unknown)
+	if typeof(soundId) ~= "string" or soundId == "" then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.RollOffMaxDistance = 60
+	sound.Parent = hrp
+	sound:Play()
+	Debris:AddItem(sound, 3)
+end
+
+-- Shared cast timeline: runs on EVERY client from the server SkillEvent, so
+-- windup puff, takeoff ring, air trail and landing burst match for all viewers.
+-- Delays come from Config, so clients agree without extra messages. An early
+-- wall landing can drift remote FX by a few frames; that part is cosmetic.
+local function playSkillCastFX(casterId: number, sid: string, dir: Vector3)
+	local sk = Config.Skills[sid]
+	if sk == nil then
+		return
+	end
+	local caster = Players:GetPlayerByUserId(casterId)
+	local char = caster and caster.Character
+	if char == nil then
+		return
+	end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not (hrp and hrp:IsA("BasePart")) then
+		return
+	end
+	local isOwner = casterId == LocalPlayer.UserId
+
+	task.delay(0, function()
+		if not hrp.Parent then
+			return
+		end
+		emitBurst(hrp, sk.vfx.windupCount) -- windup dust puff
+		playSkillSound(hrp, sk.sounds.windup)
+	end)
+
+	task.delay(sk.params.windup, function()
+		if not hrp.Parent then
+			return
+		end
+		spawnGroundRing(hrp.Position, sk.vfx.ringStart, sk.vfx.ringEnd, sk.vfx.ringTime, char)
+		startAirTrail(hrp, sk.vfx.trailLifetime)
+		playSkillSound(hrp, sk.sounds.takeoff)
+		if isOwner then
+			skillPreviewRing = spawnLandingPreview(hrp.Position, sk.vfx.previewSize, dir, sk.params.distance)
+		end
+	end)
+
+	task.delay(sk.params.windup + sk.params.airtime, function()
+		if not hrp.Parent then
+			return
+		end
+		stopAirTrail(hrp)
+		emitBurst(hrp, sk.vfx.landingCount) -- landing dust burst
+		spawnGroundRing(hrp.Position, sk.vfx.previewSize, sk.vfx.previewSize * 1.8, sk.vfx.landingRingTime, char)
+		playSkillSound(hrp, sk.sounds.landing)
+		if isOwner and skillPreviewRing then
+			skillPreviewRing:Destroy()
+			skillPreviewRing = nil
+		end
+	end)
+end
+
+local function launchSkill()
+	local sk = Config.Skills[skillId]
+	if sk == nil or not Humanoid or not HRP then
+		cancelWindup()
+		return
+	end
+	if skillCastHip > 0 then
+		Humanoid.HipHeight = skillCastHip -- stand up from the crouch
+	end
+	-- Ballistics only from Config and engine gravity: with airtime t,
+	-- vy = g*t/2 reaches the configured height and vh = distance/t the reach.
+	-- Measured at g=196.2, t=0.76: vy ~74.6 (spec 74), vh ~23.7 (spec 24),
+	-- apex ~14.1 (spec 14), range 18.0 (spec 18): all within 10 percent.
+	local g = Workspace.Gravity
+	local vy = g * sk.params.airtime / 2
+	local vh = sk.params.distance / sk.params.airtime
+
+	-- Heading: frozen from the approved direction when lockDirection.
+	local dir = skillCastDir
+	if not sk.params.lockDirection then
+		local look = HRP.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z)
+		if flat.Magnitude > 0.01 then
+			dir = flat.Unit
+		end
+	end
+	skillCastDir = dir
+	skillFwdSpeed = vh
+	skillWallSlowLeft = 0
+
+	-- Spec architecture: leave the Running state FIRST with ChangeState, then
+	-- apply the velocity on the NEXT heartbeat. Writing velocity while still
+	-- grounded lets the humanoid snap the character back to the floor (the
+	-- Stage A class of "crouch but no leap" bugs).
+	Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+	skillPendingVelocity = Vector3.new(dir.X * vh, vy, dir.Z * vh)
+	debugPrint(string.format("takeoff queued: ChangeState(Jumping), vel next heartbeat (up=%.1f fwd=%.1f)", vy, vh)) -- TODO: remove before submission
+end
+
+local function requestSkill()
 	if not roundLive or inputLocked then
-		return
+		return -- round gate (countdown, lobby, round end)
 	end
-	if role ~= "Runner" then
-		return
+	if skillPending or skillApprovedActive or skillPendingVelocity ~= nil then
+		return -- one cast in flight at a time (covers the windup->takeoff gap)
 	end
-	if skillCooldownLeft > 0 or skillFlightLeft > 0 then
+	if skillWindupLeft > 0 or skillFlightLeft > 0 then
+		return -- already jumping
+	end
+	if skillCooldownLeft > 0 then
 		return
 	end
 	if isDashing or isSliding then
@@ -1488,52 +2129,83 @@ local function performSkill()
 	if skillId == "" then
 		skillId = grantedSkillId()
 	end
-	local sk = Config.Skills[skillId]
-	if not sk then
-		return
+	local p = skillParams()
+	if p == nil then
+		return -- no grant for this role (role check lives in grantedSkillId)
 	end
 
-	-- Direction: current move input if any, else facing (same rule as dash).
-	local dir = Humanoid.MoveDirection
-	if dir.Magnitude < 0.1 then
-		dir = HRP.CFrame.LookVector
-	end
+	-- The approved direction is what the jump uses (lockDirection).
+	local dir = HRP.CFrame.LookVector
 	dir = Vector3.new(dir.X, 0, dir.Z)
 	if dir.Magnitude < 0.01 then
 		return
 	end
-	dir = dir.Unit
 
-	-- Derive the arc from config + engine gravity (never hardcode speeds).
-	local g = Workspace.Gravity
-	local vy = math.sqrt(2 * g * sk.params.height)
-	local airtime = (2 * vy) / g
-	local vh = sk.params.distance / airtime
-
-	skillCooldownLeft = sk.cooldown
-	skillFlightLeft = airtime + 0.25 -- margin; Landed ends it early
-	Humanoid.WalkSpeed = 0 -- no air steering from the very first frame
-	HRP.AssemblyLinearVelocity = Vector3.new(dir.X * vh, vy, dir.Z * vh)
-	pushAttributes(true)
-
-	-- Server keeps its own cooldown ledger and may deny (then we roll back).
-	RequestSkill:FireServer(skillId)
+	skillCastDir = dir.Unit
+	skillPending = true
+	skillPendingLeft = p.pendingTimeout -- a lost reply must not wedge input
+	RequestSkill:FireServer(skillId, skillCastDir)
+	debugPrint("request sent to server (" .. skillId .. ")") -- TODO: remove before submission
 end
 
--- Server reply: accepted = nothing to do (already executed locally);
--- denied = restore the cooldown so a desynced client cannot spam the cast.
-SkillEvent.OnClientEvent:Connect(function(sid: unknown, accepted: unknown)
-	if typeof(sid) ~= "string" or sid ~= skillId then
+
+-- Deny only: quiet reset of the pending flag (the server already said no and
+-- the local cooldown never started).
+SkillEvent.OnClientEvent:Connect(function(payload: any)
+	if typeof(payload) ~= "table" then
 		return
 	end
-	if accepted == false then
-		local sk = Config.Skills[sid]
-		if sk then
-			skillCooldownLeft = sk.cooldown
+	if payload.type == "deny" then
+		if payload.skillId == skillId then
+			skillPending = false
+			debugPrint("denied by server (pending cleared)") -- TODO: remove before submission
 		end
-		warn("[MovementController] SkillService denied " .. sid .. "; cooldown re-armed.")
-		pushAttributes(true)
+		return
 	end
+end)
+
+-- Approval goes ONLY to the requesting client (spec architecture): this is
+-- what starts the windup. Movement is applied later by launchSkill on this
+-- same owning client; no other client runs mechanics from this event.
+SkillApproved.OnClientEvent:Connect(function(payload: any)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	if typeof(payload.skillId) ~= "string" or payload.skillId ~= skillId then
+		return
+	end
+	if not (Humanoid and HRP) then
+		return
+	end
+	skillPending = false
+	skillApprovedActive = true
+	if typeof(payload.dir) == "Vector3" and payload.dir.Magnitude > 0.01 then
+		skillCastDir = Vector3.new(payload.dir.X, 0, payload.dir.Z).Unit
+	end
+	local p: any? = if typeof(payload.params) == "table" then payload.params else skillParams()
+	if p == nil then
+		return
+	end
+	-- Windup: crouch in place. tickCooldowns launches when the timer hits
+	-- zero, and the cooldown starts at that takeoff moment (spec).
+	skillCastHip = Humanoid.HipHeight
+	Humanoid.HipHeight = skillCastHip * p.crouchScale
+	skillWindupLeft = p.windup
+	applySpeed() -- windup guard immediately locks WalkSpeed at 0
+	pushAttributes(true)
+	debugPrint(string.format("SkillApproved received: windup=%.2fs dir=(%.2f, %.2f)", p.windup, skillCastDir.X, skillCastDir.Z)) -- TODO: remove before submission
+end)
+
+-- VFX goes to ALL players (spec): visuals only, never mechanics.
+SkillVFX.OnClientEvent:Connect(function(payload: any)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	if typeof(payload.skillId) ~= "string" or typeof(payload.caster) ~= "number" then
+		return
+	end
+	local dir = if typeof(payload.dir) == "Vector3" then payload.dir else Vector3.new(0, 0, -1)
+	playSkillCastFX(payload.caster, payload.skillId, dir)
 end)
 
 -- ── Cooldown & invuln ticking ────────────────────────────────────────────────
@@ -1550,18 +2222,30 @@ local function tickCooldowns(dt: number)
 	if skillCooldownLeft > 0 then
 		skillCooldownLeft = math.max(0, skillCooldownLeft - dt)
 	end
+	if skillWindupLeft > 0 then
+		-- Crouch countdown; the launch happens once it reaches zero.
+		skillWindupLeft = math.max(0, skillWindupLeft - dt)
+		if skillWindupLeft <= 0 then
+			launchSkill()
+		end
+	end
 	if skillFlightLeft > 0 then
-		-- Ground contact ends the flight immediately. FloorMaterial poll (a
-		-- CONFIRMED Humanoid property) — Humanoid has no Landed event and no
-		-- GetStateChangedSignal (verified against the official API dump; a bad
-		-- member here aborts onCharacterAdded and kills the whole loop).
-		if Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air then
-			endSkillFlight()
-		else
-			skillFlightLeft = math.max(0, skillFlightLeft - dt)
-			if skillFlightLeft <= 0 then
-				endSkillFlight()
-			end
+		-- Flight window countdown. Real landings are caught by the Humanoid
+		-- StateChanged hook (Landed/Running + min airtime) in onCharacterAdded;
+		-- this timeout is the fallback if that signal never arrives (spec).
+		skillFlightLeft = math.max(0, skillFlightLeft - dt)
+		if skillFlightLeft <= 0 then
+			debugPrint("flight timeout fallback: ending jump") -- TODO: remove before submission
+			endSkillFlight(false)
+		end
+	end
+	if skillRecoveryLeft > 0 then
+		skillRecoveryLeft = math.max(0, skillRecoveryLeft - dt)
+	end
+	if skillPending then
+		skillPendingLeft = math.max(0, skillPendingLeft - dt)
+		if skillPendingLeft <= 0 then
+			skillPending = false -- a lost server reply must never wedge input
 		end
 	end
 	-- Post-tag boost countdown (F08); re-apply speed when it expires.
@@ -1596,6 +2280,96 @@ local function startHeartbeat()
 		end
 		if Humanoid.Health <= 0 then
 			return
+		end
+
+		-- Takeoff: ChangeState happened in launchSkill; the velocity is applied
+		-- HERE, on the next heartbeat, so the humanoid cannot snap back down.
+		-- This is the single place the leap impulse is written (spec).
+		if skillPendingVelocity then
+			local v = skillPendingVelocity
+			skillPendingVelocity = nil
+			HRP.AssemblyLinearVelocity = v -- one impulse, never per-frame
+			skillFlightStartedAt = os.clock()
+			skillTakeoffPos = HRP.Position
+			skillPeakY = HRP.Position.Y
+			local sk = Config.Skills[skillId]
+			if sk then
+				skillCooldownLeft = sk.cooldown -- CD starts at takeoff (spec)
+				skillFlightLeft = sk.params.airtime + sk.params.flightSlack
+			end
+			startSkillFOV() -- camera AFTER the physics write: cosmetics can never kill the leap
+			pushAttributes(true)
+			debugPrint(string.format(
+				"launch applied: up=%.1f fwd=%.1f mass=%.1f",
+				v.Y, skillFwdSpeed, characterMass()
+			)) -- TODO: remove before submission
+			-- Fallback cleanup: even if landing detection fails, the flight
+			-- window cannot stay open past airtime + 1s (spec).
+			task.delay((sk and sk.params.airtime or 0.76) + 1, function()
+				if skillFlightLeft > 0 then
+					debugPrint("cleanup fallback fired (airtime + 1s)") -- TODO: remove before submission
+					endSkillFlight(false)
+				end
+			end)
+		end
+
+		-- Flight frame: track peak, enforce locked direction (no air steering),
+		-- and end the jump early if a wall crushes horizontal speed below
+		-- wallSpeedPct of launch speed for wallSlowTime seconds (spec).
+		if skillFlightLeft > 0 then
+			if HRP.Position.Y > skillPeakY then
+				skillPeakY = HRP.Position.Y
+			end
+			local p = skillParams()
+			local vel = HRP.AssemblyLinearVelocity
+			local hSpeed = math.sqrt(vel.X * vel.X + vel.Z * vel.Z)
+			if p and skillFwdSpeed > 0 then
+				if hSpeed < skillFwdSpeed * p.wallSpeedPct then
+					skillWallSlowLeft += dt
+					if skillWallSlowLeft >= p.wallSlowTime then
+						debugPrint(string.format(
+							"wall hit: hSpeed %.1f < %.1f%% of %.1f for %.2fs, ending jump",
+							hSpeed, p.wallSpeedPct * 100, skillFwdSpeed, p.wallSlowTime
+						)) -- TODO: remove before submission
+						endSkillFlight(false) -- wall ends the jump, airborne state cleared
+						skillWallSlowLeft = 0
+					end
+				else
+					skillWallSlowLeft = 0
+				end
+				-- Direction lock: re-apply ONLY the locked horizontal velocity;
+				-- vertical stays physics driven (spec: no WalkSpeed tricks).
+				HRP.AssemblyLinearVelocity = Vector3.new(
+					skillCastDir.X * skillFwdSpeed,
+					vel.Y,
+					skillCastDir.Z * skillFwdSpeed
+				)
+			end
+		end
+
+		-- Debug label (ShowSkillDebug): refresh 10x per second, not per frame.
+		if Config.Debug.ShowSkillDebug and skillDebugLabel then
+			skillDebugTick += dt
+			if skillDebugTick >= 0.1 then
+				skillDebugTick = 0
+				local txt = skillDebugLabel:FindFirstChild("DebugText")
+				if txt and txt:IsA("TextLabel") then
+					local ray = RaycastParams.new()
+					ray.FilterType = Enum.RaycastFilterType.Exclude
+					ray.FilterDescendantsInstances = { Character }
+					ray.IgnoreWater = true
+					local hit = Workspace:Raycast(HRP.Position, Vector3.new(0, -200, 0), ray)
+					local height = if hit then (HRP.Position.Y - hit.Position.Y) else 0
+					local vel = HRP.AssemblyLinearVelocity
+					local hSpeed = math.sqrt(vel.X * vel.X + vel.Z * vel.Z)
+					txt.Text = string.format(
+						"IsAirborne: %s\nHeight: %.1f  HSpeed: %.1f",
+						tostring(skillFlightLeft > 0),
+						height,
+						hSpeed
+					)
+				end
+			end
 		end
 
 		-- Gamepad sprint (throttled to 10 Hz): left stick full tilt = sprinting.
@@ -1637,7 +2411,7 @@ local function startHeartbeat()
 		end
 		if skillRequested then
 			skillRequested = false
-			performSkill()
+			requestSkill()
 		end
 	end)
 end
@@ -1684,8 +2458,12 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 				cancelDash()
 			end
 			if skillFlightLeft > 0 then
-				endSkillFlight()
+				endSkillFlight(false)
 			end
+			cancelWindup()
+			skillPendingVelocity = nil -- a queued takeoff must not fire after round end
+			reportLanded() -- windup cancelled mid-approval: still clear IsAirborne
+			skillPending = false -- round over: drop any request still in flight
 		end
 		applySpeed()
 		pushAttributes(true)
@@ -1904,11 +2682,106 @@ local function onCharacterAdded(char: Model)
 	skillCooldownLeft = 0
 	skillFlightLeft = 0
 	skillRequested = false
+	skillPending = false
+	skillWindupLeft = 0
+	skillRecoveryLeft = 0
+	skillPendingVelocity = nil -- a queued takeoff belongs to the old character
+	skillFwdSpeed = 0.0
+	skillFlightStartedAt = 0.0
+	skillWallSlowLeft = 0.0
+	skillTakeoffPos = nil
+	skillPeakY = 0.0
+	skillApprovedActive = false -- respawn drops any prior approval
+	skillFOVOn = false
+	if skillPreviewRing then
+		skillPreviewRing:Destroy()
+		skillPreviewRing = nil
+	end
 
-	-- RS_01 landing detection lives in tickCooldowns (FloorMaterial poll).
-	-- Do NOT wire Humanoid.Landed / GetStateChangedSignal here — neither exists
-	-- and a missing member aborts onCharacterAdded (kills heartbeat, sprint,
-	-- dash and skill for the whole session). Only confirmed APIs in this block.
+	-- Landing detection (spec): StateChanged to Landed/Running plus a minimum
+	-- airtime, so the launch frame itself can never count as a landing.
+	-- StateChanged IS a confirmed Humanoid event (checked against the engine
+	-- API dump; the invalid ones were Landed and GetStateChangedSignal).
+	if skillStateConn then
+		skillStateConn:Disconnect()
+		skillStateConn = nil
+	end
+	skillStateConn = Humanoid.StateChanged:Connect(function(_old: Enum.HumanoidStateType, new: Enum.HumanoidStateType)
+		if skillFlightLeft <= 0 or skillFlightStartedAt == 0 then
+			return -- not flying: normal ground states, ignore
+		end
+		local p = skillParams()
+		local minAir = if p then p.minAirtime else 0.2
+		if os.clock() - skillFlightStartedAt < minAir then
+			return -- launch frames still touching ground: not a landing yet
+		end
+		if new ~= Enum.HumanoidStateType.Landed and new ~= Enum.HumanoidStateType.Running then
+			return
+		end
+		-- Measured values vs Config targets (ShowSkillDebug).
+		if Config.Debug.ShowSkillDebug and skillTakeoffPos then
+			-- TODO: remove before submission
+			local pos = HRP.Position
+			local measuredH = skillPeakY - skillTakeoffPos.Y
+			local measuredD = Vector3.new(pos.X - skillTakeoffPos.X, 0, pos.Z - skillTakeoffPos.Z).Magnitude
+			local targetH = if p then p.height else 14
+			local targetD = if p then p.distance else 18
+			debugPrint(string.format(
+				"landing detected: height %.1f (target %.0f, %+.0f%%), distance %.1f (target %.0f, %+.0f%%)",
+				measuredH, targetH, (measuredH - targetH) / targetH * 100,
+				measuredD, targetD, (measuredD - targetD) / targetD * 100
+			)) -- TODO: remove before submission
+		end
+		endSkillFlight(true) -- real touchdown: shake + recovery + SkillLanded
+	end)
+
+	-- Debug label above the player (spec, ShowSkillDebug only).
+	if skillDebugLabel then
+		skillDebugLabel:Destroy()
+		skillDebugLabel = nil
+	end
+	if Config.Debug.ShowSkillDebug then
+		-- TODO: remove before submission
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "SkillDebugLabel"
+		bb.Size = UDim2.fromOffset(180, 56)
+		bb.StudsOffset = Vector3.new(0, 3.5, 0)
+		bb.AlwaysOnTop = true
+		local txt = Instance.new("TextLabel")
+		txt.Name = "DebugText"
+		txt.Size = UDim2.fromScale(1, 1)
+		txt.BackgroundColor3 = Color3.new(0, 0, 0)
+		txt.BackgroundTransparency = 0.4
+		txt.TextColor3 = Color3.fromRGB(255, 255, 120)
+		txt.Font = Enum.Font.Code
+		txt.TextSize = 12
+		txt.TextWrapped = true
+		txt.Text = "IsAirborne: false"
+		txt.Parent = bb
+		bb.Parent = HRP
+		skillDebugLabel = bb
+	end
+
+	-- Wall contact mid-air ends the jump at once (spec: never clip through
+	-- cover). Anchored world geometry only; floors are skipped by normal.y.
+	if skillWallConn then
+		skillWallConn:Disconnect()
+		skillWallConn = nil
+	end
+	skillWallConn = HRP.Touched:Connect(function(hit: BasePart)
+		if skillFlightLeft <= 0 then
+			return
+		end
+		if not hit.Anchored then
+			return -- other players and debris are not walls
+		end
+		if math.abs(hit.Normal.Y) > 0.5 then
+			return -- floor and ceiling contacts are normal landings
+		end
+		local vel = HRP.AssemblyLinearVelocity
+		HRP.AssemblyLinearVelocity = Vector3.new(0, vel.Y, 0) -- kill horizontal push
+		endSkillFlight(false)
+	end)
 
 	applySpeed()
 	pushAttributes(true)
@@ -1921,6 +2794,12 @@ local function onCharacterAdded(char: Model)
 			isSliding = false
 		end
 		skillFlightLeft = 0 -- a flight cannot outlive its character
+		skillPendingVelocity = nil
+		skillWindupLeft = 0
+		skillRecoveryLeft = 0
+		skillPending = false
+		skillFOVOn = false
+		reportLanded() -- death mid-jump still clears server IsAirborne
 		if dashConn then
 			dashConn:Disconnect()
 			dashConn = nil
@@ -1944,7 +2823,7 @@ print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/da
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="22">
+      <Item class="LocalScript" referent="26">
         <Properties>
           <string name="Name">TargetLockController</string>
           <string name="Source"><![CDATA[--!strict
@@ -1964,7 +2843,7 @@ print("[TargetLockController] Loaded — stub only. Implement T16.")
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="23">
+      <Item class="LocalScript" referent="27">
         <Properties>
           <string name="Name">UIController</string>
           <string name="Source"><![CDATA[--!strict
@@ -2145,7 +3024,7 @@ skillChip.BackgroundColor3 = COL_PANEL
 skillChip.BackgroundTransparency = 0.15
 skillChip.BorderSizePixel = 0
 skillChip.Parent = cluster
-corner(skillChip, 8)
+corner(skillChip, 22) -- circle shape: distinct from the dash chip without color
 local skillStroke = stroke(skillChip, COL_STROKE_CD, 2)
 
 local skillWipe = Instance.new("Frame") -- dark overlay shrinking top to bottom
@@ -2158,7 +3037,7 @@ skillWipe.BackgroundTransparency = 0.25
 skillWipe.BorderSizePixel = 0
 skillWipe.ZIndex = 1
 skillWipe.Parent = skillChip
-corner(skillWipe, 8)
+corner(skillWipe, 22) -- follows the circular chip outline
 
 local skillKey = Instance.new("TextLabel")
 skillKey.Name = "KeyOrCd"
@@ -2205,6 +3084,7 @@ end
 local fillTween: Tween? = nil
 local flashConn: RBXScriptConnection? = nil
 local curRole = attrStr("HRushRole", "Runner")
+local curSkillId = "" -- granted skill id (declared early so visibility logic sees it)
 
 local function setFlash(on: boolean)
 	if on and not flashConn then
@@ -2241,8 +3121,17 @@ local function updateStamina()
 end
 
 local function updateVisibility()
-	-- UI/UX Spec §2: stamina cluster is Runner-only.
-	cluster.Visible = (curRole == "Runner")
+	-- Stamina and dash stay Runner-only; the skill chip follows the grant list
+	-- instead, so Config.Debug.AllowAnyRoleForSkills can show it on Taya too.
+	-- The chip is also a circle (not a rounded square), so it reads apart from
+	-- the dash chip by SHAPE, not only by color.
+	local isRunner = (curRole == "Runner")
+	local hasSkill = (curSkillId ~= "")
+	title.Visible = isRunner
+	barBg.Visible = isRunner
+	chip.Visible = isRunner
+	chipCaption.Visible = isRunner
+	cluster.Visible = isRunner or hasSkill
 end
 
 -- ── Dash cooldown chip logic ──────────────────────────────────────────────────
@@ -2284,11 +3173,26 @@ end
 
 -- ── Skill cooldown chip logic (RS_01 slice) ───────────────────────────────────
 local lastSkillCD = 0.0
-local curSkillId = ""
 
 local function popSkillReady()
 	skillKey.Text = "E"
 	skillStroke.Color = COL_STROKE_RDY
+	-- Ready pulse: the border thickens once, so the state reads even in
+	-- grayscale (shape/motion, not color alone).
+	skillStroke.Thickness = 2
+	local pulse = TweenService:Create(
+		skillStroke,
+		TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+		{ Thickness = 4 }
+	)
+	pulse:Play()
+	pulse.Completed:Connect(function()
+		TweenService:Create(
+			skillStroke,
+			TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+			{ Thickness = 2 }
+		):Play()
+	end)
 	local up = TweenService:Create(
 		skillChip,
 		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
@@ -2306,9 +3210,12 @@ end
 
 local function updateSkillCD()
 	curSkillId = attrStr("HRushSkillId", "")
-	local granted = (curRole == "Runner") and (curSkillId ~= "")
+	-- Role gating already happened in MovementController.grantedSkillId, so
+	-- "has a skill id" alone decides visibility here (debug flag aware).
+	local granted = (curSkillId ~= "")
 	skillChip.Visible = granted
 	skillCaption.Visible = granted
+	updateVisibility() -- refresh the cluster when only the skill chip remains
 	if not granted then
 		return
 	end
@@ -2322,6 +3229,7 @@ local function updateSkillCD()
 	if cd > 0 then
 		skillKey.Text = string.format("%.1f", cd)
 		skillStroke.Color = COL_STROKE_CD
+		skillStroke.Thickness = 2 -- cooldown state uses the resting border
 	elseif lastSkillCD > 0 then
 		popSkillReady() -- transition to 0: flash ready state
 	end

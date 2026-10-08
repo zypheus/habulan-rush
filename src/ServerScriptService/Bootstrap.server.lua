@@ -345,6 +345,9 @@ ensureCharacterDefaults()
 -- is testable in Studio Play right now. MatchService will own this event later.
 local DEBUG_AUTO_UNLOCK = true
 if DEBUG_AUTO_UNLOCK then
+	-- TEMP: mirror the debug round state so SkillService can gate casts
+	-- server-side. MatchService (T07) will own this attribute later.
+	ReplicatedStorage:SetAttribute("HRushRoundState", "MS_04")
 	Players.PlayerAdded:Connect(function(player)
 		player.CharacterAdded:Connect(function()
 			task.wait(1.5)

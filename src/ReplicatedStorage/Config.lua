@@ -142,6 +142,14 @@ Config.Events = {
 -- Schema per skill entry (see TDD §3.1):
 --   id, role, type, cooldown, duration, range, params, tell, weakness
 
+-- Debug switches for playtesting only.
+Config.Debug = {
+	-- TODO: set to false before submission
+	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
+	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
+	ShowSkillDebug = true, -- prints + airborne label for RS_01 testing
+}
+
 Config.Skills = {
 	RS_01 = {
 		id       = "RS_01",
@@ -151,7 +159,46 @@ Config.Skills = {
 		cooldown = 12,
 		duration = 0,
 		range    = 18,
-		params   = { height = 14, distance = 18 }, -- impulse values
+		params   = {
+			height = 14,            -- impulse: apex height in studs
+			distance = 18,          -- impulse: horizontal reach in studs
+			windup = 0.1,           -- crouch time before takeoff (s)
+			airtime = 0.76,         -- flight time (s); matches height/distance at g=196.2
+			untouchableHeight = 6,  -- root higher than this cannot be tagged (TM_05/TM_08)
+			landingRecovery = 0.2,  -- sprint disabled after touchdown (s)
+			lockDirection = true,   -- heading frozen at takeoff: no air steering
+			fovBoost = 8,           -- owner camera FOV kick at takeoff
+			shakeDuration = 0.2,    -- owner landing camera shake (s)
+			fovBackTime = 0.25,     -- FOV ease-back time on landing (s)
+			crouchScale = 0.6,      -- HipHeight multiplier during windup crouch
+			pendingTimeout = 1.0,   -- drop a lost server reply after this (s)
+			flightSlack = 0.25,     -- landing-poll safety margin over airtime (s)
+			minAirtime = 0.2,       -- ignore landings shorter than this after takeoff (s)
+			wallSpeedPct = 0.2,     -- jump ends if horizontal speed < pct of launch speed
+			wallSlowTime = 0.1,     -- ...and stays that slow for this long (s)
+		},
+		vfx = { -- every burst stays under 30 particles (mobile budget)
+			windupCount = 10,
+			landingCount = 16,
+			ringStart = 3,          -- takeoff ring start diameter (studs)
+			ringEnd = 11,           -- takeoff ring end diameter (studs)
+			ringTime = 0.35,        -- ring grow duration (s)
+			trailLifetime = 0.5,    -- air trail segment fade (s)
+			previewSize = 4,        -- owner-only landing preview ring (studs)
+			shakeAmp = 0.15,        -- landing shake offset (studs)
+			fovTime = 0.15,         -- FOV tween-in time (s)
+			landingRingTime = 0.25, -- landing ring grow/fade (s)
+			dustLifeMin = 0.35,     -- dust particle lifetime low (s)
+			dustLifeMax = 0.5,      -- dust particle lifetime high (s)
+			dustSpeedMin = 4,       -- dust kick speed low (studs/s)
+			dustSpeedMax = 9,       -- dust kick speed high (studs/s)
+			dustSize = 0.7,         -- dust particle start size (studs)
+		},
+		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
+			windup = "",            -- "Hup!" voice
+			takeoff = "",           -- launch whoosh
+			landing = "",           -- soft thud
+		},
 		tell     = { vfx = "DustRing",   sfx = "Hup" },
 		weakness = "No air steering",
 		counterCondition = "Escapes a pounce or Lambat while airborne",
