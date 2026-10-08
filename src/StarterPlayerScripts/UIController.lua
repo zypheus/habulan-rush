@@ -6,16 +6,18 @@
 --                 and spectator camera UI.
 -- See UI/UX Specification and Config.Match / Config.Events.
 --
--- HUD v1 (T09 playtest slice):
+-- HUD v1.1 (T09 playtest slice + RS_01 skill chip):
 --   • Stamina bar — bottom left, Runner-only (UI/UX Spec §2), fill tween-smoothed
 --     at the bridge's 10 Hz rate, pulses red when depleted (≤ StaminaDepletedMin)
 --   • Dash cooldown chip — "Q" keycap, vertical cooldown wipe + live countdown,
 --     pops green the instant it becomes ready
+--   • Skill chip — "E" keycap + skill name caption, cooldown wipe/countdown from
+--     Config.Skills (RS_01 slice); hides while HRushSkillId == "" (Taya / ungranted)
 -- Data source: HRush* attribute bridge on LocalPlayer (MovementController pushes
 -- at 10 Hz + forced on role/state/tag events). Poll-free via GetAttributeChangedSignal.
 --
--- TODO (T14): role banner, round countdown, scoreboard, skill bar.
--- TODO (T17): Implement Skill Draft UI.
+-- TODO (T14): role banner, round countdown, scoreboard, full skill bar.
+-- TODO (T17): Implement Skill Draft UI (slot picks beyond the TEMP test grant).
 -- TODO (T27): Implement clutch callouts and recap screens.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,7 +70,7 @@ local cluster = Instance.new("Frame")
 cluster.Name = "MoveCluster"
 cluster.AnchorPoint = Vector2.new(0, 1)
 cluster.Position = UDim2.fromScale(0.015, 0.97)
-cluster.Size = UDim2.fromOffset(300, 56)
+cluster.Size = UDim2.fromOffset(364, 56) -- room for stamina + dash chip + skill chip
 cluster.BackgroundTransparency = 1
 cluster.Parent = gui
 
@@ -164,6 +166,54 @@ chipCaption.Text = "DASH"
 chipCaption.TextColor3 = COL_TEXT
 chipCaption.TextStrokeTransparency = 0.6
 chipCaption.Parent = cluster
+
+-- Skill chip (right of the dash chip): "E" keycap + name caption, CD wipe.
+local skillChip = Instance.new("Frame")
+skillChip.Name = "SkillChip"
+skillChip.Position = UDim2.fromOffset(296, 10)
+skillChip.Size = UDim2.fromOffset(44, 44)
+skillChip.BackgroundColor3 = COL_PANEL
+skillChip.BackgroundTransparency = 0.15
+skillChip.BorderSizePixel = 0
+skillChip.Parent = cluster
+corner(skillChip, 8)
+local skillStroke = stroke(skillChip, COL_STROKE_CD, 2)
+
+local skillWipe = Instance.new("Frame") -- dark overlay shrinking top to bottom
+skillWipe.Name = "CooldownWipe"
+skillWipe.AnchorPoint = Vector2.new(0, 0)
+skillWipe.Position = UDim2.fromScale(0, 0)
+skillWipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+skillWipe.BackgroundColor3 = COL_COOLDOWN
+skillWipe.BackgroundTransparency = 0.25
+skillWipe.BorderSizePixel = 0
+skillWipe.ZIndex = 1
+skillWipe.Parent = skillChip
+corner(skillWipe, 8)
+
+local skillKey = Instance.new("TextLabel")
+skillKey.Name = "KeyOrCd"
+skillKey.BackgroundTransparency = 1
+skillKey.Size = UDim2.fromScale(1, 1)
+skillKey.Font = Enum.Font.GothamBold
+skillKey.TextSize = 18
+skillKey.Text = "E"
+skillKey.TextColor3 = COL_TEXT
+skillKey.TextStrokeTransparency = 0.5
+skillKey.ZIndex = 2
+skillKey.Parent = skillChip
+
+local skillCaption = Instance.new("TextLabel")
+skillCaption.Name = "SkillCaption"
+skillCaption.BackgroundTransparency = 1
+skillCaption.Position = UDim2.fromOffset(284, 44)
+skillCaption.Size = UDim2.fromOffset(76, 12)
+skillCaption.Font = Enum.Font.Gotham
+skillCaption.TextSize = 9
+skillCaption.Text = ""
+skillCaption.TextColor3 = COL_TEXT
+skillCaption.TextStrokeTransparency = 0.6
+skillCaption.Parent = cluster
 
 -- ── Attribute readers ─────────────────────────────────────────────────────────
 local function attrNum(name: string, fallback: number): number
@@ -263,6 +313,52 @@ local function updateDashCD()
 	lastDashCD = cd
 end
 
+-- ── Skill cooldown chip logic (RS_01 slice) ───────────────────────────────────
+local lastSkillCD = 0.0
+local curSkillId = ""
+
+local function popSkillReady()
+	skillKey.Text = "E"
+	skillStroke.Color = COL_STROKE_RDY
+	local up = TweenService:Create(
+		skillChip,
+		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(52, 52) }
+	)
+	up:Play()
+	up.Completed:Connect(function()
+		TweenService:Create(
+			skillChip,
+			TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.fromOffset(44, 44) }
+		):Play()
+	end)
+end
+
+local function updateSkillCD()
+	curSkillId = attrStr("HRushSkillId", "")
+	local granted = (curRole == "Runner") and (curSkillId ~= "")
+	skillChip.Visible = granted
+	skillCaption.Visible = granted
+	if not granted then
+		return
+	end
+	local sk = Config.Skills[curSkillId]
+	skillCaption.Text = sk and string.upper(sk.name) or ""
+	local cd = attrNum("HRushSkillCD", 0)
+	local total = math.max(0.01, sk and sk.cooldown or 1)
+	local ratio = math.clamp(cd / total, 0, 1)
+
+	skillWipe.Size = UDim2.fromScale(1, ratio)
+	if cd > 0 then
+		skillKey.Text = string.format("%.1f", cd)
+		skillStroke.Color = COL_STROKE_CD
+	elseif lastSkillCD > 0 then
+		popSkillReady() -- transition to 0: flash ready state
+	end
+	lastSkillCD = cd
+end
+
 -- ── Bridge wiring (poll-free) ─────────────────────────────────────────────────
 local function hookAttr(name: string, fn: () -> ())
 	local signal = LocalPlayer:GetAttributeChangedSignal(name)
@@ -273,15 +369,19 @@ end
 hookAttr("HRushStamina", updateStamina)
 hookAttr("HRushStaminaMax", updateStamina)
 hookAttr("HRushDashCD", updateDashCD)
+hookAttr("HRushSkillCD", updateSkillCD)
+hookAttr("HRushSkillId", updateSkillCD)
 hookAttr("HRushRole", function()
 	curRole = attrStr("HRushRole", curRole)
 	updateVisibility()
 	updateStamina()
+	updateSkillCD()
 end)
 hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
 
 updateVisibility()
 updateStamina()
 updateDashCD()
+updateSkillCD()
 
-print("[UIController] Loaded — HUD v1 (stamina bar + dash cooldown). T14 partial; T17, T27 TODO.")
+print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")

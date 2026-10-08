@@ -221,6 +221,10 @@ Config.Skills = {
 		weakness = "Lock disabled; small window; commits Taya forward",
 		counterCondition = "Tag a Runner within 2 s of using Hatak",
 	},
+	-- TEMP (T17 Skill Draft absent): skills granted for immediate playtesting.
+	-- Single source of truth — read by MovementController (client gates + HUD)
+	-- and SkillService (server validation). Remove when PickSkill owns unlocks.
+	testGrant = { "RS_01" },
 }
 
 -- ============================================================

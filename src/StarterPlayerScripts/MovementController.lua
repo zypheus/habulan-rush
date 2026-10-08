@@ -13,12 +13,18 @@
 --   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide gated to MS_04.
 --     NOTE (playtest): Bootstrap TEMP auto-fires MS_04/Runner 1.5s after spawn
 --     until MatchService T07 owns the state machine — without it you stay locked.
---   • Bindings (UI/UX Spec §4): PC Shift/Q/C · Gamepad L2-stick/B/R1 · Touch buttons
+--   • Bindings (UI/UX Spec §4): PC Shift/Q/C/E · Gamepad L2-stick/B/R1/X · Touch
 --   • Dash VFX: rear Trail ribbon + particle burst on Q (Config.Movement.DashVFX)
 --   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
+--   • Skill RS_01 Luksong Baka (T18 vertical slice): ballistic arc derived from
+--     Config.Skills.RS_01.params (height 14 / distance 18), no air steering
+--     (WalkSpeed 0) for the whole flight, 12s cooldown, cast on E / ButtonX /
+--     touch; executed locally (dash precedent) + RequestSkill → SkillService
+--     server CD ledger. Grant list: Config.Skills.testGrant (TEMP → T17).
 --
 -- Does NOT handle: tag detection/validation (TagService owns truth),
--- skill cooldowns (SkillService), timers/scores (MatchService), or lock camera.
+-- skill draft/unlocks (T17), remaining skills (RS_02/03, TS_*) and Diskarte
+-- (T18/T19), timers/scores (MatchService), or lock camera.
 --
 -- All numeric constants come exclusively from Config.Movement — zero hardcoding.
 
@@ -44,6 +50,8 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestDash = Remotes:WaitForChild("RequestDash") :: RemoteEvent
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent = Remotes:WaitForChild("TagEvent") :: RemoteEvent
+local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
+local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
 
 -- ── State ────────────────────────────────────────────────────────────────────
 -- Stamina
@@ -63,6 +71,12 @@ local isSliding = false
 local slideCooldownLeft = 0.0
 local slideTimer = 0.0
 local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
+
+-- Skill (RS_01 slice; server-side CD ledger lives in SkillService)
+local skillId = "" -- skill granted to the current role ("" = none)
+local skillCooldownLeft = 0.0
+local skillFlightLeft = 0.0 -- no-air-steering window (ballistic airtime + margin)
+local skillRequested = false -- buffered E / ButtonX / touch press
 
 -- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s, stamina rules unchanged.
 local boostLeft = 0.0
@@ -101,6 +115,11 @@ end
 -- Call this any time role / sprint / boost / lock state changes.
 local function applySpeed()
 	if not Humanoid then
+		return
+	end
+	if skillFlightLeft > 0 then
+		-- RS_01 "no air steering": hold WalkSpeed 0 for the whole skill flight.
+		Humanoid.WalkSpeed = 0
 		return
 	end
 	if inputLocked then
@@ -183,7 +202,22 @@ end
 -- from attributes on LocalPlayer (poll-free via GetAttributeChangedSignal):
 --   HRushStamina (0–100), HRushStaminaMax, HRushDashCD, HRushSlideCD,
 --   HRushDashing (bool), HRushSliding (bool), HRushBoost (seconds left),
---   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar).
+--   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar),
+--   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left).
+-- Grant lookup (TEMP list until T17 draft owns unlocks).
+local function grantedSkillId(): string
+	if role ~= "Runner" then
+		return ""
+	end
+	for _, id in Config.Skills.testGrant do
+		local sk = Config.Skills[id]
+		if sk and sk.role == role then
+			return id
+		end
+	end
+	return ""
+end
+
 local lastPush = 0.0
 local function pushAttributes(force: boolean?)
 	local now = os.clock()
@@ -199,6 +233,9 @@ local function pushAttributes(force: boolean?)
 	LocalPlayer:SetAttribute("HRushSliding", isSliding)
 	LocalPlayer:SetAttribute("HRushBoost", boostLeft)
 	LocalPlayer:SetAttribute("HRushRole", role)
+	skillId = grantedSkillId()
+	LocalPlayer:SetAttribute("HRushSkillId", skillId)
+	LocalPlayer:SetAttribute("HRushSkillCD", skillCooldownLeft)
 end
 
 -- ── Dash VFX (client-side juice) ─────────────────────────────────────────────
@@ -447,6 +484,92 @@ local function performSlide()
 	-- uses rewound server positions per TDD §4.3).
 end
 
+-- ── Skill: RS_01 Luksong Baka (T18 vertical slice) ───────────────────────────
+-- Spec §5 / System Spec: impulse to params.height (14) studs high and
+-- params.distance (18) studs forward, NO air steering, Config cooldown (12s).
+-- Ballistics derive from Workspace.Gravity so the arc genuinely reaches the
+-- configured height: vY = sqrt(2*g*H), airtime = 2*vY/g, vX = D / airtime.
+-- Cast is ground-only (v1 assumption — air-cast is a T18 balance question).
+-- Flow mirrors dash: local execution + RequestSkill notify for the server CD
+-- ledger (SkillService replies via SkillEvent; a deny re-arms the cooldown).
+local function endSkillFlight()
+	skillFlightLeft = 0
+	applySpeed() -- restores walk/sprint (or 0 when inputLocked)
+end
+
+local function performSkill()
+	if not roundLive or inputLocked then
+		return
+	end
+	if role ~= "Runner" then
+		return
+	end
+	if skillCooldownLeft > 0 or skillFlightLeft > 0 then
+		return
+	end
+	if isDashing or isSliding then
+		return
+	end
+	if not Humanoid or not HRP then
+		return
+	end
+	if Humanoid.Health <= 0 then
+		return
+	end
+	if Humanoid.FloorMaterial == Enum.Material.Air then
+		return -- ground cast only (v1)
+	end
+	if skillId == "" then
+		skillId = grantedSkillId()
+	end
+	local sk = Config.Skills[skillId]
+	if not sk then
+		return
+	end
+
+	-- Direction: current move input if any, else facing (same rule as dash).
+	local dir = Humanoid.MoveDirection
+	if dir.Magnitude < 0.1 then
+		dir = HRP.CFrame.LookVector
+	end
+	dir = Vector3.new(dir.X, 0, dir.Z)
+	if dir.Magnitude < 0.01 then
+		return
+	end
+	dir = dir.Unit
+
+	-- Derive the arc from config + engine gravity (never hardcode speeds).
+	local g = Workspace.Gravity
+	local vy = math.sqrt(2 * g * sk.params.height)
+	local airtime = (2 * vy) / g
+	local vh = sk.params.distance / airtime
+
+	skillCooldownLeft = sk.cooldown
+	skillFlightLeft = airtime + 0.25 -- margin; Landed ends it early
+	Humanoid.WalkSpeed = 0 -- no air steering from the very first frame
+	HRP.AssemblyLinearVelocity = Vector3.new(dir.X * vh, vy, dir.Z * vh)
+	pushAttributes(true)
+
+	-- Server keeps its own cooldown ledger and may deny (then we roll back).
+	RequestSkill:FireServer(skillId)
+end
+
+-- Server reply: accepted = nothing to do (already executed locally);
+-- denied = restore the cooldown so a desynced client cannot spam the cast.
+SkillEvent.OnClientEvent:Connect(function(sid: unknown, accepted: unknown)
+	if typeof(sid) ~= "string" or sid ~= skillId then
+		return
+	end
+	if accepted == false then
+		local sk = Config.Skills[sid]
+		if sk then
+			skillCooldownLeft = sk.cooldown
+		end
+		warn("[MovementController] SkillService denied " .. sid .. "; cooldown re-armed.")
+		pushAttributes(true)
+	end
+end)
+
 -- ── Cooldown & invuln ticking ────────────────────────────────────────────────
 local function tickCooldowns(dt: number)
 	if dashCooldownLeft > 0 then
@@ -457,6 +580,23 @@ local function tickCooldowns(dt: number)
 	end
 	if dashInvulnLeft > 0 then
 		dashInvulnLeft = math.max(0, dashInvulnLeft - dt)
+	end
+	if skillCooldownLeft > 0 then
+		skillCooldownLeft = math.max(0, skillCooldownLeft - dt)
+	end
+	if skillFlightLeft > 0 then
+		-- Ground contact ends the flight immediately. FloorMaterial poll (a
+		-- CONFIRMED Humanoid property) — Humanoid has no Landed event and no
+		-- GetStateChangedSignal (verified against the official API dump; a bad
+		-- member here aborts onCharacterAdded and kills the whole loop).
+		if Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air then
+			endSkillFlight()
+		else
+			skillFlightLeft = math.max(0, skillFlightLeft - dt)
+			if skillFlightLeft <= 0 then
+				endSkillFlight()
+			end
+		end
 	end
 	-- Post-tag boost countdown (F08); re-apply speed when it expires.
 	if boostLeft > 0 then
@@ -529,6 +669,10 @@ local function startHeartbeat()
 			slideRequested_GP = false
 			performSlide()
 		end
+		if skillRequested then
+			skillRequested = false
+			performSkill()
+		end
 	end)
 end
 
@@ -566,12 +710,15 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 			sprintHeld_GP = false
 		end
 		if not roundLive then
-			-- End any active slide/dash when the round is not live.
+			-- End any active slide/dash/skill-flight when the round is not live.
 			if isSliding then
 				endSlide()
 			end
 			if isDashing then
 				cancelDash()
+			end
+			if skillFlightLeft > 0 then
+				endSkillFlight()
 			end
 		end
 		applySpeed()
@@ -617,6 +764,8 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 		dashRequested_KB = true
 	elseif kc == Enum.KeyCode.C then
 		slideRequested_KB = true
+	elseif kc == Enum.KeyCode.E then
+		skillRequested = true -- Skill cast (UI/UX Spec §4)
 	end
 end
 
@@ -632,8 +781,8 @@ UserInputService.InputEnded:Connect(onInputEnded)
 
 -- ── Gamepad bindings (UI/UX Spec §4) ─────────────────────────────────────────
 -- Sprint: Left trigger hold (ButtonL2) OR left stick full tilt (see heartbeat).
--- Dash:   B (ButtonB). Slide: Right bumper (ButtonR1).
--- Diskarte Y (ButtonY) and Skill X (ButtonX) are owned by UIController/Skill UI.
+-- Dash:   B (ButtonB). Slide: Right bumper (ButtonR1). Skill: X (ButtonX).
+-- Diskarte Y (ButtonY) is owned by UIController (T22).
 local SPRINT_GP_ACTION = "HRUSH_Sprint_GP"
 local DASH_GP_ACTION = "HRUSH_Dash_GP"
 local SLIDE_GP_ACTION = "HRUSH_Slide_GP"
@@ -661,6 +810,14 @@ ContextActionService:BindAction(SLIDE_GP_ACTION, function(_name, state, _obj)
 	end
 	return Enum.ContextActionResult.Pass
 end, false, Enum.KeyCode.ButtonR1)
+
+local SKILL_GP_ACTION = "HRUSH_Skill_GP"
+ContextActionService:BindAction(SKILL_GP_ACTION, function(_name, state, _obj)
+	if state == Enum.UserInputState.Begin then
+		skillRequested = true
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.ButtonX)
 
 -- ── Mobile touch buttons (UI/UX Spec §4) ───────────────────────────────────────
 -- UIController creates on-screen Sprint / Dash / Slide buttons (min 64px).
@@ -698,12 +855,20 @@ local function hookMobileBindables()
 		return Enum.ContextActionResult.Pass
 	end, true)
 
+	ContextActionService:BindAction("HRUSH_Skill_Touch", function(_name, state, _obj)
+		if state == Enum.UserInputState.Begin then
+			skillRequested = true
+		end
+		return Enum.ContextActionResult.Pass
+	end, true)
+
 	-- Legacy BindableEvent bridge (UIController-created buttons, if present).
 	-- Retry a few times: UIController may load after this controller.
 	task.spawn(function()
 		for _ = 1, 50 do
 			local dashBe = ReplicatedStorage:FindFirstChild("MobileDashPressed")
 			local slideBe = ReplicatedStorage:FindFirstChild("MobileSlidePressed")
+			local skillBe = ReplicatedStorage:FindFirstChild("MobileSkillPressed")
 			local sprintBegin = ReplicatedStorage:FindFirstChild("MobileSprintBegan")
 			local sprintEnd = ReplicatedStorage:FindFirstChild("MobileSprintEnded")
 			if dashBe and dashBe:IsA("BindableEvent") then
@@ -716,6 +881,11 @@ local function hookMobileBindables()
 					slideRequested_KB = true
 				end)
 			end
+			if skillBe and skillBe:IsA("BindableEvent") then
+				skillBe.Event:Connect(function()
+					skillRequested = true
+				end)
+			end
 			if sprintBegin and sprintBegin:IsA("BindableEvent") then
 				sprintBegin.Event:Connect(function()
 					sprintHeld_KB = true
@@ -726,7 +896,7 @@ local function hookMobileBindables()
 					sprintHeld_KB = false
 				end)
 			end
-			if dashBe or slideBe or sprintBegin or sprintEnd then
+			if dashBe or slideBe or skillBe or sprintBegin or sprintEnd then
 				break
 			end
 			task.wait(0.2)
@@ -765,17 +935,26 @@ local function onCharacterAdded(char: Model)
 	dashRequested_GP = false
 	slideRequested_KB = false
 	slideRequested_GP = false
+	skillCooldownLeft = 0
+	skillFlightLeft = 0
+	skillRequested = false
+
+	-- RS_01 landing detection lives in tickCooldowns (FloorMaterial poll).
+	-- Do NOT wire Humanoid.Landed / GetStateChangedSignal here — neither exists
+	-- and a missing member aborts onCharacterAdded (kills heartbeat, sprint,
+	-- dash and skill for the whole session). Only confirmed APIs in this block.
 
 	applySpeed()
 	pushAttributes(true)
 	startHeartbeat()
 	hookMobileBindables()
 
-	-- Death cleanup: end slide/dash visuals so respawn state is clean.
+	-- Death cleanup: end slide/dash/skill visuals so respawn state is clean.
 	Humanoid.Died:Connect(function()
 		if isSliding then
 			isSliding = false
 		end
+		skillFlightLeft = 0 -- a flight cannot outlive its character
 		if dashConn then
 			dashConn:Disconnect()
 			dashConn = nil
@@ -783,6 +962,10 @@ local function onCharacterAdded(char: Model)
 		isDashing = false
 		boostLeft = 0.0
 	end)
+
+	-- Diagnostic marker: if this line is missing from the log, onCharacterAdded
+	-- aborted before finishing (check CreatorError above it).
+	print("[MovementController] character attached — heartbeat + input hooks live")
 end
 
 if LocalPlayer.Character then
@@ -791,4 +974,4 @@ end
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 
 pushAttributes(true)
-print("[MovementController] Loaded — T09 complete (walk/sprint/stamina/dash/slide/boost).")
+print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/dash/slide/boost/skill).")

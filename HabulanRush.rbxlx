@@ -1,805 +1,970 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-	<External>null</External>
-	<External>nil</External>
-	<Item class="Workspace" referent="RBX412EAB7E32814DA59468C74A5A6E3867">
-		<Properties>
-			<float name="AirDensity">0.00120000006</float>
-			<float name="AirTurbulenceIntensity">0</float>
-			<bool name="AllowThirdPartySales">false</bool>
-			<token name="AuthorityMode">1</token>
-			<token name="AvatarUnificationMode">0</token>
-			<token name="ClientAnimatorThrottling">0</token>
-			<Ref name="CurrentCamera">RBXB4D835F8ECC446DEB43F30D7952FADF0</Ref>
-			<double name="DistributedGameTime">0</double>
-			<token name="EnableSLIMAvatars">0</token>
-			<token name="ExpandedTerrain">0</token>
-			<bool name="ExplicitAutoJoints">true</bool>
-			<bool name="FallHeightEnabled">true</bool>
-			<float name="FallenPartsDestroyHeight">-500</float>
-			<token name="FluidForces">0</token>
-			<Vector3 name="GlobalWind">
-				<X>0</X>
-				<Y>0</Y>
-				<Z>0</Z>
-			</Vector3>
-			<float name="Gravity">196.199997</float>
-			<token name="IKControlConstraintSupport">0</token>
-			<token name="ImprovedAnimationConstraint">0</token>
-			<token name="ImprovedPhysicsReplication">0</token>
-			<token name="LayeredClothingCacheOptimizations">0</token>
-			<token name="LuauTypeCheckMode">0</token>
-			<token name="MapTVRemoteToGamepadKeycodes">0</token>
-			<token name="MeshPartHeadsAndAccessories">0</token>
-			<token name="MeshStreamingAndImprovedLods">0</token>
-			<token name="ModelStreamingBehavior">0</token>
-			<token name="NextGenerationReplication">0</token>
-			<token name="PathfindingUseImprovedSearch">0</token>
-			<token name="PhysicsSteppingMethod">0</token>
-			<token name="PlayerCharacterDestroyBehavior">0</token>
-			<token name="PlayerScriptsUseInputActionSystem">0</token>
-			<token name="PredictiveStreamingMode">0</token>
-			<token name="PrimalPhysicsSolver">0</token>
-			<token name="RejectCharacterDeletions">0</token>
-			<token name="RenderingCacheOptimizations">0</token>
-			<token name="ReplicateInstanceDestroySetting">0</token>
-			<token name="Retargeting">0</token>
-			<token name="SandboxedInstanceMode">0</token>
-			<token name="SignalBehavior2">0</token>
-			<token name="StreamOutBehavior">0</token>
-			<bool name="StreamingAdaptiveRadius">false</bool>
-			<bool name="StreamingEnabled">false</bool>
-			<token name="StreamingIntegrityMode">0</token>
-			<int name="StreamingMinRadius">64</int>
-			<int name="StreamingTargetRadius">1024</int>
-			<bool name="TerrainWeldsFixed">true</bool>
-			<token name="TouchEventsUseCollisionGroups">0</token>
-			<bool name="TouchesUseCollisionGroups">false</bool>
-			<token name="UseFixedSimulation">0</token>
-			<token name="UseInputSink">0</token>
-			<token name="UseNewLuauTypeSolver">1</token>
-			<token name="ValidateEnabledProximityPrompt">0</token>
-			<bool name="AutoSimulate">true</bool>
-			<BinaryString name="CollisionGroupData">AQEABP////8HRGVmYXVsdA==</BinaryString>
-			<Vector3 name="GravityDirection">
-				<X>0</X>
-				<Y>-1</Y>
-				<Z>0</Z>
-			</Vector3>
-			<float name="SimulationRate">1</float>
-			<float name="Wind">0</float>
-			<Vector3 name="WindDirection">
-				<X>0</X>
-				<Y>0</Y>
-				<Z>0</Z>
-			</Vector3>
-			<token name="LevelOfDetail">0</token>
-			<CoordinateFrame name="ModelMeshCFrame">
-				<X>0</X>
-				<Y>0</Y>
-				<Z>0</Z>
-				<R00>1</R00>
-				<R01>0</R01>
-				<R02>0</R02>
-				<R10>0</R10>
-				<R11>1</R11>
-				<R12>0</R12>
-				<R20>0</R20>
-				<R21>0</R21>
-				<R22>1</R22>
-			</CoordinateFrame>
-			<SharedString name="ModelMeshData">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<Vector3 name="ModelMeshSize">
-				<X>0</X>
-				<Y>0</Y>
-				<Z>0</Z>
-			</Vector3>
-			<token name="ModelStreamingMode">0</token>
-			<bool name="NeedsPivotMigration">false</bool>
-			<Ref name="PrimaryPart">null</Ref>
-			<float name="ScaleFactor">1</float>
-			<SharedString name="SlimHash">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<OptionalCoordinateFrame name="WorldPivotData">
-				<CFrame>
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-					<R00>1</R00>
-					<R01>0</R01>
-					<R02>0</R02>
-					<R10>0</R10>
-					<R11>1</R11>
-					<R12>0</R12>
-					<R20>0</R20>
-					<R21>0</R21>
-					<R22>1</R22>
-				</CFrame>
-			</OptionalCoordinateFrame>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Workspace</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000002</UniqueId>
-		</Properties>
-		<Item class="Terrain" referent="RBXA71CA4EBE1BF45CA88A0B9C2CF77F3A0">
-			<Properties>
-				<token name="AcquisitionMethod">0</token>
-				<bool name="Decoration">false</bool>
-				<float name="GrassLength">0.699999988</float>
-				<BinaryString name="MaterialColors"><![CDATA[AAAAAAAAan8/P39rf2Y/ilY+j35fi21PZmxvZbDqw8faiVpHOi4kHh4lZlw76JxKc3trhHta
-gcLgc4RKxr21zq2UlJSM]]></BinaryString>
-				<SharedString name="Materials">leDEa27wHRPaBssaK0OoqQ==</SharedString>
-				<BinaryString name="PhysicsGrid">AgMAAAAAAAAAAAAAAAA=</BinaryString>
-				<BinaryString name="SmoothGrid">AQU=</BinaryString>
-				<bool name="SmoothVoxelsUpgraded">false</bool>
-				<AssetContentMap name="VoxelGridAssetContentMap">[]</AssetContentMap>
-				<Color3 name="WaterColor">
-					<R>0.0500000007</R>
-					<G>0.330000013</G>
-					<B>0.360000014</B>
-				</Color3>
-				<float name="WaterReflectance">1</float>
-				<float name="WaterTransparency">0.300000012</float>
-				<float name="WaterWaveSize">0.150000006</float>
-				<float name="WaterWaveSpeed">10</float>
-				<bool name="Anchored">true</bool>
-				<bool name="AudioCanCollide">true</bool>
-				<float name="BackParamA">-0.5</float>
-				<float name="BackParamB">0.5</float>
-				<token name="BackSurface">0</token>
-				<token name="BackSurfaceInput">0</token>
-				<float name="BottomParamA">-0.5</float>
-				<float name="BottomParamB">0.5</float>
-				<token name="BottomSurface">4</token>
-				<token name="BottomSurfaceInput">0</token>
-				<CoordinateFrame name="CFrame">
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-					<R00>1</R00>
-					<R01>0</R01>
-					<R02>0</R02>
-					<R10>0</R10>
-					<R11>1</R11>
-					<R12>0</R12>
-					<R20>0</R20>
-					<R21>0</R21>
-					<R22>1</R22>
-				</CoordinateFrame>
-				<bool name="CanCollide">true</bool>
-				<bool name="CanQuery">true</bool>
-				<bool name="CanTouch">true</bool>
-				<bool name="CastShadow">true</bool>
-				<string name="CollisionGroup">Default</string>
-				<int name="CollisionGroupId">0</int>
-				<Color3uint8 name="Color3uint8">4288914085</Color3uint8>
-				<PhysicalProperties name="CustomPhysicalProperties">
-					<CustomPhysics>false</CustomPhysics>
-				</PhysicalProperties>
-				<bool name="EnableFluidForces">true</bool>
-				<float name="FrontParamA">-0.5</float>
-				<float name="FrontParamB">0.5</float>
-				<token name="FrontSurface">0</token>
-				<token name="FrontSurfaceInput">0</token>
-				<float name="LeftParamA">-0.5</float>
-				<float name="LeftParamB">0.5</float>
-				<token name="LeftSurface">0</token>
-				<token name="LeftSurfaceInput">0</token>
-				<bool name="Locked">true</bool>
-				<bool name="Massless">false</bool>
-				<token name="Material">256</token>
-				<string name="MaterialVariantSerialized"></string>
-				<CoordinateFrame name="PivotOffset">
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-					<R00>1</R00>
-					<R01>0</R01>
-					<R02>0</R02>
-					<R10>0</R10>
-					<R11>1</R11>
-					<R12>0</R12>
-					<R20>0</R20>
-					<R21>0</R21>
-					<R22>1</R22>
-				</CoordinateFrame>
-				<float name="Reflectance">0</float>
-				<float name="RightParamA">-0.5</float>
-				<float name="RightParamB">0.5</float>
-				<token name="RightSurface">0</token>
-				<token name="RightSurfaceInput">0</token>
-				<int name="RootPriority">0</int>
-				<Vector3 name="RotVelocity">
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-				</Vector3>
-				<float name="TopParamA">-0.5</float>
-				<float name="TopParamB">0.5</float>
-				<token name="TopSurface">3</token>
-				<token name="TopSurfaceInput">0</token>
-				<float name="Transparency">0</float>
-				<Vector3 name="Velocity">
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-				</Vector3>
-				<Vector3 name="size">
-					<X>2044</X>
-					<Y>252</Y>
-					<Z>2044</Z>
-				</Vector3>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">Terrain</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ee</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="Camera" referent="RBXB4D835F8ECC446DEB43F30D7952FADF0">
-			<Properties>
-				<CoordinateFrame name="CFrame">
-					<X>-1.12113059</X>
-					<Y>30.2301769</Y>
-					<Z>30.9126778</Z>
-					<R00>1</R00>
-					<R01>0</R01>
-					<R02>-0</R02>
-					<R10>-0</R10>
-					<R11>0.780868828</R11>
-					<R12>0.624695063</R12>
-					<R20>0</R20>
-					<R21>-0.624695063</R21>
-					<R22>0.780868828</R22>
-				</CoordinateFrame>
-				<Ref name="CameraSubject">null</Ref>
-				<token name="CameraType">0</token>
-				<float name="FieldOfView">70</float>
-				<token name="FieldOfViewMode">0</token>
-				<CoordinateFrame name="Focus">
-					<X>-1.12113059</X>
-					<Y>10.2301769</Y>
-					<Z>5.91267776</Z>
-					<R00>1</R00>
-					<R01>0</R01>
-					<R02>0</R02>
-					<R10>0</R10>
-					<R11>1</R11>
-					<R12>0</R12>
-					<R20>0</R20>
-					<R21>0</R21>
-					<R22>1</R22>
-				</CoordinateFrame>
-				<bool name="HeadLocked">true</bool>
-				<float name="HeadScale">1</float>
-				<bool name="VRTiltAndRollEnabled">false</bool>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">Camera</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003fe</UniqueId>
-			</Properties>
-		</Item>
-	</Item>
-	<Item class="TimerService" referent="RBX6B3D5BB81B544BFE8460280580B4C430">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">TimerService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000364</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="CollectionService" referent="RBXFAD6DD9532F94733A30F6AC48B1CFF37">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">CollectionService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000365</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="SoundService" referent="RBXCE4D95AB163E46DA987B3CB691EB3EF9">
-		<Properties>
-			<bool name="AcousticSimulationEnabled">false</bool>
-			<token name="AmbientReverb">0</token>
-			<token name="AudioApiByDefault">0</token>
-			<token name="CharacterSoundsUseNewApi">0</token>
-			<token name="DefaultListenerLocation">0</token>
-			<bool name="DiffractionEnabled">true</bool>
-			<float name="DistanceFactor">3.32999992</float>
-			<float name="DopplerScale">1</float>
-			<bool name="IsNewExpForAudioApiByDefault">false</bool>
-			<CoordinateFrame name="ListenerCFrame">
-				<X>0</X>
-				<Y>0</Y>
-				<Z>0</Z>
-				<R00>1</R00>
-				<R01>0</R01>
-				<R02>0</R02>
-				<R10>0</R10>
-				<R11>1</R11>
-				<R12>0</R12>
-				<R20>0</R20>
-				<R21>0</R21>
-				<R22>1</R22>
-			</CoordinateFrame>
-			<Ref name="ListenerObject">null</Ref>
-			<token name="ListenerType">0</token>
-			<bool name="OcclusionEnabled">true</bool>
-			<bool name="RespectFilteringEnabled">false</bool>
-			<bool name="ReverbEnabled">true</bool>
-			<float name="RolloffScale">1</float>
-			<token name="VolumetricAudio">1</token>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">SoundService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000366</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="VideoCaptureService" referent="RBXFD9FCEEF7DF34A86B1A81B28DA07F4B9">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">VideoCaptureService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000372</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="NonReplicatedCSGDictionaryService" referent="RBX0C89223546EB4973894AFAE312308486">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">NonReplicatedCSGDictionaryService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000373</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="CSGDictionaryService" referent="RBX4FFB6D4800CE4678A2A3548EAF87437E">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">CSGDictionaryService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000374</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="Chat" referent="RBX8B5E94A522204863BB518A6B7BB6C977">
-		<Properties>
-			<bool name="BubbleChatEnabled">false</bool>
-			<bool name="IsAutoMigrated">false</bool>
-			<bool name="LoadDefaultChat">true</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Chat</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000037a</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="Players" referent="RBX47532671D286498CABE8AEAC7C2D9BA0">
-		<Properties>
-			<bool name="BanningEnabled">true</bool>
-			<bool name="CharacterAutoLoads">true</bool>
-			<int name="MaxPlayersInternal">12</int>
-			<int name="PreferredPlayersInternal">0</int>
-			<float name="RespawnTime">5</float>
-			<bool name="UseStrafingAnimations">false</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Players</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000037c</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="ReplicatedFirst" referent="RBXFAAE046A29FA42AC86F6AD0C387DDCCD">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ReplicatedFirst</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000037f</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="TweenService" referent="RBX71B9BAB7ED7C48A3A59B10F3504F911E">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">TweenService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000381</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="MaterialService" referent="RBXCF17095981234BFA8D628B97D8530EC4">
-		<Properties>
-			<string name="AsphaltName">Asphalt</string>
-			<string name="BasaltName">Basalt</string>
-			<string name="BrickName">Brick</string>
-			<string name="CardboardName">Cardboard</string>
-			<string name="CarpetName">Carpet</string>
-			<string name="CeramicTilesName">CeramicTiles</string>
-			<string name="ClayRoofTilesName">ClayRoofTiles</string>
-			<string name="CobblestoneName">Cobblestone</string>
-			<string name="ConcreteName">Concrete</string>
-			<string name="CorrodedMetalName">CorrodedMetal</string>
-			<string name="CrackedLavaName">CrackedLava</string>
-			<string name="DiamondPlateName">DiamondPlate</string>
-			<string name="FabricName">Fabric</string>
-			<string name="FoilName">Foil</string>
-			<string name="GlacierName">Glacier</string>
-			<string name="GraniteName">Granite</string>
-			<string name="GrassName">Grass</string>
-			<string name="GroundName">Ground</string>
-			<string name="IceName">Ice</string>
-			<string name="LeafyGrassName">LeafyGrass</string>
-			<string name="LeatherName">Leather</string>
-			<string name="LimestoneName">Limestone</string>
-			<string name="MarbleName">Marble</string>
-			<string name="MetalName">Metal</string>
-			<string name="MudName">Mud</string>
-			<string name="PavementName">Pavement</string>
-			<string name="PebbleName">Pebble</string>
-			<string name="PlasterName">Plaster</string>
-			<string name="PlasticName">Plastic</string>
-			<string name="RockName">Rock</string>
-			<string name="RoofShinglesName">RoofShingles</string>
-			<string name="RubberName">Rubber</string>
-			<string name="SaltName">Salt</string>
-			<string name="SandName">Sand</string>
-			<string name="SandstoneName">Sandstone</string>
-			<string name="SlateName">Slate</string>
-			<string name="SmoothPlasticName">SmoothPlastic</string>
-			<string name="SnowName">Snow</string>
-			<bool name="Use2022MaterialsXml">false</bool>
-			<string name="WoodName">Wood</string>
-			<string name="WoodPlanksName">WoodPlanks</string>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">MaterialService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000382</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="TextChatService" referent="RBXC3B0C22EA8FF40D7A2D132EF0BEACBE6">
-		<Properties>
-			<bool name="ChatTranslationFTUXShown">true</bool>
-			<bool name="ChatTranslationToggleEnabled">false</bool>
-			<token name="ChatVersion">0</token>
-			<bool name="CreateDefaultCommands">true</bool>
-			<bool name="CreateDefaultTextChannels">true</bool>
-			<bool name="HasSeenDeprecationDialog">false</bool>
-			<bool name="IsLegacyChatDisabled">false</bool>
-			<token name="PlatformIntegratedChat">0</token>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">TextChatService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000383</UniqueId>
-		</Properties>
-		<Item class="ChatWindowConfiguration" referent="RBXF01AE493487E43709EE40F214CBA3609">
-			<Properties>
-				<Color3 name="BackgroundColor3">
-					<R>0.0980392173</R>
-					<G>0.105882354</G>
-					<B>0.113725491</B>
-				</Color3>
-				<double name="BackgroundTransparency">0.2999999999999999889</double>
-				<bool name="Enabled">true</bool>
-				<Font name="FontFace">
-					<Family><url>rbxasset://fonts/families/GothamSSm.json</url></Family>
-					<Weight>500</Weight>
-					<Style>Normal</Style>
-					<CachedFaceId><url>rbxasset://fonts/Montserrat-Medium.ttf</url></CachedFaceId>
-				</Font>
-				<float name="HeightScale">1</float>
-				<token name="HorizontalAlignment">1</token>
-				<token name="TextChannelDisplayMode">0</token>
-				<Color3 name="TextColor3">
-					<R>1</R>
-					<G>1</G>
-					<B>1</B>
-				</Color3>
-				<int64 name="TextSize">14</int64>
-				<Color3 name="TextStrokeColor3">
-					<R>0</R>
-					<G>0</G>
-					<B>0</B>
-				</Color3>
-				<double name="TextStrokeTransparency">0.5</double>
-				<token name="VerticalAlignment">1</token>
-				<float name="WidthScale">1</float>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">ChatWindowConfiguration</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003f0</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="ChatInputBarConfiguration" referent="RBX60B923B24AA148DA8E45A089138E4128">
-			<Properties>
-				<bool name="AutocompleteEnabled">true</bool>
-				<Color3 name="BackgroundColor3">
-					<R>0.0980392173</R>
-					<G>0.105882354</G>
-					<B>0.113725491</B>
-				</Color3>
-				<double name="BackgroundTransparency">0.2000000000000000111</double>
-				<bool name="Enabled">true</bool>
-				<Font name="FontFace">
-					<Family><url>rbxasset://fonts/families/GothamSSm.json</url></Family>
-					<Weight>500</Weight>
-					<Style>Normal</Style>
-					<CachedFaceId><url>rbxasset://fonts/Montserrat-Medium.ttf</url></CachedFaceId>
-				</Font>
-				<token name="KeyboardKeyCode">47</token>
-				<Color3 name="PlaceholderColor3">
-					<R>0.698039234</R>
-					<G>0.698039234</G>
-					<B>0.698039234</B>
-				</Color3>
-				<Ref name="TargetTextChannel">null</Ref>
-				<Color3 name="TextColor3">
-					<R>1</R>
-					<G>1</G>
-					<B>1</B>
-				</Color3>
-				<int64 name="TextSize">14</int64>
-				<Color3 name="TextStrokeColor3">
-					<R>0</R>
-					<G>0</G>
-					<B>0</B>
-				</Color3>
-				<double name="TextStrokeTransparency">0.5</double>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">ChatInputBarConfiguration</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003f1</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="BubbleChatConfiguration" referent="RBX223D800346FB4CE2BAEB1780E5562F71">
-			<Properties>
-				<string name="AdorneeName">HumanoidRootPart</string>
-				<Color3 name="BackgroundColor3">
-					<R>0.980392158</R>
-					<G>0.980392158</G>
-					<B>0.980392158</B>
-				</Color3>
-				<double name="BackgroundTransparency">0.10000000000000000555</double>
-				<float name="BubbleDuration">15</float>
-				<float name="BubblesSpacing">6</float>
-				<bool name="Enabled">true</bool>
-				<token name="Font">18</token>
-				<Font name="FontFace">
-					<Family><url>rbxasset://fonts/families/GothamSSm.json</url></Family>
-					<Weight>500</Weight>
-					<Style>Normal</Style>
-					<CachedFaceId><url>rbxasset://fonts/Montserrat-Medium.ttf</url></CachedFaceId>
-				</Font>
-				<Vector3 name="LocalPlayerStudsOffset">
-					<X>0</X>
-					<Y>0</Y>
-					<Z>0</Z>
-				</Vector3>
-				<float name="MaxBubbles">3</float>
-				<float name="MaxDistance">100</float>
-				<float name="MinimizeDistance">40</float>
-				<bool name="TailVisible">true</bool>
-				<Color3 name="TextColor3">
-					<R>0.223529413</R>
-					<G>0.23137255</G>
-					<B>0.239215687</B>
-				</Color3>
-				<int64 name="TextSize">16</int64>
-				<float name="VerticalStudsOffset">0</float>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">BubbleChatConfiguration</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003f2</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="ChannelTabsConfiguration" referent="RBX9D6749AA2C2A440F90CEF1C37098B5F4">
-			<Properties>
-				<Color3 name="BackgroundColor3">
-					<R>0.0980392173</R>
-					<G>0.105882354</G>
-					<B>0.113725491</B>
-				</Color3>
-				<double name="BackgroundTransparency">0</double>
-				<bool name="Enabled">false</bool>
-				<Font name="FontFace">
-					<Family><url>rbxasset://fonts/families/BuilderSans.json</url></Family>
-					<Weight>700</Weight>
-					<Style>Normal</Style>
-					<CachedFaceId><url>rbxasset://fonts/BuilderSans-Bold.otf</url></CachedFaceId>
-				</Font>
-				<Color3 name="HoverBackgroundColor3">
-					<R>0.490196079</R>
-					<G>0.490196079</G>
-					<B>0.490196079</B>
-				</Color3>
-				<Color3 name="SelectedTabTextColor3">
-					<R>1</R>
-					<G>1</G>
-					<B>1</B>
-				</Color3>
-				<Color3 name="TextColor3">
-					<R>0.686274529</R>
-					<G>0.686274529</G>
-					<B>0.686274529</B>
-				</Color3>
-				<int64 name="TextSize">18</int64>
-				<Color3 name="TextStrokeColor3">
-					<R>0</R>
-					<G>0</G>
-					<B>0</B>
-				</Color3>
-				<double name="TextStrokeTransparency">1</double>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">ChannelTabsConfiguration</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003f3</UniqueId>
-			</Properties>
-		</Item>
-	</Item>
-	<Item class="PermissionsService" referent="RBX0EDEB49747934F2895CCA0BBABF4E383">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">PermissionsService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000385</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="PlayerEmulatorService" referent="RBXC13E5F4361A94804A3D9C9060FEF47D2">
-		<Properties>
-			<bool name="CustomPoliciesEnabled">false</bool>
-			<string name="EmulatedCountryCode"></string>
-			<string name="EmulatedGameLocale"></string>
-			<bool name="PlayerEmulationEnabled">false</bool>
-			<bool name="PseudolocalizationEnabled">false</bool>
-			<BinaryString name="SerializedEmulatedPolicyInfo"></BinaryString>
-			<int name="TextElongationFactor">0</int>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">PlayerEmulatorService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000386</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="StudioData" referent="RBXC57F259A750241E5A20AA9E8337107B6">
-		<Properties>
-			<bool name="EnableScriptCollabByDefaultOnLoad">false</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">StudioData</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000389</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="StarterPlayer" referent="19">
-		<Properties>
-			<bool name="AllowCustomAnimations">true</bool>
-			<bool name="AutoJumpEnabled">true</bool>
-			<token name="AvatarJointUpgrade_SerializedRollout">0</token>
-			<float name="CameraMaxZoomDistance">400</float>
-			<float name="CameraMinZoomDistance">0.5</float>
-			<token name="CameraMode">0</token>
-			<bool name="CharacterBreakJointsOnDeath">true</bool>
-			<float name="CharacterJumpHeight">7.19999981</float>
-			<float name="CharacterJumpPower">50</float>
-			<float name="CharacterMaxSlopeAngle">89</float>
-			<bool name="CharacterUseJumpPower">true</bool>
-			<float name="CharacterWalkSpeed">16</float>
-			<bool name="ClassicDeath">true</bool>
-			<bool name="CreateDefaultPlayerModule">true</bool>
-			<token name="DevCameraOcclusionMode">0</token>
-			<token name="DevComputerCameraMovementMode">0</token>
-			<token name="DevComputerMovementMode">0</token>
-			<token name="DevTouchCameraMovementMode">0</token>
-			<token name="DevTouchMovementMode">0</token>
-			<token name="EnableDynamicHeads">0</token>
-			<bool name="EnableMouseLockOption">true</bool>
-			<token name="GameSettingsAvatar">1</token>
-			<token name="GameSettingsR15Collision">0</token>
-			<float name="HealthDisplayDistance">100</float>
-			<bool name="LoadCharacterAppearance">true</bool>
-			<token name="LoadCharacterLayeredClothing">0</token>
-			<token name="LuaCharacterController">0</token>
-			<float name="NameDisplayDistance">100</float>
-			<Ref name="PlaceAvatarRules">null</Ref>
-			<int name="PlayerModuleStatus">0</int>
-			<bool name="UserEmotesEnabled">true</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">StarterPlayer</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000038b</UniqueId>
-		</Properties>
-		<Item class="StarterPlayerScripts" referent="20">
-			<Properties>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">StarterPlayerScripts</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ea</UniqueId>
-			</Properties>
-			<Item class="LocalScript" referent="21">
-				<Properties>
-					<ProtectedString name="Source"><![CDATA[--!strict
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="ModuleScript" referent="1">
+      <Properties>
+        <string name="Name">Config</string>
+        <string name="Source"><![CDATA[--!strict
+-- ReplicatedStorage/Config.lua
+-- Single source of truth for ALL tunable values in Habulan Rush.
+-- Zero hardcoding anywhere else in the codebase. All numbers come from here.
+-- Locked values from DESIGN_LOCK.md (2026-10-07) are marked [LOCKED].
+-- Values marked [SD] are Spec Defaults pending team confirmation.
+
+local Config = {}
+
+-- ============================================================
+-- MOVEMENT
+-- ============================================================
+Config.Movement = {
+	-- Runner speeds (studs/s)
+	RunnerWalkSpeed   = 16,   -- [LOCKED via TDD §3]
+	RunnerSprintSpeed = 21,   -- [LOCKED via TDD §3]
+
+	-- Stamina
+	StaminaMax         = 100,
+	StaminaDrainRate   = 20,  -- per second while sprinting
+	StaminaRegenRate   = 12,  -- per second after RegenDelay
+	StaminaRegenDelay  = 1.0, -- seconds without sprinting before regen starts
+	StaminaDepletedMin = 10,  -- must reach this before sprint re-enables after depletion [SD]
+
+	-- Dash
+	DashDistance           = 12,   -- studs
+	DashDuration           = 0.2,  -- seconds
+	DashCooldown           = 6.0,  -- seconds
+	DashPounceInvulnTime   = 0.15, -- [LOCKED F07] seconds of pounce invulnerability (not touch/Tsinelas)
+
+	-- Slide
+	SlideDuration     = 0.6,  -- seconds
+	SlideCooldown     = 3.0,  -- seconds
+	SlideHitboxScale  = 0.5,  -- [SD] 50% height
+
+	-- Taya
+	TayaSpeed         = 18,   -- studs/s constant, no stamina
+
+	-- Post-tag speed boost for ex-Taya [SD F08]
+	PostTagSpeedBoostMult     = 1.20, -- multiplies base walk and sprint
+	PostTagSpeedBoostDuration = 2.0,  -- seconds
+
+	-- Dash VFX (client-predicted juice; transient — must decay to rest).
+	-- Ribbon afterimage + one-shot burst on dash start. All values from here.
+	DashVFX = {
+		Enabled          = true,
+		TrailLifetime    = 0.35,  -- s the ribbon lingers AFTER the dash ends
+		BurstCount       = 16,    -- particles spawned at dash start
+		ParticleLifetime = 0.30,  -- s each burst particle lives
+		ParticleSpeedMin = 8,     -- studs/s backward spread (min)
+		ParticleSpeedMax = 18,    -- studs/s backward spread (max)
+		ColorStart       = Color3.fromRGB(130, 225, 255), -- cyan flash
+		ColorEnd         = Color3.fromRGB(150, 130, 255), -- violet fade
+		SizeStart        = 0.7,   -- studs at birth, shrinks to 0
+		TransparencyIn   = 0.2,   -- birth transparency (0 = opaque, 1 = invisible)
+		LightEmission    = 0.7,   -- glow strength
+	},
+}
+
+-- ============================================================
+-- TAG SYSTEM
+-- ============================================================
+Config.Tag = {
+	TouchTagRange       = 3,    -- studs
+	SafeWindowDuration  = 2.0,  -- seconds [LOCKED F06: longest applies, no stack]
+	LockDelayDuration   = 1.0,  -- seconds (gates target lock only, not touch/pounce)
+
+	-- Pounce
+	PounceWindupTime    = 0.35, -- seconds telegraph on client
+	PounceLungeDistance = 14,   -- studs
+	PounceLungeSpeed    = 45,   -- studs/s
+	PounceHitRadius     = 4,    -- studs
+	PounceMissStunTime  = 1.0,  -- seconds self-stun on miss
+	PounceCooldown      = 3.0,  -- seconds after miss
+
+	-- Ring buffer for lag rewind
+	RewindBufferDuration = 0.5,  -- seconds of Runner position history kept
+	RewindDefault        = 0.12, -- [LOCKED F17] default rewind window (seconds)
+	RewindMax            = 0.20, -- [LOCKED F17] hard cap (seconds)
+
+	-- Tag validation
+	CloseChaseDistance  = 10,   -- [LOCKED F11] studs for Diskarte close-chase-escape reward
+}
+
+-- ============================================================
+-- TAYA (role)
+-- ============================================================
+Config.Taya = {
+	TargetLockAcquireRange = 40, -- studs
+	TargetLockBreakRange   = 55, -- studs
+	TargetLockCoverTimeout = 1.0, -- seconds behind cover before lock breaks
+	TargetLockCooldown     = 4.0, -- seconds after lock break
+}
+
+-- ============================================================
+-- MATCH
+-- ============================================================
+Config.Match = {
+	MinPlayers        = 4,  -- [LOCKED F18]
+	MaxPlayers        = 8,
+
+	-- State durations (seconds)
+	LobbyReadyTimeout = 0,    -- 0 = host-start; set > 0 for auto-start countdown
+	DraftDuration     = 12,   -- MS_02
+	CountdownDuration = 5,    -- MS_03
+	RoundDuration     = 150,  -- MS_04 Round Live
+	RoundEndDuration  = 8,    -- MS_05
+	MatchEndDuration  = 15,   -- MS_06
+
+	TotalRounds       = 3,
+
+	-- Draft runs before EVERY round [LOCKED F01]
+	DraftEveryRound   = true,
+
+	-- Scoring: points by rank (1st = index 1). Covers up to 8 players.
+	RoundPoints       = { 8, 6, 5, 4, 3, 2, 1, 0 },
+
+	-- Disconnect rules [LOCKED F18]
+	OnTayaDisconnect  = "NearestRunner", -- nearest Runner becomes Taya
+	OnRunnerDisconnect = "RankLast",     -- ranked last for the round
+	BelowMinPlayersAction = "PauseEndRound", -- pause 10 s then end round without points [SD]
+	BelowMinPauseDuration = 10,
+
+	-- Event phases (time remaining in Round Live)
+	SimulaEnd       = 100, -- seconds left when SIMULA ends
+	BarangayRushEnd = 50,  -- seconds left when BARANGAY RUSH ends / HULING HABOL starts
+
+	-- Barangay Rush event warning
+	EventWarningTime = 2.5, -- seconds before phase change
+}
+
+-- ============================================================
+-- EVENTS (Huling Habol escalation thresholds)
+-- ============================================================
+Config.Events = {
+	HulingHabolEscalation = { 50, 30, 15, 10, 5 }, -- seconds remaining triggers
+}
+
+-- ============================================================
+-- SKILLS
+-- ============================================================
+-- Schema per skill entry (see TDD §3.1):
+--   id, role, type, cooldown, duration, range, params, tell, weakness
+
+Config.Skills = {
+	RS_01 = {
+		id       = "RS_01",
+		name     = "Luksong Baka",
+		role     = "Runner",
+		type     = "Escape",
+		cooldown = 12,
+		duration = 0,
+		range    = 18,
+		params   = { height = 14, distance = 18 }, -- impulse values
+		tell     = { vfx = "DustRing",   sfx = "Hup" },
+		weakness = "No air steering",
+		counterCondition = "Escapes a pounce or Lambat while airborne",
+	},
+	RS_02 = {
+		id       = "RS_02",
+		name     = "Pekeng Takbo",
+		role     = "Runner",
+		type     = "Decoy",
+		cooldown = 18,
+		duration = 4, -- decoy active seconds
+		range    = 0,
+		params   = { breakLock = true },
+		tell     = { vfx = "SmokePuff",  sfx = "Psssh" },
+		weakness = "Decoy has no stamina and runs in a straight line",
+		counterCondition = "Taya locks onto or pounces the decoy",
+	},
+	RS_03 = {
+		id       = "RS_03",
+		name     = "Tsinelas Throw",
+		role     = "Runner",
+		type     = "Stun",
+		cooldown = 25,
+		duration = 1.0, -- stun duration on hit
+		range    = 25,  -- max projectile range (studs)
+		params   = {},
+		tell     = { vfx = "SlipperArc", sfx = "Whoosh" },
+		weakness = "Linear projectile; short stun only",
+		counterCondition = "Hit on Taya mid-wind-up or mid-skill cast",
+	},
+	TS_01 = {
+		id       = "TS_01",
+		name     = "Sigaw",
+		role     = "Taya",
+		type     = "Detection",
+		cooldown = 20,
+		duration = 2.0, -- reveal duration
+		range    = 40,  -- radial reveal range (studs)
+		params   = {},
+		tell     = { vfx = "ShoutWave",  sfx = "Sigaw" },
+		weakness = "Only reveals; does not slow or stun",
+		counterCondition = "Tag a Runner who used Pekeng Takbo within the reveal window",
+	},
+	TS_02 = {
+		id       = "TS_02",
+		name     = "Lambat",
+		role     = "Taya",
+		type     = "Area",
+		cooldown = 22,
+		duration = 5.0, -- slow duration on hit Runner
+		range    = 8,   -- net zone radius (studs)
+		params   = { slowMult = 0.60 }, -- Runner moves at 60% speed
+		tell     = { vfx = "NetGrid",   sfx = "Whomp" },
+		weakness = "Runners can dash or jump out of the net",
+		counterCondition = "Tag a Runner slowed by the net",
+	},
+	TS_03 = {
+		id       = "TS_03",
+		name     = "Hatak",
+		role     = "Taya",
+		type     = "Speed",
+		cooldown = 15,
+		duration = 1.5, -- speed boost duration
+		range    = 0,
+		params   = { speedMult = 1.35, lockDisabled = true }, -- +35%, disables target lock
+		tell     = { vfx = "SpeedLines", sfx = "Dash" },
+		weakness = "Lock disabled; small window; commits Taya forward",
+		counterCondition = "Tag a Runner within 2 s of using Hatak",
+	},
+	-- TEMP (T17 Skill Draft absent): skills granted for immediate playtesting.
+	-- Single source of truth — read by MovementController (client gates + HUD)
+	-- and SkillService (server validation). Remove when PickSkill owns unlocks.
+	testGrant = { "RS_01" },
+}
+
+-- ============================================================
+-- DISKARTE
+-- ============================================================
+Config.Diskarte = {
+	MeterMax = 100,
+
+	-- Gain values (per trigger)
+	Gain = {
+		-- Runner gains
+		LockBreak          = 15,
+		PounceDouge        = 25,
+		Counter            = 20,
+		CloseChaseEscape   = 15, -- within CloseChaseDistance studs
+
+		-- Taya gains
+		PounceTag          = 25,
+		Tag                = 15,  -- regular touch tag
+		CatchAfterEscape   = 20,  -- catch after Runner used escape skill
+		TayaCounter        = 20,  -- Taya counter
+	},
+
+	-- Anti-snowball guards [SD F13]
+	SamePairCooldown      = 6.0, -- seconds before the same pair can grant each other gains again
+	RepeatedTagCooldown   = 3.0, -- seconds before same tag grants gain again
+
+	-- Moves
+	Moves = {
+		LIKSI = {
+			role   = "Runner",
+			effect = "NextSkillCooldownReduction",
+			params = { reduction = 0.50, window = 8.0 }, -- 50% CD reduction within 8 s
+		},
+		BANTAY = {
+			role   = "Taya",
+			effect = "DirectionalRunnerClue",
+			params = { duration = 2.0, wallReveal = false },
+		},
+		PUSO = {
+			role   = "Both",
+			effect = "SafeWindowOnNextTagInteraction",
+			params = { safeWindow = 0.75, expiry = 10.0 }, -- does not stack with other windows
+		},
+	},
+
+	-- Input bindings [SD F14]
+	ActivateKey     = Enum.KeyCode.F,       -- PC
+	ActivateMobile  = "DiskarteButton",     -- near skill bar
+	ActivateGamepad = Enum.KeyCode.ButtonX, -- console face button
+}
+
+-- ============================================================
+-- NETWORK / PERFORMANCE
+-- ============================================================
+Config.Network = {
+	RateLimit = 10, -- max requests per second per player per remote
+}
+
+Config.Performance = {
+	MaxPartsPerMap     = 6000,
+	MaxActiveEmitters  = 30,
+	ServerFrameBudgetMs = 4,
+	MemoryBudgetMB     = 1024, -- 1 GB
+	NetworkBudgetKBs   = 20,  -- KB/s per client
+}
+
+-- ============================================================
+-- MAPS (placeholder; map data will expand here)
+-- ============================================================
+Config.Maps = {
+	Kalsada = {
+		id         = "Kalsada",
+		name       = "Barangay Kalsada",
+		size       = Vector2.new(150, 150),
+		spawnCount = 8,
+		rushEvent  = "CourtRush",
+		-- T08 greybox blockout metrics. Level-design derived from
+		-- Config.Movement: JumpPower 50 ~ 7.2 studs -> vaults <= 4 (RM_05);
+		-- slide 50% hitbox -> 3.5-stud gap clears a sliding but not a
+		-- standing character (RM_06). Centre stays open for CourtRush.
+		greybox = {
+			wallHeight     = 14,  -- jump (JP50 ~7.2) cannot clear
+			sidewalkWidth  = 8,
+			spawnRadius    = 55,  -- equidistant ring (Bootstrap)
+			spawnPadSize   = 8,
+			courtLength    = 56,  -- court X (long axis)
+			courtWidth     = 32,  -- court Z
+			buildingX      = 20,  -- sari-sari block footprint X
+			buildingZ      = 12,  -- sari-sari block footprint Z
+			buildingHeight = 10,  -- LOS cover (not vaultable)
+			jeepneyLength  = 12,  -- RM_05: roof <= 4 studs => vaultable
+			jeepneyWidth   = 5,
+			jeepneyHeight  = 4,
+			crateSize      = 4,   -- extra vault obstacle (GDD: >= 3)
+			crateHeight    = 3.5,
+			lowGapHeight   = 3.5, -- RM_06 slide clearance
+			lowGapSpan     = 12,  -- lintel length across the gap
+		},
+	},
+	Binaha = {
+		id         = "Binaha",
+		name       = "Binaha na Baryo",
+		size       = Vector2.new(150, 150),
+		spawnCount = 8,
+		rushEvent  = "TubigTumataas",
+		floodSpeedMult       = 0.80, -- -20% in submerged low areas
+		evacSafeWindowDuration = 1.5, -- [SD] one-time per visit
+	},
+}
+
+return Config
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">Remotes</string>
+      </Properties>
+      <Item class="RemoteEvent" referent="3">
+        <Properties>
+          <string name="Name">ActivateDiskarte</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="4">
+        <Properties>
+          <string name="Name">ClutchEvent</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="5">
+        <Properties>
+          <string name="Name">DiskarteUpdate</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="6">
+        <Properties>
+          <string name="Name">PickSkill</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="7">
+        <Properties>
+          <string name="Name">RequestDash</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="8">
+        <Properties>
+          <string name="Name">RequestPounce</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="9">
+        <Properties>
+          <string name="Name">RequestSkill</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="10">
+        <Properties>
+          <string name="Name">SkillEvent</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="11">
+        <Properties>
+          <string name="Name">StateChanged</string>
+        </Properties>
+      </Item>
+      <Item class="RemoteEvent" referent="12">
+        <Properties>
+          <string name="Name">TagEvent</string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="13">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="14">
+      <Properties>
+        <string name="Name">Bootstrap</string>
+        <token name="RunContext">0</token>
+        <string name="Source">--!strict
+-- ServerScriptService/Bootstrap.server.lua
+-- Owner: Programmer A (T08 Barangay Kalsada greybox)
+-- Responsibility: build the playable arena so the place never loads empty.
+--   Street baseplate (150x150), boundary walls, sidewalks, central basketball
+--   court, sari-sari store cover blocks, 4 vault-height jeepneys (roof &lt;= 4),
+--   4 crate vaults, 2 low gaps for sliding, 8 equidistant spawns (r = 55),
+--   world lighting defaults, and StarterPlayer character defaults.
+-- Level-design rules encoded here (GDD §9 / T08 / Art Bible):
+--   * Metrics derive from Config.Movement: JP50 jump ~7.2 studs -&gt; all vaults
+--     &lt;= 4 studs (RM_05); slide halves HipHeight -&gt; 3.5-stud gaps pass a
+--     sliding but never a standing character (RM_06); walls at 14 studs are
+--     unjumpable so the match stays inside the blockout.
+--   * No dead ends smaller than 10 studs (corner-trap rule): every prop either
+--     sits &gt;= 10 studs from other blockers / boundary walls, or is merged
+--     flush against a wall so no &lt;10-stud pocket can form.
+--   * Centre stays open (Art Bible: "keep the center open"; CourtRush = fast
+--     open shortcut with no cover).
+-- Idempotent: the whole blockout lives in Workspace.KalsadaGreybox and is
+-- destroyed + rebuilt on every server start — no duplicates on re-sync.
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local StarterPlayer = game:GetService("StarterPlayer")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
+
+local Map = Config.Maps.Kalsada
+local GB = Map.greybox
+local ARENA_SIZE = Map.size.X -- 150 studs, square
+local SPAWN_COUNT = Map.spawnCount -- 8 equidistant
+
+-- Palette (Art Bible: bright, stylized, readable; court distinct from street)
+local COL = {
+	asphalt   = Color3.fromRGB(58, 58, 64),
+	sidewalk  = Color3.fromRGB(150, 150, 145),
+	wall      = Color3.fromRGB(132, 132, 138),
+	wallBand  = Color3.fromRGB(60, 120, 200),
+	court     = Color3.fromRGB(54, 98, 160),
+	courtKey  = Color3.fromRGB(172, 74, 62),
+	line      = Color3.fromRGB(240, 240, 240),
+	storeWall = Color3.fromRGB(235, 220, 190),
+	storeRoof = Color3.fromRGB(150, 90, 70),
+	storeSign = Color3.fromRGB(60, 140, 90),
+	jeepney   = Color3.fromRGB(240, 210, 80),
+	jeepTrim  = Color3.fromRGB(70, 70, 75),
+	crate     = Color3.fromRGB(170, 130, 80),
+	tunnel    = Color3.fromRGB(178, 178, 172),
+	lintel    = Color3.fromRGB(222, 182, 70),
+	spawn     = Color3.fromRGB(60, 140, 220),
+	spawnRing = Color3.fromRGB(90, 200, 255),
+}
+
+local folder: Folder -- KalsadaGreybox, assigned in buildGreybox()
+
+local function part(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Anchored = true
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = folder
+	return p
+end
+
+-- Street baseplate: persistent top-level child (name watched by the rebuild
+-- listener below); properties are re-applied so a stale grass plate upgrades.
+local function ensureBaseplate(): BasePart
+	local existing = Workspace:FindFirstChild("KalsadaBaseplate")
+	if existing and existing:IsA("BasePart") then
+		existing.Size = Vector3.new(ARENA_SIZE, 2, ARENA_SIZE)
+		existing.Position = Vector3.new(0, -1, 0) -- top surface at Y=0
+		existing.Anchored = true
+		existing.Material = Enum.Material.Asphalt -- MP_01: open street
+		existing.Color = COL.asphalt
+		existing.TopSurface = Enum.SurfaceType.Smooth
+		existing.BottomSurface = Enum.SurfaceType.Smooth
+		return existing
+	end
+	local base = Instance.new("Part")
+	base.Name = "KalsadaBaseplate"
+	base.Size = Vector3.new(ARENA_SIZE, 2, ARENA_SIZE)
+	base.Position = Vector3.new(0, -1, 0)
+	base.Anchored = true
+	base.Material = Enum.Material.Asphalt
+	base.Color = COL.asphalt
+	base.TopSurface = Enum.SurfaceType.Smooth
+	base.BottomSurface = Enum.SurfaceType.Smooth
+	base.Parent = Workspace
+	return base
+end
+
+-- ── Boundary: 14-stud walls (unjumpable) + inner sidewalk curbs ──────────────
+local function buildWalls()
+	local h = GB.wallHeight
+	-- N/S walls full width, E/W inset to their inner faces (flush corners,
+	-- no overlapping corner blocks to z-fight).
+	local sides = {
+		{ size = Vector3.new(ARENA_SIZE, h, 2), pos = Vector3.new(0, h / 2, -(ARENA_SIZE / 2)) },
+		{ size = Vector3.new(ARENA_SIZE, h, 2), pos = Vector3.new(0, h / 2, ARENA_SIZE / 2) },
+		{ size = Vector3.new(2, h, ARENA_SIZE - 4), pos = Vector3.new(-(ARENA_SIZE / 2), h / 2, 0) },
+		{ size = Vector3.new(2, h, ARENA_SIZE - 4), pos = Vector3.new(ARENA_SIZE / 2, h / 2, 0) },
+	}
+	for i, s in sides do
+		part("Wall" .. i, s.size, CFrame.new(s.pos), COL.wall, Enum.Material.Concrete)
+		-- painted accent band on the inside face (landmark line for readability)
+		local bandSize, bandPos
+		if math.abs(s.pos.Z) &gt; 0 then
+			-- inner face is 1 stud inward; band (0.4 thick) sits proud of it
+			bandSize = Vector3.new(ARENA_SIZE, 1, 0.4)
+			bandPos = Vector3.new(0, h - 4.5, s.pos.Z - math.sign(s.pos.Z) * 1.2)
+		else
+			bandSize = Vector3.new(0.4, 1, ARENA_SIZE - 4)
+			bandPos = Vector3.new(s.pos.X - math.sign(s.pos.X) * 1.2, h - 4.5, 0)
+		end
+		part("WallBand" .. i, bandSize, CFrame.new(bandPos), COL.wallBand)
+	end
+end
+
+local function buildSidewalks()
+	local w = GB.sidewalkWidth -- 8 studs
+	local inset = ARENA_SIZE / 2 - w / 2 - 1 -- hugging the walls (inner face 74)
+	local lift = 0.3 -- height; top sits 0.15 above the street (curb)
+	part("SidewalkN", Vector3.new(ARENA_SIZE, lift, w), CFrame.new(0, 0, -inset), COL.sidewalk, Enum.Material.Concrete)
+	part("SidewalkS", Vector3.new(ARENA_SIZE, lift, w), CFrame.new(0, 0, inset), COL.sidewalk, Enum.Material.Concrete)
+	part("SidewalkW", Vector3.new(w, lift, ARENA_SIZE - 4 - w), CFrame.new(-inset, 0, 0), COL.sidewalk, Enum.Material.Concrete)
+	part("SidewalkE", Vector3.new(w, lift, ARENA_SIZE - 4 - w), CFrame.new(inset, 0, 0), COL.sidewalk, Enum.Material.Concrete)
+end
+
+-- ── Central basketball court (CourtRush zone: open, no cover) ────────────────
+local function buildCourt()
+	local cl, cw = GB.courtLength, GB.courtWidth -- 56 x 32
+	local top = 0.05 -- slab top; just above the street to avoid z-fighting
+	local keyLen, keyWide = 9, 12
+
+	part("Court", Vector3.new(cl, 0.1, cw), CFrame.new(0, top - 0.05, 0), COL.court, Enum.Material.Concrete)
+
+	for _, sgn in { 1, -1 } do
+		-- painted key (red) under the basket
+		part("CourtKey", Vector3.new(keyLen, 0.05, keyWide),
+			CFrame.new(sgn * (cl / 2 - keyLen / 2), top + 0.02, 0), COL.courtKey, Enum.Material.Concrete)
+		-- baseline (under the rim) + free-throw line + two key sidelines
+		part("CourtLine", Vector3.new(0.5, 0.04, keyWide + 0.5),
+			CFrame.new(sgn * (cl / 2 - 0.25), top + 0.05, 0), COL.line)
+		part("CourtLine", Vector3.new(0.5, 0.04, keyWide + 0.5),
+			CFrame.new(sgn * (cl / 2 - keyLen), top + 0.05, 0), COL.line)
+		for _, z in { -keyWide / 2, keyWide / 2 } do
+			part("CourtLine", Vector3.new(keyLen, 0.04, 0.5),
+				CFrame.new(sgn * (cl / 2 - keyLen / 2), top + 0.05, z), COL.line)
+		end
+
+		-- hoop: pole outside the baseline, backboard + rim facing the court
+		part("HoopPole", Vector3.new(1, 8, 1),
+			CFrame.new(sgn * (cl / 2 + 2), 4, 0), COL.wall, Enum.Material.Metal)
+		part("HoopBoard", Vector3.new(0.5, 4, 6),
+			CFrame.new(sgn * (cl / 2 + 1.2), 6.5, 0), COL.line)
+		local rim = part("HoopRim", Vector3.new(0.3, 3, 3),
+			CFrame.new(sgn * (cl / 2 + 0.5), 5.5, 0), COL.courtKey, Enum.Material.Metal)
+		rim.Shape = Enum.PartType.Cylinder -- cylinder axis X faces the court
+	end
+
+	-- halfway line + centre circle (flat disc: cylinder rotated onto its face)
+	part("CourtLine", Vector3.new(0.5, 0.04, cw), CFrame.new(0, top + 0.05, 0), COL.line)
+	local circle = part("CourtCircle", Vector3.new(0.04, 12, 12),
+		CFrame.new(0, top + 0.05, 0) * CFrame.Angles(0, 0, math.rad(90)), COL.line)
+	circle.Shape = Enum.PartType.Cylinder
+end
+
+-- ── Cover &amp; traversal props ─────────────────────────────────────────────────
+-- Sari-sari blocks N/S of the court: 10-stud LOS cover, not vaultable.
+-- Placement audit: z[26,38] vs court edge z=16 -&gt; 10-stud gap (&gt;= 10 rule);
+-- nearest spawn (0,±55) -&gt; 17 studs; max radius ~39 &lt; spawn ring safety.
+local function buildBuildings()
+	for _, sgn in { 1, -1 } do
+		local cz = sgn * 32
+		part("SariSari", Vector3.new(GB.buildingX, GB.buildingHeight, GB.buildingZ),
+			CFrame.new(0, GB.buildingHeight / 2, cz), COL.storeWall, Enum.Material.Brick)
+		part("SariSariRoof", Vector3.new(GB.buildingX + 1.5, 0.6, GB.buildingZ + 1.5),
+			CFrame.new(0, GB.buildingHeight + 0.3, cz), COL.storeRoof, Enum.Material.Metal)
+		-- sign faces the court (readable landmark from the open centre)
+		part("SariSariSign", Vector3.new(6, 2, 0.4),
+			CFrame.new(0, 7, cz - sgn * (GB.buildingZ / 2 + 0.2)), COL.storeSign, Enum.Material.Neon)
+	end
+end
+
+-- 4 jeepneys parked tangent to the ring road at r=48, angles 22.5+90k (midway
+-- between spawn spokes: ~21 studs from any spawn centre). Roof top exactly
+-- GB.jeepneyHeight = 4 -&gt; RM_05 vaultable (jump ~7.2 clears, can also land on it).
+local function buildJeepneys()
+	for k = 0, 3 do
+		local theta = math.rad(22.5 + k * 90)
+		local pos = Vector3.new(math.cos(theta) * 48, 0, math.sin(theta) * 48)
+		local cf = CFrame.new(pos) * CFrame.Angles(0, -theta - math.pi / 2, 0) -- long axis = tangent
+		part("Jeepney", Vector3.new(GB.jeepneyLength, GB.jeepneyHeight, GB.jeepneyWidth),
+			cf * CFrame.new(0, GB.jeepneyHeight / 2, 0), COL.jeepney, Enum.Material.Metal)
+		part("JeepneyTrim", Vector3.new(GB.jeepneyLength - 0.5, 1, GB.jeepneyWidth + 0.2),
+			cf * CFrame.new(0, 0.6, 0), COL.jeepTrim) -- dark skirt grounds the silhouette
+	end
+end
+
+-- 4 crates merged FLUSH against the sari-sari side faces: merging leaves no
+-- gap at all, so no sub-10-stud pocket can form beside them. Height 3.5 -&gt; vault.
+local function buildCrates()
+	for _, sgn in { 1, -1 } do
+		for _, xOff in { 12, -12 } do
+			part("Crate", Vector3.new(GB.crateSize, GB.crateHeight, GB.crateSize),
+				CFrame.new(xOff, GB.crateHeight / 2, sgn * 32), COL.crate, Enum.Material.WoodPlanks)
+		end
+	end
+end
+
+-- 2 low gaps: pillared lintels at r=50, angles 67.5/247.5 (between spokes;
+-- ~15.7 studs from the nearest spawn). Clearance = GB.lowGapHeight (3.5):
+-- a sliding Runner (HipHeight x0.5) passes, a standing one (5 studs) cannot.
+-- Tangent orientation -&gt; slide flows along the ring road (~0.2s of a 0.6s slide).
+local function buildLowGaps()
+	local depth = 4
+	for _, deg in { 67.5, 247.5 } do
+		local theta = math.rad(deg)
+		local pos = Vector3.new(math.cos(theta) * 50, 0, math.sin(theta) * 50)
+		local tangent = Vector3.new(-math.sin(theta), 0, math.cos(theta))
+		local cf = CFrame.lookAt(pos, pos + tangent) -- -Z = travel, X = span
+		local gap = GB.lowGapHeight
+		local span = GB.lowGapSpan
+		local pillarH = gap + 1 -- lintel sits flush on top of the pillars
+		part("GapPillar", Vector3.new(1, pillarH, depth),
+			cf * CFrame.new(-span / 2 + 0.5, pillarH / 2, 0), COL.tunnel, Enum.Material.Concrete)
+		part("GapPillar", Vector3.new(1, pillarH, depth),
+			cf * CFrame.new(span / 2 - 0.5, pillarH / 2, 0), COL.tunnel, Enum.Material.Concrete)
+		part("GapLintel", Vector3.new(span, 1, depth),
+			cf * CFrame.new(0, gap + 0.5, 0), COL.lintel, Enum.Material.Metal) -- hazard yellow = "go under"
+	end
+end
+
+-- ── Spawns: 8 equidistant pads @ r=55, facing the centre, neon ground rings ──
+local function ensureSpawns()
+	local spawnFolder = Workspace:FindFirstChild("SpawnLocations")
+	if not spawnFolder then
+		spawnFolder = Instance.new("Folder")
+		spawnFolder.Name = "SpawnLocations"
+		spawnFolder.Parent = Workspace
+	end
+	for i = 1, SPAWN_COUNT do
+		local angle = (math.pi * 2 / SPAWN_COUNT) * (i - 1)
+		local cx = math.cos(angle) * GB.spawnRadius
+		local cz = math.sin(angle) * GB.spawnRadius
+		local name = string.format("Spawn%02d", i)
+
+		local spawn = spawnFolder:FindFirstChild(name)
+		if not spawn then
+			spawn = Instance.new("SpawnLocation")
+			spawn.Name = name
+			spawn.Parent = spawnFolder
+		end
+		if spawn:IsA("SpawnLocation") then
+			spawn.Position = Vector3.new(cx, 3, cz) -- 3 studs up: never clips the floor
+			spawn.Size = Vector3.new(GB.spawnPadSize, 1.2, GB.spawnPadSize)
+			spawn.Anchored = true
+			spawn.Enabled = true
+			spawn.AllowTeamChangeOnTouch = false
+			spawn.Neutral = true
+			spawn.Material = Enum.Material.SmoothPlastic
+			spawn.Color = COL.spawn
+			spawn.TopSurface = Enum.SurfaceType.Smooth
+			spawn.BottomSurface = Enum.SurfaceType.Weld
+			-- face the court (derived: forward = -Z -&gt; yaw = 90deg - theta)
+			spawn.Orientation = Vector3.new(0, 90 - math.deg(angle), 0)
+			local decal = spawn:FindFirstChildOfClass("Decal")
+			if decal then
+				decal:Destroy()
+			end
+		end
+
+		-- neon ground ring: visible from anywhere on the street (readability)
+		local ring = Instance.new("Part")
+		ring.Name = "SpawnRing"
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Size = Vector3.new(0.2, 16, 16) -- cylinder axis X -&gt; rotate flat
+		ring.CFrame = CFrame.new(cx, 0, cz) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Anchored = true
+		ring.CanCollide = false
+		ring.Color = COL.spawnRing
+		ring.Material = Enum.Material.Neon
+		ring.Parent = folder
+	end
+end
+
+-- Full blockout rebuild: destroy + regenerate (idempotent on every boot/resync).
+-- `rebuilding` suppresses the ChildRemoved listener while we destroy our own
+-- folder, otherwise self-destruction would schedule an infinite rebuild loop.
+local rebuilding = false
+local function buildGreybox()
+	rebuilding = true
+	local old = Workspace:FindFirstChild("KalsadaGreybox")
+	if old then
+		old:Destroy()
+	end
+	folder = Instance.new("Folder")
+	folder.Name = "KalsadaGreybox"
+	folder.Parent = Workspace
+
+	buildWalls()
+	buildSidewalks()
+	buildCourt()
+	buildBuildings()
+	buildJeepneys()
+	buildCrates()
+	buildLowGaps()
+	ensureSpawns()
+	rebuilding = false
+end
+
+local function ensureLighting()
+	Lighting.Ambient = Color3.fromRGB(120, 120, 120)
+	Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
+	Lighting.Brightness = 2
+	Lighting.ClockTime = 14 -- afternoon, high readability for playtests
+	Lighting.GlobalShadows = true
+end
+
+local function ensureCharacterDefaults()
+	-- T09 tuning relies on WalkSpeed set at runtime, but sane defaults help
+	-- before MovementController attaches (avoids 16-vs-default pop).
+	StarterPlayer.CharacterWalkSpeed = Config.Movement.RunnerWalkSpeed
+	StarterPlayer.CharacterJumpPower = 50 -- RM_05: vaults obstacles &lt;= 4 studs
+end
+
+-- ── Boot ─────────────────────────────────────────────────────────────────────
+ensureBaseplate()
+buildGreybox()
+ensureLighting()
+ensureCharacterDefaults()
+
+-- TEMP DEBUG (remove when MatchService T07 lands): no match state machine exists
+-- yet, so nothing ever fires StateChanged MS_04 and MovementController stays in
+-- inputLocked (WalkSpeed 0). Auto-unlock shortly after each spawn so T09 movement
+-- is testable in Studio Play right now. MatchService will own this event later.
+local DEBUG_AUTO_UNLOCK = true
+if DEBUG_AUTO_UNLOCK then
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(1.5)
+			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+		end)
+	end)
+	-- Cover the player that spawned before this script ran (Play Solo).
+	for _, player in Players:GetPlayers() do
+		task.spawn(function()
+			if not player.Character then
+				player.CharacterAdded:Wait()
+			end
+			task.wait(1.5)
+			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
+		end)
+	end
+end
+
+-- Late-join safety: if Workspace gets cleared, rebuild once.
+Workspace.ChildRemoved:Connect(function(child)
+	if child.Name == "KalsadaBaseplate" then
+		task.defer(ensureBaseplate)
+	end
+	if child.Name == "KalsadaGreybox" and not rebuilding then
+		task.defer(buildGreybox)
+	end
+end)
+
+print(string.format(
+	"[Bootstrap] Kalsada greybox ready — %dx%d street, walls h=%d, court %dx%d, "
+		.. "4 jeepneys + 4 crates (vaults &lt;=4), 2 low gaps (%.1f studs), "
+		.. "%d spawns @ r=%d, dead-end rule &gt;=10 studs audited. T09 movement testable.",
+	ARENA_SIZE, ARENA_SIZE, GB.wallHeight, GB.courtLength, GB.courtWidth,
+	GB.lowGapHeight, SPAWN_COUNT, GB.spawnRadius
+))</string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="15">
+      <Properties>
+        <string name="Name">EventService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/EventService.lua
+-- Owner: Programmer B (T05)
+-- Responsibility: Orchestrates Barangay Rush events and Huling Habol
+--                 timeline based on MatchService phase changes.
+-- See System Specification §7 and Config.Match / Config.Events.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T24–T26): Implement Court Rush event, match phase controller,
+--                 and Huling Habol presentation escalation.
+
+print("[EventService] Loaded — stub only. Implement T24–T26.")
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="16">
+      <Properties>
+        <string name="Name">MatchService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/MatchService.lua
+-- Owner: Programmer A (T05)
+-- Responsibility: State machine (MS_01→MS_06), shuffle bag, scoring,
+--                 phase timers, and disconnect handling.
+-- See PLANNING.md §3 and System Specification §2 for full rules.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T07): Implement match state machine and shuffle bag.
+
+print("[MatchService] Loaded — stub only. Implement T07.")
+]]></string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="17">
+      <Properties>
+        <string name="Name">SkillService</string>
+        <token name="RunContext">0</token>
+        <string name="Source">--!strict
+-- ServerScriptService/SkillService.server.lua
+-- Owner: Programmer B (T18 slice — RS_01 only)
+-- Responsibility: validate skill casts (RequestSkill), keep the server-side
+--                 cooldown ledger, answer via SkillEvent (accept / deny).
+-- See System Specification §5 (skill table) and Config.Skills.
+--
+-- IN THIS SLICE: RS_01 Luksong Baka only. Grant check reads the TEMP
+-- Config.Skills.testGrant list; role is trusted from the client until
+-- MatchService (T07) / TagService (T11) give the server real role state.
+-- TODO (T17): PickSkill draft + slot validation + timeout auto-pick.
+-- TODO (T18/T19): effect execution for RS_02/03 and TS_01–03 (decoy, stun,
+--                 slow, reveal), rate limiting and exploit hardening.
+-- TODO (T22): Diskarte meter.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
+local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
+
+-- readyAt[player][skillId] = os.clock() timestamp when the skill becomes usable.
+local readyAt: { [Player]: { [string]: number } } = {}
+
+local function isGranted(skillId: string): boolean
+	-- TEMP grant list (T17 draft replaces this with picked slots).
+	for _, id in Config.Skills.testGrant do
+		if id == skillId then
+			return true
+		end
+	end
+	return false
+end
+
+local function deny(player: Player, skillId: string, reason: string)
+	warn(string.format("[SkillService] Denied %s for %s (%s)", skillId, player.Name, reason))
+	SkillEvent:FireClient(player, skillId, false)
+end
+
+RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown)
+	if typeof(skillId) ~= "string" then
+		return
+	end
+	local sk = Config.Skills[skillId]
+	if sk == nil then
+		deny(player, skillId, "unknown skill")
+		return
+	end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not isGranted(skillId) then
+		deny(player, skillId, "not granted")
+		return
+	end
+	if humanoid == nil or humanoid.Health &lt;= 0 then
+		deny(player, skillId, "dead / no character")
+		return
+	end
+
+	local now = os.clock()
+	local ledger = readyAt[player]
+	if ledger == nil then
+		ledger = {}
+		readyAt[player] = ledger
+	end
+	local ready = ledger[skillId]
+	if ready ~= nil and ready &gt; now then
+		deny(player, skillId, "server cooldown active")
+		return
+	end
+
+	ledger[skillId] = now + sk.cooldown
+	SkillEvent:FireClient(player, skillId, true)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	readyAt[player] = nil
+end)
+
+print("[SkillService] Loaded — RS_01 slice (validation + server CD). T17 draft, RS_02/03, TS_*, Diskarte: TODO.")</string>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="18">
+      <Properties>
+        <string name="Name">TagService</string>
+        <token name="RunContext">0</token>
+        <string name="Source"><![CDATA[--!strict
+-- ServerScriptService/TagService.lua
+-- Owner: Programmer A (T05)
+-- Responsibility: Pounce/touch tag validation, tag transfer, Safe Window,
+--                 Lock Delay, lag rewind buffer.
+-- See System Specification §4 and DESIGN_LOCK.md for confirmed rules.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Config)
+
+-- TODO (T11): Implement server-authoritative tag validation.
+-- TODO (T12): Implement Safe Window, speed boost, and lock delay.
+-- TODO (T13): Implement pounce mechanics and validation.
+
+print("[TagService] Loaded — stub only. Implement T11–T13.")
+]]></string>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="19">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="20">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="21">
+        <Properties>
+          <string name="Name">MovementController</string>
+          <string name="Source"><![CDATA[--!strict
 -- StarterPlayerScripts/MovementController.lua (LocalScript)
 -- Owner: Programmer A
 -- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
@@ -814,12 +979,18 @@ gcLgc4RKxr21zq2UlJSM]]></BinaryString>
 --   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide gated to MS_04.
 --     NOTE (playtest): Bootstrap TEMP auto-fires MS_04/Runner 1.5s after spawn
 --     until MatchService T07 owns the state machine — without it you stay locked.
---   • Bindings (UI/UX Spec §4): PC Shift/Q/C · Gamepad L2-stick/B/R1 · Touch buttons
+--   • Bindings (UI/UX Spec §4): PC Shift/Q/C/E · Gamepad L2-stick/B/R1/X · Touch
 --   • Dash VFX: rear Trail ribbon + particle burst on Q (Config.Movement.DashVFX)
 --   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
+--   • Skill RS_01 Luksong Baka (T18 vertical slice): ballistic arc derived from
+--     Config.Skills.RS_01.params (height 14 / distance 18), no air steering
+--     (WalkSpeed 0) for the whole flight, 12s cooldown, cast on E / ButtonX /
+--     touch; executed locally (dash precedent) + RequestSkill → SkillService
+--     server CD ledger. Grant list: Config.Skills.testGrant (TEMP → T17).
 --
 -- Does NOT handle: tag detection/validation (TagService owns truth),
--- skill cooldowns (SkillService), timers/scores (MatchService), or lock camera.
+-- skill draft/unlocks (T17), remaining skills (RS_02/03, TS_*) and Diskarte
+-- (T18/T19), timers/scores (MatchService), or lock camera.
 --
 -- All numeric constants come exclusively from Config.Movement — zero hardcoding.
 
@@ -845,6 +1016,8 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestDash = Remotes:WaitForChild("RequestDash") :: RemoteEvent
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent = Remotes:WaitForChild("TagEvent") :: RemoteEvent
+local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
+local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
 
 -- ── State ────────────────────────────────────────────────────────────────────
 -- Stamina
@@ -864,6 +1037,12 @@ local isSliding = false
 local slideCooldownLeft = 0.0
 local slideTimer = 0.0
 local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
+
+-- Skill (RS_01 slice; server-side CD ledger lives in SkillService)
+local skillId = "" -- skill granted to the current role ("" = none)
+local skillCooldownLeft = 0.0
+local skillFlightLeft = 0.0 -- no-air-steering window (ballistic airtime + margin)
+local skillRequested = false -- buffered E / ButtonX / touch press
 
 -- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s, stamina rules unchanged.
 local boostLeft = 0.0
@@ -902,6 +1081,11 @@ end
 -- Call this any time role / sprint / boost / lock state changes.
 local function applySpeed()
 	if not Humanoid then
+		return
+	end
+	if skillFlightLeft > 0 then
+		-- RS_01 "no air steering": hold WalkSpeed 0 for the whole skill flight.
+		Humanoid.WalkSpeed = 0
 		return
 	end
 	if inputLocked then
@@ -984,7 +1168,22 @@ end
 -- from attributes on LocalPlayer (poll-free via GetAttributeChangedSignal):
 --   HRushStamina (0–100), HRushStaminaMax, HRushDashCD, HRushSlideCD,
 --   HRushDashing (bool), HRushSliding (bool), HRushBoost (seconds left),
---   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar).
+--   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar),
+--   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left).
+-- Grant lookup (TEMP list until T17 draft owns unlocks).
+local function grantedSkillId(): string
+	if role ~= "Runner" then
+		return ""
+	end
+	for _, id in Config.Skills.testGrant do
+		local sk = Config.Skills[id]
+		if sk and sk.role == role then
+			return id
+		end
+	end
+	return ""
+end
+
 local lastPush = 0.0
 local function pushAttributes(force: boolean?)
 	local now = os.clock()
@@ -1000,6 +1199,9 @@ local function pushAttributes(force: boolean?)
 	LocalPlayer:SetAttribute("HRushSliding", isSliding)
 	LocalPlayer:SetAttribute("HRushBoost", boostLeft)
 	LocalPlayer:SetAttribute("HRushRole", role)
+	skillId = grantedSkillId()
+	LocalPlayer:SetAttribute("HRushSkillId", skillId)
+	LocalPlayer:SetAttribute("HRushSkillCD", skillCooldownLeft)
 end
 
 -- ── Dash VFX (client-side juice) ─────────────────────────────────────────────
@@ -1248,6 +1450,92 @@ local function performSlide()
 	-- uses rewound server positions per TDD §4.3).
 end
 
+-- ── Skill: RS_01 Luksong Baka (T18 vertical slice) ───────────────────────────
+-- Spec §5 / System Spec: impulse to params.height (14) studs high and
+-- params.distance (18) studs forward, NO air steering, Config cooldown (12s).
+-- Ballistics derive from Workspace.Gravity so the arc genuinely reaches the
+-- configured height: vY = sqrt(2*g*H), airtime = 2*vY/g, vX = D / airtime.
+-- Cast is ground-only (v1 assumption — air-cast is a T18 balance question).
+-- Flow mirrors dash: local execution + RequestSkill notify for the server CD
+-- ledger (SkillService replies via SkillEvent; a deny re-arms the cooldown).
+local function endSkillFlight()
+	skillFlightLeft = 0
+	applySpeed() -- restores walk/sprint (or 0 when inputLocked)
+end
+
+local function performSkill()
+	if not roundLive or inputLocked then
+		return
+	end
+	if role ~= "Runner" then
+		return
+	end
+	if skillCooldownLeft > 0 or skillFlightLeft > 0 then
+		return
+	end
+	if isDashing or isSliding then
+		return
+	end
+	if not Humanoid or not HRP then
+		return
+	end
+	if Humanoid.Health <= 0 then
+		return
+	end
+	if Humanoid.FloorMaterial == Enum.Material.Air then
+		return -- ground cast only (v1)
+	end
+	if skillId == "" then
+		skillId = grantedSkillId()
+	end
+	local sk = Config.Skills[skillId]
+	if not sk then
+		return
+	end
+
+	-- Direction: current move input if any, else facing (same rule as dash).
+	local dir = Humanoid.MoveDirection
+	if dir.Magnitude < 0.1 then
+		dir = HRP.CFrame.LookVector
+	end
+	dir = Vector3.new(dir.X, 0, dir.Z)
+	if dir.Magnitude < 0.01 then
+		return
+	end
+	dir = dir.Unit
+
+	-- Derive the arc from config + engine gravity (never hardcode speeds).
+	local g = Workspace.Gravity
+	local vy = math.sqrt(2 * g * sk.params.height)
+	local airtime = (2 * vy) / g
+	local vh = sk.params.distance / airtime
+
+	skillCooldownLeft = sk.cooldown
+	skillFlightLeft = airtime + 0.25 -- margin; Landed ends it early
+	Humanoid.WalkSpeed = 0 -- no air steering from the very first frame
+	HRP.AssemblyLinearVelocity = Vector3.new(dir.X * vh, vy, dir.Z * vh)
+	pushAttributes(true)
+
+	-- Server keeps its own cooldown ledger and may deny (then we roll back).
+	RequestSkill:FireServer(skillId)
+end
+
+-- Server reply: accepted = nothing to do (already executed locally);
+-- denied = restore the cooldown so a desynced client cannot spam the cast.
+SkillEvent.OnClientEvent:Connect(function(sid: unknown, accepted: unknown)
+	if typeof(sid) ~= "string" or sid ~= skillId then
+		return
+	end
+	if accepted == false then
+		local sk = Config.Skills[sid]
+		if sk then
+			skillCooldownLeft = sk.cooldown
+		end
+		warn("[MovementController] SkillService denied " .. sid .. "; cooldown re-armed.")
+		pushAttributes(true)
+	end
+end)
+
 -- ── Cooldown & invuln ticking ────────────────────────────────────────────────
 local function tickCooldowns(dt: number)
 	if dashCooldownLeft > 0 then
@@ -1258,6 +1546,23 @@ local function tickCooldowns(dt: number)
 	end
 	if dashInvulnLeft > 0 then
 		dashInvulnLeft = math.max(0, dashInvulnLeft - dt)
+	end
+	if skillCooldownLeft > 0 then
+		skillCooldownLeft = math.max(0, skillCooldownLeft - dt)
+	end
+	if skillFlightLeft > 0 then
+		-- Ground contact ends the flight immediately. FloorMaterial poll (a
+		-- CONFIRMED Humanoid property) — Humanoid has no Landed event and no
+		-- GetStateChangedSignal (verified against the official API dump; a bad
+		-- member here aborts onCharacterAdded and kills the whole loop).
+		if Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air then
+			endSkillFlight()
+		else
+			skillFlightLeft = math.max(0, skillFlightLeft - dt)
+			if skillFlightLeft <= 0 then
+				endSkillFlight()
+			end
+		end
 	end
 	-- Post-tag boost countdown (F08); re-apply speed when it expires.
 	if boostLeft > 0 then
@@ -1330,6 +1635,10 @@ local function startHeartbeat()
 			slideRequested_GP = false
 			performSlide()
 		end
+		if skillRequested then
+			skillRequested = false
+			performSkill()
+		end
 	end)
 end
 
@@ -1367,12 +1676,15 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 			sprintHeld_GP = false
 		end
 		if not roundLive then
-			-- End any active slide/dash when the round is not live.
+			-- End any active slide/dash/skill-flight when the round is not live.
 			if isSliding then
 				endSlide()
 			end
 			if isDashing then
 				cancelDash()
+			end
+			if skillFlightLeft > 0 then
+				endSkillFlight()
 			end
 		end
 		applySpeed()
@@ -1418,6 +1730,8 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 		dashRequested_KB = true
 	elseif kc == Enum.KeyCode.C then
 		slideRequested_KB = true
+	elseif kc == Enum.KeyCode.E then
+		skillRequested = true -- Skill cast (UI/UX Spec §4)
 	end
 end
 
@@ -1433,8 +1747,8 @@ UserInputService.InputEnded:Connect(onInputEnded)
 
 -- ── Gamepad bindings (UI/UX Spec §4) ─────────────────────────────────────────
 -- Sprint: Left trigger hold (ButtonL2) OR left stick full tilt (see heartbeat).
--- Dash:   B (ButtonB). Slide: Right bumper (ButtonR1).
--- Diskarte Y (ButtonY) and Skill X (ButtonX) are owned by UIController/Skill UI.
+-- Dash:   B (ButtonB). Slide: Right bumper (ButtonR1). Skill: X (ButtonX).
+-- Diskarte Y (ButtonY) is owned by UIController (T22).
 local SPRINT_GP_ACTION = "HRUSH_Sprint_GP"
 local DASH_GP_ACTION = "HRUSH_Dash_GP"
 local SLIDE_GP_ACTION = "HRUSH_Slide_GP"
@@ -1462,6 +1776,14 @@ ContextActionService:BindAction(SLIDE_GP_ACTION, function(_name, state, _obj)
 	end
 	return Enum.ContextActionResult.Pass
 end, false, Enum.KeyCode.ButtonR1)
+
+local SKILL_GP_ACTION = "HRUSH_Skill_GP"
+ContextActionService:BindAction(SKILL_GP_ACTION, function(_name, state, _obj)
+	if state == Enum.UserInputState.Begin then
+		skillRequested = true
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.ButtonX)
 
 -- ── Mobile touch buttons (UI/UX Spec §4) ───────────────────────────────────────
 -- UIController creates on-screen Sprint / Dash / Slide buttons (min 64px).
@@ -1499,12 +1821,20 @@ local function hookMobileBindables()
 		return Enum.ContextActionResult.Pass
 	end, true)
 
+	ContextActionService:BindAction("HRUSH_Skill_Touch", function(_name, state, _obj)
+		if state == Enum.UserInputState.Begin then
+			skillRequested = true
+		end
+		return Enum.ContextActionResult.Pass
+	end, true)
+
 	-- Legacy BindableEvent bridge (UIController-created buttons, if present).
 	-- Retry a few times: UIController may load after this controller.
 	task.spawn(function()
 		for _ = 1, 50 do
 			local dashBe = ReplicatedStorage:FindFirstChild("MobileDashPressed")
 			local slideBe = ReplicatedStorage:FindFirstChild("MobileSlidePressed")
+			local skillBe = ReplicatedStorage:FindFirstChild("MobileSkillPressed")
 			local sprintBegin = ReplicatedStorage:FindFirstChild("MobileSprintBegan")
 			local sprintEnd = ReplicatedStorage:FindFirstChild("MobileSprintEnded")
 			if dashBe and dashBe:IsA("BindableEvent") then
@@ -1517,6 +1847,11 @@ local function hookMobileBindables()
 					slideRequested_KB = true
 				end)
 			end
+			if skillBe and skillBe:IsA("BindableEvent") then
+				skillBe.Event:Connect(function()
+					skillRequested = true
+				end)
+			end
 			if sprintBegin and sprintBegin:IsA("BindableEvent") then
 				sprintBegin.Event:Connect(function()
 					sprintHeld_KB = true
@@ -1527,7 +1862,7 @@ local function hookMobileBindables()
 					sprintHeld_KB = false
 				end)
 			end
-			if dashBe or slideBe or sprintBegin or sprintEnd then
+			if dashBe or slideBe or skillBe or sprintBegin or sprintEnd then
 				break
 			end
 			task.wait(0.2)
@@ -1566,17 +1901,26 @@ local function onCharacterAdded(char: Model)
 	dashRequested_GP = false
 	slideRequested_KB = false
 	slideRequested_GP = false
+	skillCooldownLeft = 0
+	skillFlightLeft = 0
+	skillRequested = false
+
+	-- RS_01 landing detection lives in tickCooldowns (FloorMaterial poll).
+	-- Do NOT wire Humanoid.Landed / GetStateChangedSignal here — neither exists
+	-- and a missing member aborts onCharacterAdded (kills heartbeat, sprint,
+	-- dash and skill for the whole session). Only confirmed APIs in this block.
 
 	applySpeed()
 	pushAttributes(true)
 	startHeartbeat()
 	hookMobileBindables()
 
-	-- Death cleanup: end slide/dash visuals so respawn state is clean.
+	-- Death cleanup: end slide/dash/skill visuals so respawn state is clean.
 	Humanoid.Died:Connect(function()
 		if isSliding then
 			isSliding = false
 		end
+		skillFlightLeft = 0 -- a flight cannot outlive its character
 		if dashConn then
 			dashConn:Disconnect()
 			dashConn = nil
@@ -1584,6 +1928,10 @@ local function onCharacterAdded(char: Model)
 		isDashing = false
 		boostLeft = 0.0
 	end)
+
+	-- Diagnostic marker: if this line is missing from the log, onCharacterAdded
+	-- aborted before finishing (check CreatorError above it).
+	print("[MovementController] character attached — heartbeat + input hooks live")
 end
 
 if LocalPlayer.Character then
@@ -1592,25 +1940,14 @@ end
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 
 pushAttributes(true)
-print("[MovementController] Loaded — T09 complete (walk/sprint/stamina/dash/slide/boost).")
-]]></ProtectedString>
-					<bool name="Disabled">false</bool>
-					<Content name="LinkedSource"><null></null></Content>
-					<token name="RunContext">0</token>
-					<string name="ScriptGuid">{A51FB9EE-9E0C-4F05-A326-4F009E05AD91}</string>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">MovementController</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003eb</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="LocalScript" referent="22">
-				<Properties>
-					<ProtectedString name="Source"><![CDATA[--!strict
+print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/dash/slide/boost/skill).")
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="22">
+        <Properties>
+          <string name="Name">TargetLockController</string>
+          <string name="Source"><![CDATA[--!strict
 -- StarterPlayerScripts/TargetLockController.lua
 -- Owner: Programmer B (T05)
 -- Responsibility: Soft-lock camera steering, nearest target acquisition
@@ -1624,24 +1961,13 @@ local Config = require(ReplicatedStorage.Config)
 -- TODO (T16): Implement soft lock camera, lock acquisition/break, and reticle.
 
 print("[TargetLockController] Loaded — stub only. Implement T16.")
-]]></ProtectedString>
-					<bool name="Disabled">false</bool>
-					<Content name="LinkedSource"><null></null></Content>
-					<token name="RunContext">0</token>
-					<string name="ScriptGuid">{7EFE17BF-D6FF-404E-B5F4-03058FF4A78B}</string>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">TargetLockController</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ec</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="LocalScript" referent="23">
-				<Properties>
-					<ProtectedString name="Source"><![CDATA[--!strict
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="23">
+        <Properties>
+          <string name="Name">UIController</string>
+          <string name="Source"><![CDATA[--!strict
 -- StarterPlayerScripts/UIController.lua
 -- Owner: UI Dev (T05)
 -- Responsibility: HUD (role banner, countdown, scoreboard, stamina bar),
@@ -1649,16 +1975,18 @@ print("[TargetLockController] Loaded — stub only. Implement T16.")
 --                 and spectator camera UI.
 -- See UI/UX Specification and Config.Match / Config.Events.
 --
--- HUD v1 (T09 playtest slice):
+-- HUD v1.1 (T09 playtest slice + RS_01 skill chip):
 --   • Stamina bar — bottom left, Runner-only (UI/UX Spec §2), fill tween-smoothed
 --     at the bridge's 10 Hz rate, pulses red when depleted (≤ StaminaDepletedMin)
 --   • Dash cooldown chip — "Q" keycap, vertical cooldown wipe + live countdown,
 --     pops green the instant it becomes ready
+--   • Skill chip — "E" keycap + skill name caption, cooldown wipe/countdown from
+--     Config.Skills (RS_01 slice); hides while HRushSkillId == "" (Taya / ungranted)
 -- Data source: HRush* attribute bridge on LocalPlayer (MovementController pushes
 -- at 10 Hz + forced on role/state/tag events). Poll-free via GetAttributeChangedSignal.
 --
--- TODO (T14): role banner, round countdown, scoreboard, skill bar.
--- TODO (T17): Implement Skill Draft UI.
+-- TODO (T14): role banner, round countdown, scoreboard, full skill bar.
+-- TODO (T17): Implement Skill Draft UI (slot picks beyond the TEMP test grant).
 -- TODO (T27): Implement clutch callouts and recap screens.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1711,7 +2039,7 @@ local cluster = Instance.new("Frame")
 cluster.Name = "MoveCluster"
 cluster.AnchorPoint = Vector2.new(0, 1)
 cluster.Position = UDim2.fromScale(0.015, 0.97)
-cluster.Size = UDim2.fromOffset(300, 56)
+cluster.Size = UDim2.fromOffset(364, 56) -- room for stamina + dash chip + skill chip
 cluster.BackgroundTransparency = 1
 cluster.Parent = gui
 
@@ -1807,6 +2135,54 @@ chipCaption.Text = "DASH"
 chipCaption.TextColor3 = COL_TEXT
 chipCaption.TextStrokeTransparency = 0.6
 chipCaption.Parent = cluster
+
+-- Skill chip (right of the dash chip): "E" keycap + name caption, CD wipe.
+local skillChip = Instance.new("Frame")
+skillChip.Name = "SkillChip"
+skillChip.Position = UDim2.fromOffset(296, 10)
+skillChip.Size = UDim2.fromOffset(44, 44)
+skillChip.BackgroundColor3 = COL_PANEL
+skillChip.BackgroundTransparency = 0.15
+skillChip.BorderSizePixel = 0
+skillChip.Parent = cluster
+corner(skillChip, 8)
+local skillStroke = stroke(skillChip, COL_STROKE_CD, 2)
+
+local skillWipe = Instance.new("Frame") -- dark overlay shrinking top to bottom
+skillWipe.Name = "CooldownWipe"
+skillWipe.AnchorPoint = Vector2.new(0, 0)
+skillWipe.Position = UDim2.fromScale(0, 0)
+skillWipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+skillWipe.BackgroundColor3 = COL_COOLDOWN
+skillWipe.BackgroundTransparency = 0.25
+skillWipe.BorderSizePixel = 0
+skillWipe.ZIndex = 1
+skillWipe.Parent = skillChip
+corner(skillWipe, 8)
+
+local skillKey = Instance.new("TextLabel")
+skillKey.Name = "KeyOrCd"
+skillKey.BackgroundTransparency = 1
+skillKey.Size = UDim2.fromScale(1, 1)
+skillKey.Font = Enum.Font.GothamBold
+skillKey.TextSize = 18
+skillKey.Text = "E"
+skillKey.TextColor3 = COL_TEXT
+skillKey.TextStrokeTransparency = 0.5
+skillKey.ZIndex = 2
+skillKey.Parent = skillChip
+
+local skillCaption = Instance.new("TextLabel")
+skillCaption.Name = "SkillCaption"
+skillCaption.BackgroundTransparency = 1
+skillCaption.Position = UDim2.fromOffset(284, 44)
+skillCaption.Size = UDim2.fromOffset(76, 12)
+skillCaption.Font = Enum.Font.Gotham
+skillCaption.TextSize = 9
+skillCaption.Text = ""
+skillCaption.TextColor3 = COL_TEXT
+skillCaption.TextStrokeTransparency = 0.6
+skillCaption.Parent = cluster
 
 -- ── Attribute readers ─────────────────────────────────────────────────────────
 local function attrNum(name: string, fallback: number): number
@@ -1906,6 +2282,52 @@ local function updateDashCD()
 	lastDashCD = cd
 end
 
+-- ── Skill cooldown chip logic (RS_01 slice) ───────────────────────────────────
+local lastSkillCD = 0.0
+local curSkillId = ""
+
+local function popSkillReady()
+	skillKey.Text = "E"
+	skillStroke.Color = COL_STROKE_RDY
+	local up = TweenService:Create(
+		skillChip,
+		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(52, 52) }
+	)
+	up:Play()
+	up.Completed:Connect(function()
+		TweenService:Create(
+			skillChip,
+			TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.fromOffset(44, 44) }
+		):Play()
+	end)
+end
+
+local function updateSkillCD()
+	curSkillId = attrStr("HRushSkillId", "")
+	local granted = (curRole == "Runner") and (curSkillId ~= "")
+	skillChip.Visible = granted
+	skillCaption.Visible = granted
+	if not granted then
+		return
+	end
+	local sk = Config.Skills[curSkillId]
+	skillCaption.Text = sk and string.upper(sk.name) or ""
+	local cd = attrNum("HRushSkillCD", 0)
+	local total = math.max(0.01, sk and sk.cooldown or 1)
+	local ratio = math.clamp(cd / total, 0, 1)
+
+	skillWipe.Size = UDim2.fromScale(1, ratio)
+	if cd > 0 then
+		skillKey.Text = string.format("%.1f", cd)
+		skillStroke.Color = COL_STROKE_CD
+	elseif lastSkillCD > 0 then
+		popSkillReady() -- transition to 0: flash ready state
+	end
+	lastSkillCD = cd
+end
+
 -- ── Bridge wiring (poll-free) ─────────────────────────────────────────────────
 local function hookAttr(name: string, fn: () -> ())
 	local signal = LocalPlayer:GetAttributeChangedSignal(name)
@@ -1916,1512 +2338,25 @@ end
 hookAttr("HRushStamina", updateStamina)
 hookAttr("HRushStaminaMax", updateStamina)
 hookAttr("HRushDashCD", updateDashCD)
+hookAttr("HRushSkillCD", updateSkillCD)
+hookAttr("HRushSkillId", updateSkillCD)
 hookAttr("HRushRole", function()
 	curRole = attrStr("HRushRole", curRole)
 	updateVisibility()
 	updateStamina()
+	updateSkillCD()
 end)
 hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
 
 updateVisibility()
 updateStamina()
 updateDashCD()
-
-print("[UIController] Loaded — HUD v1 (stamina bar + dash cooldown). T14 partial; T17, T27 TODO.")
-]]></ProtectedString>
-					<bool name="Disabled">false</bool>
-					<Content name="LinkedSource"><null></null></Content>
-					<token name="RunContext">0</token>
-					<string name="ScriptGuid">{F03EA4ED-C839-46A8-B07C-4F7619869375}</string>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">UIController</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ed</UniqueId>
-				</Properties>
-			</Item>
-		</Item>
-		<Item class="StarterCharacterScripts" referent="RBXF370068C88644523845E6376A4589ACB">
-			<Properties>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">StarterCharacterScripts</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ef</UniqueId>
-			</Properties>
-		</Item>
-	</Item>
-	<Item class="StarterPack" referent="RBX5118AAD4B33C4B2AACB043ECB9A504D7">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">StarterPack</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000038c</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="StarterGui" referent="RBXC8F70E9D3E844D4AA2C6148938155497">
-		<Properties>
-			<token name="ClipsDescendantsSupportsRotation">0</token>
-			<bool name="ResetPlayerGuiOnSpawn">true</bool>
-			<token name="RtlTextSupport">0</token>
-			<token name="ScreenOrientation">2</token>
-			<bool name="ShowDevelopmentGui">true</bool>
-			<Ref name="StudioDefaultStyleSheet">null</Ref>
-			<Ref name="StudioInsertWidgetLayerCollectorAutoLinkStyleSheet">null</Ref>
-			<token name="VirtualCursorMode">0</token>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">StarterGui</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000038d</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="LocalizationService" referent="RBXD7A46D80EF6A4A04802D4903120A56EA">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">LocalizationService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000038f</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="TeleportService" referent="RBXDA00BCE95ECF40CB8DDA4BE7276EBD68">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Teleport Service</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000393</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="PhysicsService" referent="RBX36233FF6D3F14E208017BA9D107761E4">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">PhysicsService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000395</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="InsertService" referent="RBX6E6ECB67193845F69A6C955EF6DB6190">
-		<Properties>
-			<bool name="AllowInsertFreeModels">false</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">InsertService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000398</UniqueId>
-		</Properties>
-		<Item class="StringValue" referent="RBXA4231088E22D4C3BA23F215DCD4B0FFF">
-			<Properties>
-				<string name="Value">{058515B2-D04C-47C0-A9B2-D8D04B3F53A7}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">InsertionHash</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000ad9</UniqueId>
-			</Properties>
-		</Item>
-	</Item>
-	<Item class="GamePassService" referent="RBX7D8E594E32984607B8713E27D5EFAAFF">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">GamePassService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000399</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="Debris" referent="RBX44ACA6B2372F4E68B5DB1E9EF53CC16D">
-		<Properties>
-			<int name="MaxItems">1000</int>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Debris</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000039a</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="CookiesService" referent="RBX325674800D6F4AFA956B77EE3488D0DC">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">CookiesService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000039b</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="Selection" referent="RBXDA9D3E6F6A0742689E59434681340466">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Selection</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a0000039c</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="VRService" referent="RBX581A84EF31114F598506478C3EC5CDA0">
-		<Properties>
-			<token name="AutomaticScaling">0</token>
-			<bool name="AvatarGestures">false</bool>
-			<token name="ControllerModels">1</token>
-			<bool name="FadeOutViewOnCollision">true</bool>
-			<token name="LaserPointer">1</token>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">VRService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003a0</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="ContextActionService" referent="RBXF96197445B9745E5802AB331608862F7">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ContextActionService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003a1</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="ScriptService" referent="RBXD0E97951ECAA44899B8DF0E80C20ED68">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ScriptService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003a2</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="AssetService" referent="RBX3957DEAC087F47CAA9162AFBEE16E2B1">
-		<Properties>
-			<bool name="AllowInsertFreeAssets">false</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">AssetService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003a3</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="TouchInputService" referent="RBX7900833A6D4349EABD439A0F80DBC844">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">TouchInputService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003a5</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="AvatarSettings" referent="RBX0FD64C0F8A5949258FED24CD14B6FABF">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">AvatarSettings</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ab</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="Packages" referent="RBXC4C84C999BC4481CA3D6814C8FB82F72">
-		<Properties>
-			<bool name="IsDehydrated">false</bool>
-			<int name="ShellPackagesCount">0</int>
-			<int name="SkippedInstancesCount">0</int>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Packages</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003af</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="GuidRegistryService" referent="RBXD1822BB834304C37BA5F1BBFF30B1F2E">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">GuidRegistryService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003b0</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="LuaWebService" referent="RBXDD28DBE5372A4ED79C240492537B487B">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">LuaWebService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003b7</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="ProcessInstancePhysicsService" referent="RBX30661930BBE947EDB8A366AB9644F78E">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ProcessInstancePhysicsService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003b8</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="ReplicatedStorage" referent="0">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ReplicatedStorage</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003b9</UniqueId>
-		</Properties>
-		<Item class="ModuleScript" referent="1">
-			<Properties>
-				<Content name="LinkedSource"><null></null></Content>
-				<ProtectedString name="Source"><![CDATA[--!strict
--- ReplicatedStorage/Config.lua
--- Single source of truth for ALL tunable values in Habulan Rush.
--- Zero hardcoding anywhere else in the codebase. All numbers come from here.
--- Locked values from DESIGN_LOCK.md (2026-10-07) are marked [LOCKED].
--- Values marked [SD] are Spec Defaults pending team confirmation.
-
-local Config = {}
-
--- ============================================================
--- MOVEMENT
--- ============================================================
-Config.Movement = {
-	-- Runner speeds (studs/s)
-	RunnerWalkSpeed   = 16,   -- [LOCKED via TDD §3]
-	RunnerSprintSpeed = 21,   -- [LOCKED via TDD §3]
-
-	-- Stamina
-	StaminaMax         = 100,
-	StaminaDrainRate   = 20,  -- per second while sprinting
-	StaminaRegenRate   = 12,  -- per second after RegenDelay
-	StaminaRegenDelay  = 1.0, -- seconds without sprinting before regen starts
-	StaminaDepletedMin = 10,  -- must reach this before sprint re-enables after depletion [SD]
-
-	-- Dash
-	DashDistance           = 12,   -- studs
-	DashDuration           = 0.2,  -- seconds
-	DashCooldown           = 6.0,  -- seconds
-	DashPounceInvulnTime   = 0.15, -- [LOCKED F07] seconds of pounce invulnerability (not touch/Tsinelas)
-
-	-- Slide
-	SlideDuration     = 0.6,  -- seconds
-	SlideCooldown     = 3.0,  -- seconds
-	SlideHitboxScale  = 0.5,  -- [SD] 50% height
-
-	-- Taya
-	TayaSpeed         = 18,   -- studs/s constant, no stamina
-
-	-- Post-tag speed boost for ex-Taya [SD F08]
-	PostTagSpeedBoostMult     = 1.20, -- multiplies base walk and sprint
-	PostTagSpeedBoostDuration = 2.0,  -- seconds
-
-	-- Dash VFX (client-predicted juice; transient — must decay to rest).
-	-- Ribbon afterimage + one-shot burst on dash start. All values from here.
-	DashVFX = {
-		Enabled          = true,
-		TrailLifetime    = 0.35,  -- s the ribbon lingers AFTER the dash ends
-		BurstCount       = 16,    -- particles spawned at dash start
-		ParticleLifetime = 0.30,  -- s each burst particle lives
-		ParticleSpeedMin = 8,     -- studs/s backward spread (min)
-		ParticleSpeedMax = 18,    -- studs/s backward spread (max)
-		ColorStart       = Color3.fromRGB(130, 225, 255), -- cyan flash
-		ColorEnd         = Color3.fromRGB(150, 130, 255), -- violet fade
-		SizeStart        = 0.7,   -- studs at birth, shrinks to 0
-		TransparencyIn   = 0.2,   -- birth transparency (0 = opaque, 1 = invisible)
-		LightEmission    = 0.7,   -- glow strength
-	},
-}
-
--- ============================================================
--- TAG SYSTEM
--- ============================================================
-Config.Tag = {
-	TouchTagRange       = 3,    -- studs
-	SafeWindowDuration  = 2.0,  -- seconds [LOCKED F06: longest applies, no stack]
-	LockDelayDuration   = 1.0,  -- seconds (gates target lock only, not touch/pounce)
-
-	-- Pounce
-	PounceWindupTime    = 0.35, -- seconds telegraph on client
-	PounceLungeDistance = 14,   -- studs
-	PounceLungeSpeed    = 45,   -- studs/s
-	PounceHitRadius     = 4,    -- studs
-	PounceMissStunTime  = 1.0,  -- seconds self-stun on miss
-	PounceCooldown      = 3.0,  -- seconds after miss
-
-	-- Ring buffer for lag rewind
-	RewindBufferDuration = 0.5,  -- seconds of Runner position history kept
-	RewindDefault        = 0.12, -- [LOCKED F17] default rewind window (seconds)
-	RewindMax            = 0.20, -- [LOCKED F17] hard cap (seconds)
-
-	-- Tag validation
-	CloseChaseDistance  = 10,   -- [LOCKED F11] studs for Diskarte close-chase-escape reward
-}
-
--- ============================================================
--- TAYA (role)
--- ============================================================
-Config.Taya = {
-	TargetLockAcquireRange = 40, -- studs
-	TargetLockBreakRange   = 55, -- studs
-	TargetLockCoverTimeout = 1.0, -- seconds behind cover before lock breaks
-	TargetLockCooldown     = 4.0, -- seconds after lock break
-}
-
--- ============================================================
--- MATCH
--- ============================================================
-Config.Match = {
-	MinPlayers        = 4,  -- [LOCKED F18]
-	MaxPlayers        = 8,
-
-	-- State durations (seconds)
-	LobbyReadyTimeout = 0,    -- 0 = host-start; set > 0 for auto-start countdown
-	DraftDuration     = 12,   -- MS_02
-	CountdownDuration = 5,    -- MS_03
-	RoundDuration     = 150,  -- MS_04 Round Live
-	RoundEndDuration  = 8,    -- MS_05
-	MatchEndDuration  = 15,   -- MS_06
-
-	TotalRounds       = 3,
-
-	-- Draft runs before EVERY round [LOCKED F01]
-	DraftEveryRound   = true,
-
-	-- Scoring: points by rank (1st = index 1). Covers up to 8 players.
-	RoundPoints       = { 8, 6, 5, 4, 3, 2, 1, 0 },
-
-	-- Disconnect rules [LOCKED F18]
-	OnTayaDisconnect  = "NearestRunner", -- nearest Runner becomes Taya
-	OnRunnerDisconnect = "RankLast",     -- ranked last for the round
-	BelowMinPlayersAction = "PauseEndRound", -- pause 10 s then end round without points [SD]
-	BelowMinPauseDuration = 10,
-
-	-- Event phases (time remaining in Round Live)
-	SimulaEnd       = 100, -- seconds left when SIMULA ends
-	BarangayRushEnd = 50,  -- seconds left when BARANGAY RUSH ends / HULING HABOL starts
-
-	-- Barangay Rush event warning
-	EventWarningTime = 2.5, -- seconds before phase change
-}
-
--- ============================================================
--- EVENTS (Huling Habol escalation thresholds)
--- ============================================================
-Config.Events = {
-	HulingHabolEscalation = { 50, 30, 15, 10, 5 }, -- seconds remaining triggers
-}
-
--- ============================================================
--- SKILLS
--- ============================================================
--- Schema per skill entry (see TDD §3.1):
---   id, role, type, cooldown, duration, range, params, tell, weakness
-
-Config.Skills = {
-	RS_01 = {
-		id       = "RS_01",
-		name     = "Luksong Baka",
-		role     = "Runner",
-		type     = "Escape",
-		cooldown = 12,
-		duration = 0,
-		range    = 18,
-		params   = { height = 14, distance = 18 }, -- impulse values
-		tell     = { vfx = "DustRing",   sfx = "Hup" },
-		weakness = "No air steering",
-		counterCondition = "Escapes a pounce or Lambat while airborne",
-	},
-	RS_02 = {
-		id       = "RS_02",
-		name     = "Pekeng Takbo",
-		role     = "Runner",
-		type     = "Decoy",
-		cooldown = 18,
-		duration = 4, -- decoy active seconds
-		range    = 0,
-		params   = { breakLock = true },
-		tell     = { vfx = "SmokePuff",  sfx = "Psssh" },
-		weakness = "Decoy has no stamina and runs in a straight line",
-		counterCondition = "Taya locks onto or pounces the decoy",
-	},
-	RS_03 = {
-		id       = "RS_03",
-		name     = "Tsinelas Throw",
-		role     = "Runner",
-		type     = "Stun",
-		cooldown = 25,
-		duration = 1.0, -- stun duration on hit
-		range    = 25,  -- max projectile range (studs)
-		params   = {},
-		tell     = { vfx = "SlipperArc", sfx = "Whoosh" },
-		weakness = "Linear projectile; short stun only",
-		counterCondition = "Hit on Taya mid-wind-up or mid-skill cast",
-	},
-	TS_01 = {
-		id       = "TS_01",
-		name     = "Sigaw",
-		role     = "Taya",
-		type     = "Detection",
-		cooldown = 20,
-		duration = 2.0, -- reveal duration
-		range    = 40,  -- radial reveal range (studs)
-		params   = {},
-		tell     = { vfx = "ShoutWave",  sfx = "Sigaw" },
-		weakness = "Only reveals; does not slow or stun",
-		counterCondition = "Tag a Runner who used Pekeng Takbo within the reveal window",
-	},
-	TS_02 = {
-		id       = "TS_02",
-		name     = "Lambat",
-		role     = "Taya",
-		type     = "Area",
-		cooldown = 22,
-		duration = 5.0, -- slow duration on hit Runner
-		range    = 8,   -- net zone radius (studs)
-		params   = { slowMult = 0.60 }, -- Runner moves at 60% speed
-		tell     = { vfx = "NetGrid",   sfx = "Whomp" },
-		weakness = "Runners can dash or jump out of the net",
-		counterCondition = "Tag a Runner slowed by the net",
-	},
-	TS_03 = {
-		id       = "TS_03",
-		name     = "Hatak",
-		role     = "Taya",
-		type     = "Speed",
-		cooldown = 15,
-		duration = 1.5, -- speed boost duration
-		range    = 0,
-		params   = { speedMult = 1.35, lockDisabled = true }, -- +35%, disables target lock
-		tell     = { vfx = "SpeedLines", sfx = "Dash" },
-		weakness = "Lock disabled; small window; commits Taya forward",
-		counterCondition = "Tag a Runner within 2 s of using Hatak",
-	},
-}
-
--- ============================================================
--- DISKARTE
--- ============================================================
-Config.Diskarte = {
-	MeterMax = 100,
-
-	-- Gain values (per trigger)
-	Gain = {
-		-- Runner gains
-		LockBreak          = 15,
-		PounceDouge        = 25,
-		Counter            = 20,
-		CloseChaseEscape   = 15, -- within CloseChaseDistance studs
-
-		-- Taya gains
-		PounceTag          = 25,
-		Tag                = 15,  -- regular touch tag
-		CatchAfterEscape   = 20,  -- catch after Runner used escape skill
-		TayaCounter        = 20,  -- Taya counter
-	},
-
-	-- Anti-snowball guards [SD F13]
-	SamePairCooldown      = 6.0, -- seconds before the same pair can grant each other gains again
-	RepeatedTagCooldown   = 3.0, -- seconds before same tag grants gain again
-
-	-- Moves
-	Moves = {
-		LIKSI = {
-			role   = "Runner",
-			effect = "NextSkillCooldownReduction",
-			params = { reduction = 0.50, window = 8.0 }, -- 50% CD reduction within 8 s
-		},
-		BANTAY = {
-			role   = "Taya",
-			effect = "DirectionalRunnerClue",
-			params = { duration = 2.0, wallReveal = false },
-		},
-		PUSO = {
-			role   = "Both",
-			effect = "SafeWindowOnNextTagInteraction",
-			params = { safeWindow = 0.75, expiry = 10.0 }, -- does not stack with other windows
-		},
-	},
-
-	-- Input bindings [SD F14]
-	ActivateKey     = Enum.KeyCode.F,       -- PC
-	ActivateMobile  = "DiskarteButton",     -- near skill bar
-	ActivateGamepad = Enum.KeyCode.ButtonX, -- console face button
-}
-
--- ============================================================
--- NETWORK / PERFORMANCE
--- ============================================================
-Config.Network = {
-	RateLimit = 10, -- max requests per second per player per remote
-}
-
-Config.Performance = {
-	MaxPartsPerMap     = 6000,
-	MaxActiveEmitters  = 30,
-	ServerFrameBudgetMs = 4,
-	MemoryBudgetMB     = 1024, -- 1 GB
-	NetworkBudgetKBs   = 20,  -- KB/s per client
-}
-
--- ============================================================
--- MAPS (placeholder; map data will expand here)
--- ============================================================
-Config.Maps = {
-	Kalsada = {
-		id         = "Kalsada",
-		name       = "Barangay Kalsada",
-		size       = Vector2.new(150, 150),
-		spawnCount = 8,
-		rushEvent  = "CourtRush",
-		-- T08 greybox blockout metrics. Level-design derived from
-		-- Config.Movement: JumpPower 50 ~ 7.2 studs -> vaults <= 4 (RM_05);
-		-- slide 50% hitbox -> 3.5-stud gap clears a sliding but not a
-		-- standing character (RM_06). Centre stays open for CourtRush.
-		greybox = {
-			wallHeight     = 14,  -- jump (JP50 ~7.2) cannot clear
-			sidewalkWidth  = 8,
-			spawnRadius    = 55,  -- equidistant ring (Bootstrap)
-			spawnPadSize   = 8,
-			courtLength    = 56,  -- court X (long axis)
-			courtWidth     = 32,  -- court Z
-			buildingX      = 20,  -- sari-sari block footprint X
-			buildingZ      = 12,  -- sari-sari block footprint Z
-			buildingHeight = 10,  -- LOS cover (not vaultable)
-			jeepneyLength  = 12,  -- RM_05: roof <= 4 studs => vaultable
-			jeepneyWidth   = 5,
-			jeepneyHeight  = 4,
-			crateSize      = 4,   -- extra vault obstacle (GDD: >= 3)
-			crateHeight    = 3.5,
-			lowGapHeight   = 3.5, -- RM_06 slide clearance
-			lowGapSpan     = 12,  -- lintel length across the gap
-		},
-	},
-	Binaha = {
-		id         = "Binaha",
-		name       = "Binaha na Baryo",
-		size       = Vector2.new(150, 150),
-		spawnCount = 8,
-		rushEvent  = "TubigTumataas",
-		floodSpeedMult       = 0.80, -- -20% in submerged low areas
-		evacSafeWindowDuration = 1.5, -- [SD] one-time per visit
-	},
-}
-
-return Config
-]]></ProtectedString>
-				<string name="ScriptGuid">{33ECB075-8739-4869-95F3-8CB740FA192D}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">Config</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003d8</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="Folder" referent="2">
-			<Properties>
-				<Color3 name="IconTint">
-					<R>0</R>
-					<G>0</G>
-					<B>0</B>
-				</Color3>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">Remotes</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003d9</UniqueId>
-			</Properties>
-			<Item class="RemoteEvent" referent="3">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">ActivateDiskarte</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003da</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="4">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">ClutchEvent</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003db</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="5">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">DiskarteUpdate</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003dc</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="6">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">PickSkill</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003dd</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="7">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">RequestDash</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003de</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="8">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">RequestPounce</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003df</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="9">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">RequestSkill</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e0</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="10">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">SkillEvent</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e1</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="11">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">StateChanged</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e2</UniqueId>
-				</Properties>
-			</Item>
-			<Item class="RemoteEvent" referent="12">
-				<Properties>
-					<BinaryString name="AttributesSerialize"></BinaryString>
-					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-					<bool name="DefinesCapabilities">false</bool>
-					<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-					<string name="Name">TagEvent</string>
-					<int64 name="SourceAssetId">-1</int64>
-					<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-					<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e3</UniqueId>
-				</Properties>
-			</Item>
-		</Item>
-	</Item>
-	<Item class="ServerScriptService" referent="13">
-		<Properties>
-			<bool name="LoadStringEnabled">false</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ServerScriptService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003ba</UniqueId>
-		</Properties>
-		<Item class="Script" referent="14">
-			<Properties>
-				<ProtectedString name="Source"><![CDATA[--!strict
--- ServerScriptService/Bootstrap.server.lua
--- Owner: Programmer A (T08 Barangay Kalsada greybox)
--- Responsibility: build the playable arena so the place never loads empty.
---   Street baseplate (150x150), boundary walls, sidewalks, central basketball
---   court, sari-sari store cover blocks, 4 vault-height jeepneys (roof <= 4),
---   4 crate vaults, 2 low gaps for sliding, 8 equidistant spawns (r = 55),
---   world lighting defaults, and StarterPlayer character defaults.
--- Level-design rules encoded here (GDD §9 / T08 / Art Bible):
---   * Metrics derive from Config.Movement: JP50 jump ~7.2 studs -> all vaults
---     <= 4 studs (RM_05); slide halves HipHeight -> 3.5-stud gaps pass a
---     sliding but never a standing character (RM_06); walls at 14 studs are
---     unjumpable so the match stays inside the blockout.
---   * No dead ends smaller than 10 studs (corner-trap rule): every prop either
---     sits >= 10 studs from other blockers / boundary walls, or is merged
---     flush against a wall so no <10-stud pocket can form.
---   * Centre stays open (Art Bible: "keep the center open"; CourtRush = fast
---     open shortcut with no cover).
--- Idempotent: the whole blockout lives in Workspace.KalsadaGreybox and is
--- destroyed + rebuilt on every server start — no duplicates on re-sync.
-
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local StarterPlayer = game:GetService("StarterPlayer")
-local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage:WaitForChild("Config"))
-local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
-
-local Map = Config.Maps.Kalsada
-local GB = Map.greybox
-local ARENA_SIZE = Map.size.X -- 150 studs, square
-local SPAWN_COUNT = Map.spawnCount -- 8 equidistant
-
--- Palette (Art Bible: bright, stylized, readable; court distinct from street)
-local COL = {
-	asphalt   = Color3.fromRGB(58, 58, 64),
-	sidewalk  = Color3.fromRGB(150, 150, 145),
-	wall      = Color3.fromRGB(132, 132, 138),
-	wallBand  = Color3.fromRGB(60, 120, 200),
-	court     = Color3.fromRGB(54, 98, 160),
-	courtKey  = Color3.fromRGB(172, 74, 62),
-	line      = Color3.fromRGB(240, 240, 240),
-	storeWall = Color3.fromRGB(235, 220, 190),
-	storeRoof = Color3.fromRGB(150, 90, 70),
-	storeSign = Color3.fromRGB(60, 140, 90),
-	jeepney   = Color3.fromRGB(240, 210, 80),
-	jeepTrim  = Color3.fromRGB(70, 70, 75),
-	crate     = Color3.fromRGB(170, 130, 80),
-	tunnel    = Color3.fromRGB(178, 178, 172),
-	lintel    = Color3.fromRGB(222, 182, 70),
-	spawn     = Color3.fromRGB(60, 140, 220),
-	spawnRing = Color3.fromRGB(90, 200, 255),
-}
-
-local folder: Folder -- KalsadaGreybox, assigned in buildGreybox()
-
-local function part(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = cf
-	p.Anchored = true
-	p.Color = color
-	p.Material = material or Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Parent = folder
-	return p
-end
-
--- Street baseplate: persistent top-level child (name watched by the rebuild
--- listener below); properties are re-applied so a stale grass plate upgrades.
-local function ensureBaseplate(): BasePart
-	local existing = Workspace:FindFirstChild("KalsadaBaseplate")
-	if existing and existing:IsA("BasePart") then
-		existing.Size = Vector3.new(ARENA_SIZE, 2, ARENA_SIZE)
-		existing.Position = Vector3.new(0, -1, 0) -- top surface at Y=0
-		existing.Anchored = true
-		existing.Material = Enum.Material.Asphalt -- MP_01: open street
-		existing.Color = COL.asphalt
-		existing.TopSurface = Enum.SurfaceType.Smooth
-		existing.BottomSurface = Enum.SurfaceType.Smooth
-		return existing
-	end
-	local base = Instance.new("Part")
-	base.Name = "KalsadaBaseplate"
-	base.Size = Vector3.new(ARENA_SIZE, 2, ARENA_SIZE)
-	base.Position = Vector3.new(0, -1, 0)
-	base.Anchored = true
-	base.Material = Enum.Material.Asphalt
-	base.Color = COL.asphalt
-	base.TopSurface = Enum.SurfaceType.Smooth
-	base.BottomSurface = Enum.SurfaceType.Smooth
-	base.Parent = Workspace
-	return base
-end
-
--- ── Boundary: 14-stud walls (unjumpable) + inner sidewalk curbs ──────────────
-local function buildWalls()
-	local h = GB.wallHeight
-	-- N/S walls full width, E/W inset to their inner faces (flush corners,
-	-- no overlapping corner blocks to z-fight).
-	local sides = {
-		{ size = Vector3.new(ARENA_SIZE, h, 2), pos = Vector3.new(0, h / 2, -(ARENA_SIZE / 2)) },
-		{ size = Vector3.new(ARENA_SIZE, h, 2), pos = Vector3.new(0, h / 2, ARENA_SIZE / 2) },
-		{ size = Vector3.new(2, h, ARENA_SIZE - 4), pos = Vector3.new(-(ARENA_SIZE / 2), h / 2, 0) },
-		{ size = Vector3.new(2, h, ARENA_SIZE - 4), pos = Vector3.new(ARENA_SIZE / 2, h / 2, 0) },
-	}
-	for i, s in sides do
-		part("Wall" .. i, s.size, CFrame.new(s.pos), COL.wall, Enum.Material.Concrete)
-		-- painted accent band on the inside face (landmark line for readability)
-		local bandSize, bandPos
-		if math.abs(s.pos.Z) > 0 then
-			-- inner face is 1 stud inward; band (0.4 thick) sits proud of it
-			bandSize = Vector3.new(ARENA_SIZE, 1, 0.4)
-			bandPos = Vector3.new(0, h - 4.5, s.pos.Z - math.sign(s.pos.Z) * 1.2)
-		else
-			bandSize = Vector3.new(0.4, 1, ARENA_SIZE - 4)
-			bandPos = Vector3.new(s.pos.X - math.sign(s.pos.X) * 1.2, h - 4.5, 0)
-		end
-		part("WallBand" .. i, bandSize, CFrame.new(bandPos), COL.wallBand)
-	end
-end
-
-local function buildSidewalks()
-	local w = GB.sidewalkWidth -- 8 studs
-	local inset = ARENA_SIZE / 2 - w / 2 - 1 -- hugging the walls (inner face 74)
-	local lift = 0.3 -- height; top sits 0.15 above the street (curb)
-	part("SidewalkN", Vector3.new(ARENA_SIZE, lift, w), CFrame.new(0, 0, -inset), COL.sidewalk, Enum.Material.Concrete)
-	part("SidewalkS", Vector3.new(ARENA_SIZE, lift, w), CFrame.new(0, 0, inset), COL.sidewalk, Enum.Material.Concrete)
-	part("SidewalkW", Vector3.new(w, lift, ARENA_SIZE - 4 - w), CFrame.new(-inset, 0, 0), COL.sidewalk, Enum.Material.Concrete)
-	part("SidewalkE", Vector3.new(w, lift, ARENA_SIZE - 4 - w), CFrame.new(inset, 0, 0), COL.sidewalk, Enum.Material.Concrete)
-end
-
--- ── Central basketball court (CourtRush zone: open, no cover) ────────────────
-local function buildCourt()
-	local cl, cw = GB.courtLength, GB.courtWidth -- 56 x 32
-	local top = 0.05 -- slab top; just above the street to avoid z-fighting
-	local keyLen, keyWide = 9, 12
-
-	part("Court", Vector3.new(cl, 0.1, cw), CFrame.new(0, top - 0.05, 0), COL.court, Enum.Material.Concrete)
-
-	for _, sgn in { 1, -1 } do
-		-- painted key (red) under the basket
-		part("CourtKey", Vector3.new(keyLen, 0.05, keyWide),
-			CFrame.new(sgn * (cl / 2 - keyLen / 2), top + 0.02, 0), COL.courtKey, Enum.Material.Concrete)
-		-- baseline (under the rim) + free-throw line + two key sidelines
-		part("CourtLine", Vector3.new(0.5, 0.04, keyWide + 0.5),
-			CFrame.new(sgn * (cl / 2 - 0.25), top + 0.05, 0), COL.line)
-		part("CourtLine", Vector3.new(0.5, 0.04, keyWide + 0.5),
-			CFrame.new(sgn * (cl / 2 - keyLen), top + 0.05, 0), COL.line)
-		for _, z in { -keyWide / 2, keyWide / 2 } do
-			part("CourtLine", Vector3.new(keyLen, 0.04, 0.5),
-				CFrame.new(sgn * (cl / 2 - keyLen / 2), top + 0.05, z), COL.line)
-		end
-
-		-- hoop: pole outside the baseline, backboard + rim facing the court
-		part("HoopPole", Vector3.new(1, 8, 1),
-			CFrame.new(sgn * (cl / 2 + 2), 4, 0), COL.wall, Enum.Material.Metal)
-		part("HoopBoard", Vector3.new(0.5, 4, 6),
-			CFrame.new(sgn * (cl / 2 + 1.2), 6.5, 0), COL.line)
-		local rim = part("HoopRim", Vector3.new(0.3, 3, 3),
-			CFrame.new(sgn * (cl / 2 + 0.5), 5.5, 0), COL.courtKey, Enum.Material.Metal)
-		rim.Shape = Enum.PartType.Cylinder -- cylinder axis X faces the court
-	end
-
-	-- halfway line + centre circle (flat disc: cylinder rotated onto its face)
-	part("CourtLine", Vector3.new(0.5, 0.04, cw), CFrame.new(0, top + 0.05, 0), COL.line)
-	local circle = part("CourtCircle", Vector3.new(0.04, 12, 12),
-		CFrame.new(0, top + 0.05, 0) * CFrame.Angles(0, 0, math.rad(90)), COL.line)
-	circle.Shape = Enum.PartType.Cylinder
-end
-
--- ── Cover & traversal props ─────────────────────────────────────────────────
--- Sari-sari blocks N/S of the court: 10-stud LOS cover, not vaultable.
--- Placement audit: z[26,38] vs court edge z=16 -> 10-stud gap (>= 10 rule);
--- nearest spawn (0,±55) -> 17 studs; max radius ~39 < spawn ring safety.
-local function buildBuildings()
-	for _, sgn in { 1, -1 } do
-		local cz = sgn * 32
-		part("SariSari", Vector3.new(GB.buildingX, GB.buildingHeight, GB.buildingZ),
-			CFrame.new(0, GB.buildingHeight / 2, cz), COL.storeWall, Enum.Material.Brick)
-		part("SariSariRoof", Vector3.new(GB.buildingX + 1.5, 0.6, GB.buildingZ + 1.5),
-			CFrame.new(0, GB.buildingHeight + 0.3, cz), COL.storeRoof, Enum.Material.Metal)
-		-- sign faces the court (readable landmark from the open centre)
-		part("SariSariSign", Vector3.new(6, 2, 0.4),
-			CFrame.new(0, 7, cz - sgn * (GB.buildingZ / 2 + 0.2)), COL.storeSign, Enum.Material.Neon)
-	end
-end
-
--- 4 jeepneys parked tangent to the ring road at r=48, angles 22.5+90k (midway
--- between spawn spokes: ~21 studs from any spawn centre). Roof top exactly
--- GB.jeepneyHeight = 4 -> RM_05 vaultable (jump ~7.2 clears, can also land on it).
-local function buildJeepneys()
-	for k = 0, 3 do
-		local theta = math.rad(22.5 + k * 90)
-		local pos = Vector3.new(math.cos(theta) * 48, 0, math.sin(theta) * 48)
-		local cf = CFrame.new(pos) * CFrame.Angles(0, -theta - math.pi / 2, 0) -- long axis = tangent
-		part("Jeepney", Vector3.new(GB.jeepneyLength, GB.jeepneyHeight, GB.jeepneyWidth),
-			cf * CFrame.new(0, GB.jeepneyHeight / 2, 0), COL.jeepney, Enum.Material.Metal)
-		part("JeepneyTrim", Vector3.new(GB.jeepneyLength - 0.5, 1, GB.jeepneyWidth + 0.2),
-			cf * CFrame.new(0, 0.6, 0), COL.jeepTrim) -- dark skirt grounds the silhouette
-	end
-end
-
--- 4 crates merged FLUSH against the sari-sari side faces: merging leaves no
--- gap at all, so no sub-10-stud pocket can form beside them. Height 3.5 -> vault.
-local function buildCrates()
-	for _, sgn in { 1, -1 } do
-		for _, xOff in { 12, -12 } do
-			part("Crate", Vector3.new(GB.crateSize, GB.crateHeight, GB.crateSize),
-				CFrame.new(xOff, GB.crateHeight / 2, sgn * 32), COL.crate, Enum.Material.WoodPlanks)
-		end
-	end
-end
-
--- 2 low gaps: pillared lintels at r=50, angles 67.5/247.5 (between spokes;
--- ~15.7 studs from the nearest spawn). Clearance = GB.lowGapHeight (3.5):
--- a sliding Runner (HipHeight x0.5) passes, a standing one (5 studs) cannot.
--- Tangent orientation -> slide flows along the ring road (~0.2s of a 0.6s slide).
-local function buildLowGaps()
-	local depth = 4
-	for _, deg in { 67.5, 247.5 } do
-		local theta = math.rad(deg)
-		local pos = Vector3.new(math.cos(theta) * 50, 0, math.sin(theta) * 50)
-		local tangent = Vector3.new(-math.sin(theta), 0, math.cos(theta))
-		local cf = CFrame.lookAt(pos, pos + tangent) -- -Z = travel, X = span
-		local gap = GB.lowGapHeight
-		local span = GB.lowGapSpan
-		local pillarH = gap + 1 -- lintel sits flush on top of the pillars
-		part("GapPillar", Vector3.new(1, pillarH, depth),
-			cf * CFrame.new(-span / 2 + 0.5, pillarH / 2, 0), COL.tunnel, Enum.Material.Concrete)
-		part("GapPillar", Vector3.new(1, pillarH, depth),
-			cf * CFrame.new(span / 2 - 0.5, pillarH / 2, 0), COL.tunnel, Enum.Material.Concrete)
-		part("GapLintel", Vector3.new(span, 1, depth),
-			cf * CFrame.new(0, gap + 0.5, 0), COL.lintel, Enum.Material.Metal) -- hazard yellow = "go under"
-	end
-end
-
--- ── Spawns: 8 equidistant pads @ r=55, facing the centre, neon ground rings ──
-local function ensureSpawns()
-	local spawnFolder = Workspace:FindFirstChild("SpawnLocations")
-	if not spawnFolder then
-		spawnFolder = Instance.new("Folder")
-		spawnFolder.Name = "SpawnLocations"
-		spawnFolder.Parent = Workspace
-	end
-	for i = 1, SPAWN_COUNT do
-		local angle = (math.pi * 2 / SPAWN_COUNT) * (i - 1)
-		local cx = math.cos(angle) * GB.spawnRadius
-		local cz = math.sin(angle) * GB.spawnRadius
-		local name = string.format("Spawn%02d", i)
-
-		local spawn = spawnFolder:FindFirstChild(name)
-		if not spawn then
-			spawn = Instance.new("SpawnLocation")
-			spawn.Name = name
-			spawn.Parent = spawnFolder
-		end
-		if spawn:IsA("SpawnLocation") then
-			spawn.Position = Vector3.new(cx, 3, cz) -- 3 studs up: never clips the floor
-			spawn.Size = Vector3.new(GB.spawnPadSize, 1.2, GB.spawnPadSize)
-			spawn.Anchored = true
-			spawn.Enabled = true
-			spawn.AllowTeamChangeOnTouch = false
-			spawn.Neutral = true
-			spawn.Material = Enum.Material.SmoothPlastic
-			spawn.Color = COL.spawn
-			spawn.TopSurface = Enum.SurfaceType.Smooth
-			spawn.BottomSurface = Enum.SurfaceType.Weld
-			-- face the court (derived: forward = -Z -> yaw = 90deg - theta)
-			spawn.Orientation = Vector3.new(0, 90 - math.deg(angle), 0)
-			local decal = spawn:FindFirstChildOfClass("Decal")
-			if decal then
-				decal:Destroy()
-			end
-		end
-
-		-- neon ground ring: visible from anywhere on the street (readability)
-		local ring = Instance.new("Part")
-		ring.Name = "SpawnRing"
-		ring.Shape = Enum.PartType.Cylinder
-		ring.Size = Vector3.new(0.2, 16, 16) -- cylinder axis X -> rotate flat
-		ring.CFrame = CFrame.new(cx, 0, cz) * CFrame.Angles(0, 0, math.rad(90))
-		ring.Anchored = true
-		ring.CanCollide = false
-		ring.Color = COL.spawnRing
-		ring.Material = Enum.Material.Neon
-		ring.Parent = folder
-	end
-end
-
--- Full blockout rebuild: destroy + regenerate (idempotent on every boot/resync).
--- `rebuilding` suppresses the ChildRemoved listener while we destroy our own
--- folder, otherwise self-destruction would schedule an infinite rebuild loop.
-local rebuilding = false
-local function buildGreybox()
-	rebuilding = true
-	local old = Workspace:FindFirstChild("KalsadaGreybox")
-	if old then
-		old:Destroy()
-	end
-	folder = Instance.new("Folder")
-	folder.Name = "KalsadaGreybox"
-	folder.Parent = Workspace
-
-	buildWalls()
-	buildSidewalks()
-	buildCourt()
-	buildBuildings()
-	buildJeepneys()
-	buildCrates()
-	buildLowGaps()
-	ensureSpawns()
-	rebuilding = false
-end
-
-local function ensureLighting()
-	Lighting.Ambient = Color3.fromRGB(120, 120, 120)
-	Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
-	Lighting.Brightness = 2
-	Lighting.ClockTime = 14 -- afternoon, high readability for playtests
-	Lighting.GlobalShadows = true
-end
-
-local function ensureCharacterDefaults()
-	-- T09 tuning relies on WalkSpeed set at runtime, but sane defaults help
-	-- before MovementController attaches (avoids 16-vs-default pop).
-	StarterPlayer.CharacterWalkSpeed = Config.Movement.RunnerWalkSpeed
-	StarterPlayer.CharacterJumpPower = 50 -- RM_05: vaults obstacles <= 4 studs
-end
-
--- ── Boot ─────────────────────────────────────────────────────────────────────
-ensureBaseplate()
-buildGreybox()
-ensureLighting()
-ensureCharacterDefaults()
-
--- TEMP DEBUG (remove when MatchService T07 lands): no match state machine exists
--- yet, so nothing ever fires StateChanged MS_04 and MovementController stays in
--- inputLocked (WalkSpeed 0). Auto-unlock shortly after each spawn so T09 movement
--- is testable in Studio Play right now. MatchService will own this event later.
-local DEBUG_AUTO_UNLOCK = true
-if DEBUG_AUTO_UNLOCK then
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function()
-			task.wait(1.5)
-			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
-		end)
-	end)
-	-- Cover the player that spawned before this script ran (Play Solo).
-	for _, player in Players:GetPlayers() do
-		task.spawn(function()
-			if not player.Character then
-				player.CharacterAdded:Wait()
-			end
-			task.wait(1.5)
-			StateChanged:FireClient(player, { state = "MS_04", role = "Runner" })
-		end)
-	end
-end
-
--- Late-join safety: if Workspace gets cleared, rebuild once.
-Workspace.ChildRemoved:Connect(function(child)
-	if child.Name == "KalsadaBaseplate" then
-		task.defer(ensureBaseplate)
-	end
-	if child.Name == "KalsadaGreybox" and not rebuilding then
-		task.defer(buildGreybox)
-	end
-end)
-
-print(string.format(
-	"[Bootstrap] Kalsada greybox ready — %dx%d street, walls h=%d, court %dx%d, "
-		.. "4 jeepneys + 4 crates (vaults <=4), 2 low gaps (%.1f studs), "
-		.. "%d spawns @ r=%d, dead-end rule >=10 studs audited. T09 movement testable.",
-	ARENA_SIZE, ARENA_SIZE, GB.wallHeight, GB.courtLength, GB.courtWidth,
-	GB.lowGapHeight, SPAWN_COUNT, GB.spawnRadius
-))]]></ProtectedString>
-				<bool name="Disabled">false</bool>
-				<Content name="LinkedSource"><null></null></Content>
-				<token name="RunContext">0</token>
-				<string name="ScriptGuid">{595B5607-E06F-427A-B39C-2416EFACDA25}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">Bootstrap</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e4</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="Script" referent="15">
-			<Properties>
-				<ProtectedString name="Source"><![CDATA[--!strict
--- ServerScriptService/EventService.lua
--- Owner: Programmer B (T05)
--- Responsibility: Orchestrates Barangay Rush events and Huling Habol
---                 timeline based on MatchService phase changes.
--- See System Specification §7 and Config.Match / Config.Events.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage.Config)
-
--- TODO (T24–T26): Implement Court Rush event, match phase controller,
---                 and Huling Habol presentation escalation.
-
-print("[EventService] Loaded — stub only. Implement T24–T26.")
-]]></ProtectedString>
-				<bool name="Disabled">false</bool>
-				<Content name="LinkedSource"><null></null></Content>
-				<token name="RunContext">0</token>
-				<string name="ScriptGuid">{90A91DEE-215F-4412-9B92-821EDF520C63}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">EventService</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e6</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="Script" referent="16">
-			<Properties>
-				<ProtectedString name="Source"><![CDATA[--!strict
--- ServerScriptService/MatchService.lua
--- Owner: Programmer A (T05)
--- Responsibility: State machine (MS_01→MS_06), shuffle bag, scoring,
---                 phase timers, and disconnect handling.
--- See PLANNING.md §3 and System Specification §2 for full rules.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players           = game:GetService("Players")
-
-local Config = require(ReplicatedStorage.Config)
-
--- TODO (T07): Implement match state machine and shuffle bag.
-
-print("[MatchService] Loaded — stub only. Implement T07.")
-]]></ProtectedString>
-				<bool name="Disabled">false</bool>
-				<Content name="LinkedSource"><null></null></Content>
-				<token name="RunContext">0</token>
-				<string name="ScriptGuid">{8BC90C51-DF4D-4501-B44D-13A663BE3E62}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">MatchService</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e7</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="Script" referent="17">
-			<Properties>
-				<ProtectedString name="Source"><![CDATA[--!strict
--- ServerScriptService/SkillService.lua
--- Owner: Programmer B (T05)
--- Responsibility: Skill draft, cooldowns, role checks, skill effects,
---                 Diskarte meter and move activation.
--- See System Specification §5–6 and Config.Skills / Config.Diskarte.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage.Config)
-
--- TODO (T16–T22): Implement skill draft, all 6 skills, and Diskarte system.
-
-print("[SkillService] Loaded — stub only. Implement T16–T22.")
-]]></ProtectedString>
-				<bool name="Disabled">false</bool>
-				<Content name="LinkedSource"><null></null></Content>
-				<token name="RunContext">0</token>
-				<string name="ScriptGuid">{BB8A404D-E8C1-40A7-B8EC-7394E80E453C}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">SkillService</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e8</UniqueId>
-			</Properties>
-		</Item>
-		<Item class="Script" referent="18">
-			<Properties>
-				<ProtectedString name="Source"><![CDATA[--!strict
--- ServerScriptService/TagService.lua
--- Owner: Programmer A (T05)
--- Responsibility: Pounce/touch tag validation, tag transfer, Safe Window,
---                 Lock Delay, lag rewind buffer.
--- See System Specification §4 and DESIGN_LOCK.md for confirmed rules.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage.Config)
-
--- TODO (T11): Implement server-authoritative tag validation.
--- TODO (T12): Implement Safe Window, speed boost, and lock delay.
--- TODO (T13): Implement pounce mechanics and validation.
-
-print("[TagService] Loaded — stub only. Implement T11–T13.")
-]]></ProtectedString>
-				<bool name="Disabled">false</bool>
-				<Content name="LinkedSource"><null></null></Content>
-				<token name="RunContext">0</token>
-				<string name="ScriptGuid">{3172EF13-1238-4261-A34E-ACA412460D54}</string>
-				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-				<bool name="DefinesCapabilities">false</bool>
-				<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-				<string name="Name">TagService</string>
-				<int64 name="SourceAssetId">-1</int64>
-				<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-				<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003e9</UniqueId>
-			</Properties>
-		</Item>
-	</Item>
-	<Item class="ServerStorage" referent="RBXEF5250C7DEE24542844AF125B47C51DD">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ServerStorage</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003bb</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="ServiceVisibilityService" referent="RBX5B8BFC9AC86545C9AD5F0A336C06575A">
-		<Properties>
-			<BinaryString name="HiddenServices">AAAAAA==</BinaryString>
-			<BinaryString name="VisibleServices">AAAAAA==</BinaryString>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">ServiceVisibilityService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003d0</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="VideoService" referent="RBXB3920F72AEC7404AB58C638691B690D0">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">VideoService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003d4</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="HttpService" referent="RBX14A98BD469C94A4EAFDE8CD4AAEB6DEF">
-		<Properties>
-			<bool name="HttpEnabled">false</bool>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">HttpService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000003d5</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="Lighting" referent="RBXFC36BD705E7A45F197917A04CB7400B8">
-		<Properties>
-			<Color3 name="Ambient">
-				<R>0.5</R>
-				<G>0.5</G>
-				<B>0.5</B>
-			</Color3>
-			<float name="Brightness">1</float>
-			<Color3 name="ColorShift_Bottom">
-				<R>0</R>
-				<G>0</G>
-				<B>0</B>
-			</Color3>
-			<Color3 name="ColorShift_Top">
-				<R>0</R>
-				<G>0</G>
-				<B>0</B>
-			</Color3>
-			<float name="EnvironmentDiffuseScale">0</float>
-			<float name="EnvironmentSpecularScale">0</float>
-			<float name="ExposureCompensation">0</float>
-			<token name="ExtendLightRangeTo120">0</token>
-			<Color3 name="FogColor">
-				<R>0.75</R>
-				<G>0.75</G>
-				<B>0.75</B>
-			</Color3>
-			<float name="FogEnd">100000</float>
-			<float name="FogStart">0</float>
-			<float name="GeographicLatitude">41.7332993</float>
-			<bool name="GlobalShadows">false</bool>
-			<token name="LightingStyle">1</token>
-			<Color3 name="OutdoorAmbient">
-				<R>0.5</R>
-				<G>0.5</G>
-				<B>0.5</B>
-			</Color3>
-			<bool name="Outlines">true</bool>
-			<bool name="PrioritizeLightingQuality">false</bool>
-			<float name="ShadowSoftness">0.5</float>
-			<token name="Technology">2</token>
-			<string name="TimeOfDay">14:00:00</string>
-			<BinaryString name="AttributesSerialize">AQAAACYAAABSQlhfTGlnaHRpbmdUZWNobm9sb2d5VW5pZmllZE1pZ3JhdGlvbgMB</BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">Lighting</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000411</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="LodDataService" referent="RBX920C9C717D834EA79EA665110AAAA567">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">LodDataService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000414</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="TestService" referent="RBXB9D7D7D3AAE84CF89BE2F3D5438FD56A">
-		<Properties>
-			<bool name="AutoRuns">true</bool>
-			<string name="Description"></string>
-			<bool name="ExecuteWithStudioRun">false</bool>
-			<bool name="IsPhysicsEnvironmentalThrottled">true</bool>
-			<bool name="IsSleepAllowed">true</bool>
-			<int name="NumberOfPlayers">0</int>
-			<double name="SimulateSecondsLag">0</double>
-			<bool name="ThrottlePhysicsToRealtime">true</bool>
-			<double name="Timeout">10</double>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">TestService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a000004d7</UniqueId>
-		</Properties>
-	</Item>
-	<Item class="SerializationService" referent="RBXA931FCD0541149ED9888B744B0C16A7B">
-		<Properties>
-			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-			<bool name="DefinesCapabilities">false</bool>
-			<UniqueId name="HistoryId">00000000000000000000000000000000</UniqueId>
-			<string name="Name">SerializationService</string>
-			<int64 name="SourceAssetId">-1</int64>
-			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
-			<UniqueId name="UniqueId">1aa40298216ea8bc0ad8083a00000649</UniqueId>
-		</Properties>
-	</Item>
-	<SharedStrings>
-		<SharedString md5="leDEa27wHRPaBssaK0OoqQ==">AQAAABUAAAACAAAAan8/AAUAAAAAAAADAAAAP39rIAMAAAAAAAAEAAAAf2Y/MAMAAAAAAAAF
-AAAAilY+UAMAAAAAAAAGAAAAj35fEAUAAAAAAAAHAAAAi21PEAIAAAAAAAAIAAAAZmxvgAMA
-AAAAAAAJAAAAZbDqEAYAAAAAAAAKAAAAw8faMAUAAAAAAAALAAAAiVpHkAMAAAAAAAAMAAAA
-Oi4kQAUAAAAAAAANAAAAHh4lFAMAAAAAAAAOAAAAZlw7UAUAAAAAAAAPAAAA6JxKJAMAAAAA
-AAAQAAAAc3trYAUAAAAAAAARAAAAhHtacAMAAAAAAAASAAAAgcLgAAYAAAAAAAATAAAAc4RK
-BAUAAAAAAAAUAAAAxr21cAUAAAAAAAAVAAAAzq2UNAMAAAAAAAAWAAAAlJSMRAMAAAAAAAA=</SharedString>
-		<SharedString md5="yuZpQdnvvUBOTYh1jqZ2cA=="></SharedString>
-	</SharedStrings>
+updateSkillCD()
+
+print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
 </roblox>
