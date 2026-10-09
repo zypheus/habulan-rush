@@ -16,6 +16,8 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local SocialService = game:GetService("SocialService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -343,6 +345,7 @@ local displayName = CONFIG.PlayerNameOverride or player.DisplayName
 -- Handles filled in below, wired up in BUTTON EVENTS
 local playHolderScale, settingsHolderScale, chevronLabel
 local playButton, settingsButton
+local playIconLabel, playTextLabel, playSubLabel
 
 --------------------------------------------------------------------------
 -- TOP BAR (logo + location top-left, currency + avatar top-right)
@@ -568,7 +571,7 @@ do
 		Rotation = 90,
 	}, playButton)
 
-	createLabel({
+	playIconLabel = createLabel({
 		Position = UDim2.fromOffset(40, 0),
 		Size = UDim2.fromOffset(34, 89),
 		Text = "▶",
@@ -576,7 +579,7 @@ do
 		TextSize = 28,
 		TextColor3 = COLORS.Navy,
 	}, playButton)
-	createLabel({
+	playTextLabel = createLabel({
 		Position = UDim2.fromOffset(88, 0),
 		Size = UDim2.fromOffset(110, 89),
 		Text = "PLAY",
@@ -592,6 +595,15 @@ do
 		FontFace = FONTS.Bold,
 		TextSize = 36,
 		TextColor3 = COLORS.LimeEdge,
+	}, playButton)
+	playSubLabel = createLabel({
+		Position = UDim2.fromOffset(28, 52),
+		Size = UDim2.fromOffset(190, 24),
+		Text = "",
+		FontFace = FONTS.Heavy,
+		TextSize = 11,
+		TextColor3 = COLORS.Navy,
+		Visible = false,
 	}, playButton)
 
 	-- SETTINGS (small, immediately beside PLAY)
@@ -692,6 +704,138 @@ do
 		TextSize = 18,
 		TextColor3 = COLORS.Lime,
 	}, card)
+end
+
+--------------------------------------------------------------------------
+-- PARTY SLOTS (Main lobby party bar: 4 avatar slots + '+' invite button)
+--------------------------------------------------------------------------
+local partyGroup = createGroup(
+	"PartyGroup",
+	Vector2.new(244, 58),
+	Vector2.new(0.5, 1), UDim2.fromScale(0.412, 0.73),
+	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.54)
+)
+
+do
+	local partyContainer = createFrame({
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+	}, partyGroup)
+
+	local partySlots = {}
+	for i = 1, 4 do
+		local slotBox = createFrame({
+			Position = UDim2.fromOffset((i - 1) * 62, 0),
+			Size = UDim2.fromOffset(56, 56),
+			BackgroundColor3 = COLORS.Slate,
+		}, partyContainer)
+		corner(slotBox, 12)
+		local sStroke = stroke(slotBox, COLORS.SlateLight, 1.5, 0.5)
+
+		local avatarImg = Instance.new("ImageLabel")
+		avatarImg.Size = UDim2.fromScale(1, 1)
+		avatarImg.BackgroundTransparency = 1
+		avatarImg.Visible = false
+		avatarImg.Parent = slotBox
+		corner(avatarImg, 12)
+
+		local nameLabel = createLabel({
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, 15),
+			Size = UDim2.fromOffset(58, 14),
+			Text = "",
+			FontFace = FONTS.Bold,
+			TextSize = 9,
+			TextColor3 = COLORS.TextDim,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, slotBox)
+
+		local plusBtn = createButton({
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = "+",
+			FontFace = FONTS.Heavy,
+			TextSize = 26,
+			TextColor3 = COLORS.Lime,
+			Visible = false,
+		}, slotBox)
+		corner(plusBtn, 12)
+
+		plusBtn.Activated:Connect(function()
+			pcall(function()
+				local canInvite = SocialService:CanSendGameInviteAsync(player)
+				if canInvite then
+					local options = Instance.new("ExperienceInviteOptions")
+					options.LaunchData = tostring(player.UserId)
+					SocialService:PromptGameInvite(player, options)
+				else
+					SocialService:PromptGameInvite(player)
+				end
+			end)
+		end)
+
+		partySlots[i] = {
+			Box = slotBox,
+			Stroke = sStroke,
+			Avatar = avatarImg,
+			Name = nameLabel,
+			Plus = plusBtn,
+		}
+	end
+
+	local function refreshPartyUI()
+		local myLeaderId = player:GetAttribute("HRushPartyLeader") or player.UserId
+		local members: { Player } = {}
+		for _, p in ipairs(Players:GetPlayers()) do
+			local lId = p:GetAttribute("HRushPartyLeader") or p.UserId
+			if lId == myLeaderId then
+				table.insert(members, p)
+			end
+		end
+		table.sort(members, function(a, b)
+			local sA = a:GetAttribute("HRushPartySlot") or 99
+			local sB = b:GetAttribute("HRushPartySlot") or 99
+			return sA < sB
+		end)
+
+		for i = 1, 4 do
+			local uiSlot = partySlots[i]
+			local member = members[i]
+			if member then
+				uiSlot.Plus.Visible = false
+				uiSlot.Avatar.Visible = true
+				uiSlot.Name.Text = (member == player) and "YOU" or (member.DisplayName or member.Name)
+				uiSlot.Name.TextColor3 = (member == player) and COLORS.Lime or COLORS.White
+				uiSlot.Stroke.Color = (i == 1) and COLORS.Lime or COLORS.SlateLight
+				uiSlot.Stroke.Transparency = (i == 1) and 0 or 0.4
+				uiSlot.Box.BackgroundColor3 = (member == player) and COLORS.SlateDark or COLORS.Slate
+
+				task.spawn(function()
+					local ok, thumb = pcall(function()
+						return Players:GetUserThumbnailAsync(member.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+					end)
+					if ok and thumb and uiSlot.Avatar.Parent then
+						uiSlot.Avatar.Image = thumb
+					end
+				end)
+			else
+				uiSlot.Avatar.Visible = false
+				uiSlot.Plus.Visible = true
+				uiSlot.Name.Text = "INVITE"
+				uiSlot.Name.TextColor3 = COLORS.TextDim
+				uiSlot.Stroke.Color = COLORS.SlateLight
+				uiSlot.Stroke.Transparency = 0.7
+				uiSlot.Box.BackgroundColor3 = COLORS.SlateEdge
+			end
+		end
+	end
+
+	player:GetAttributeChangedSignal("HRushPartyLeader"):Connect(refreshPartyUI)
+	player:GetAttributeChangedSignal("HRushPartySlot"):Connect(refreshPartyUI)
+	player:GetAttributeChangedSignal("HRushPartySize"):Connect(refreshPartyUI)
+	Players.PlayerAdded:Connect(refreshPartyUI)
+	Players.PlayerRemoving:Connect(refreshPartyUI)
+	refreshPartyUI()
 end
 
 --------------------------------------------------------------------------
@@ -1373,9 +1517,80 @@ end
 --------------------------------------------------------------------------
 -- BUTTON EVENTS
 --------------------------------------------------------------------------
+local queueRemotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+local QueueEvent = queueRemotes and queueRemotes:WaitForChild("QueueEvent", 10) :: RemoteEvent?
+
 bindButton(playButton, playHolderScale, function()
-	openPanel(playPanel)
+	if not QueueEvent then return end
+	local q = player:GetAttribute("HRushQueue") or "Idle"
+	if q == "Searching" then
+		QueueEvent:FireServer("Cancel")
+	else
+		QueueEvent:FireServer("Play")
+	end
 end, 1.04, 0.96)
+
+local queueAnimToken = 0
+local function refreshPlayButtonUI()
+	queueAnimToken += 1
+	local token = queueAnimToken
+	local q = player:GetAttribute("HRushQueue") or "Idle"
+
+	if q == "Searching" then
+		playIconLabel.Visible = false
+		playTextLabel.Position = UDim2.fromOffset(24, 8)
+		playTextLabel.Size = UDim2.fromOffset(190, 42)
+		playTextLabel.TextSize = 32
+		playSubLabel.Visible = true
+		chevronLabel.Text = "X"
+		chevronLabel.TextColor3 = COLORS.Navy
+		chevronLabel.Position = UDim2.fromOffset(226, 0)
+
+		task.spawn(function()
+			local dots = 0
+			while token == queueAnimToken and gui.Parent do
+				dots = (dots % 3) + 1
+				local endsAt = player:GetAttribute("HRushSearchEndsAt")
+				local left = endsAt and math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) or nil
+				playTextLabel.Text = "SEARCHING" .. string.rep(".", dots)
+				playSubLabel.Text = (left and (string.format("%02d", left) .. "s  ") or "") .. "(TAP TO CANCEL)"
+				task.wait(0.4)
+			end
+		end)
+	elseif q == "Busy" then
+		playIconLabel.Visible = false
+		playTextLabel.Position = UDim2.fromOffset(24, 18)
+		playTextLabel.Size = UDim2.fromOffset(230, 50)
+		playTextLabel.TextSize = 26
+		playTextLabel.Text = "IN MATCH"
+		playSubLabel.Visible = false
+		chevronLabel.Text = "•"
+		chevronLabel.TextColor3 = COLORS.Navy
+	elseif q == "InMatch" then
+		playIconLabel.Visible = false
+		playTextLabel.Position = UDim2.fromOffset(24, 18)
+		playTextLabel.Size = UDim2.fromOffset(230, 50)
+		playTextLabel.TextSize = 28
+		playTextLabel.Text = "MATCH FOUND"
+		playSubLabel.Visible = false
+		chevronLabel.Text = "✓"
+		chevronLabel.TextColor3 = COLORS.Navy
+	else
+		playIconLabel.Visible = true
+		playTextLabel.Position = UDim2.fromOffset(88, 0)
+		playTextLabel.Size = UDim2.fromOffset(110, 89)
+		playTextLabel.TextSize = 58
+		playTextLabel.Text = "PLAY"
+		playSubLabel.Visible = false
+		chevronLabel.Text = "›"
+		chevronLabel.TextColor3 = COLORS.LimeEdge
+		chevronLabel.Position = UDim2.fromOffset(216, 0)
+	end
+end
+
+player:GetAttributeChangedSignal("HRushQueue"):Connect(refreshPlayButtonUI)
+player:GetAttributeChangedSignal("HRushSearchEndsAt"):Connect(refreshPlayButtonUI)
+refreshPlayButtonUI()
 
 bindButton(settingsButton, settingsHolderScale, function()
 	openPanel(settingsPanel)
@@ -1508,7 +1723,9 @@ setupLobbyCamera()
 local function setControlsEnabled(enabled)
 	task.spawn(function()
 		local ok, module = pcall(function()
-			return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+			local ps = player:WaitForChild("PlayerScripts", 10)
+			local pm = ps and ps:WaitForChild("PlayerModule", 10)
+			return pm and require(pm)
 		end)
 		if ok and module then
 			pcall(function()

@@ -19,6 +19,7 @@
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace         = game:GetService("Workspace")
 local RunService        = game:GetService("RunService")
 
@@ -26,6 +27,8 @@ local Config       = require(ReplicatedStorage:WaitForChild("Config"))
 local Remotes      = ReplicatedStorage:WaitForChild("Remotes")
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent     = Remotes:WaitForChild("TagEvent") :: RemoteEvent
+
+local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
 
 -- QueueEvent is created here if your Remotes setup script doesn't define it yet
 local QueueEvent: RemoteEvent
@@ -41,12 +44,26 @@ do
 	end
 end
 
+-- MapVoteEvent
+local MapVoteEvent: RemoteEvent
+do
+	local existing = Remotes:FindFirstChild("MapVoteEvent")
+	if existing and existing:IsA("RemoteEvent") then
+		MapVoteEvent = existing
+	else
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = "MapVoteEvent"
+		ev.Parent = Remotes
+		MapVoteEvent = ev
+	end
+end
+
 local IS_STUDIO = RunService:IsStudio()
 local MATCH = Config.Match
 local MIN_PLAYERS = IS_STUDIO and 1 or MATCH.MinPlayers
 local MAX_PLAYERS: number = MATCH.MaxPlayers or 8
 local SEARCH_TIMEOUT: number = MATCH.SearchTimeout or 10
-local BOT_FILL_TARGET: number = MATCH.BotFillTarget or 4 -- total participants after bot fill
+local BOT_FILL_TARGET: number = MATCH.BotFillTarget or 8 -- total participants after bot fill
 local ALLOW_BOTS: boolean = (MATCH.AllowBots == nil) and true or MATCH.AllowBots -- set false for release
 local TAG_RANGE: number = (Config.Tag.TouchTagRange or 3) + 1.5 -- centre-to-centre studs (HRP distance is larger than hand reach)
 local TAG_IMMUNITY: number = Config.Tag.SafeWindowDuration or 2 -- Safe Window: ex-Taya cannot be re-tagged for this long
@@ -487,11 +504,37 @@ QueueEvent.OnServerEvent:Connect(function(player, action)
 			end)
 			return
 		end
-		queued[player] = true
-		player:SetAttribute("HRushQueue", "Searching")
-		player:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+
+		local party = PartyService.GetParty(player)
+		if party then
+			if party.leader == player then
+				PartyService.SetLocked(party, true)
+				for _, m in ipairs(party.members) do
+					if m.Parent then
+						queued[m] = true
+						m:SetAttribute("HRushQueue", "Searching")
+						m:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+					end
+				end
+			else
+				-- non-leader cannot queue party
+				return
+			end
+		else
+			queued[player] = true
+			player:SetAttribute("HRushQueue", "Searching")
+			player:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+		end
 	elseif action == "Cancel" then
-		if queued[player] then
+		local party = PartyService.GetParty(player)
+		if party and party.leader == player then
+			PartyService.SetLocked(party, false)
+			for _, m in ipairs(party.members) do
+				queued[m] = nil
+				m:SetAttribute("HRushQueue", "Idle")
+				m:SetAttribute("HRushSearchEndsAt", nil)
+			end
+		else
 			queued[player] = nil
 			player:SetAttribute("HRushQueue", "Idle")
 			player:SetAttribute("HRushSearchEndsAt", nil)
@@ -590,8 +633,11 @@ local function returnToLobby()
 	end
 	broadcastState(nil)
 
-	-- respawn finished players at the lobby spawn
 	for _, p in ipairs(returning) do
+		local party = PartyService.GetParty(p)
+		if party then
+			PartyService.SetLocked(party, false)
+		end
 		if p.Parent then
 			task.spawn(function()
 				pcall(function()
@@ -600,6 +646,155 @@ local function returnToLobby()
 			end)
 		end
 	end
+end
+
+-- ============================================================
+-- MAP VOTE
+-- ============================================================
+local function runMapVote(): string
+	local pool = (Config.MapVote and Config.MapVote.Pool) or { "Kalsada", "Binaha" }
+	local duration = (Config.MapVote and Config.MapVote.Duration) or 10
+	local revealTime = (Config.MapVote and Config.MapVote.RevealTime) or 1.5
+	local endsAt = workspace:GetServerTimeNow() + duration
+
+	local votes: { [string]: number } = {}
+	for _, mapKey in ipairs(pool) do
+		votes[mapKey] = 0
+	end
+	local voterChoices: { [string]: string } = {}
+
+	local participants = getParticipants()
+	local participantList: { { id: any, name: string, isBot: boolean } } = {}
+	for _, p in ipairs(participants) do
+		if p:IsA("Player") then
+			table.insert(participantList, {
+				id = p.UserId,
+				name = p.DisplayName or p.Name,
+				isBot = false,
+			})
+		elseif p:IsA("Model") then
+			table.insert(participantList, {
+				id = p.Name,
+				name = p.Name,
+				isBot = true,
+			})
+		end
+	end
+
+	local startPayload = {
+		type = "Start",
+		pool = pool,
+		duration = duration,
+		endsAt = endsAt,
+		participants = participantList,
+		info = Config.MapVote and Config.MapVote.Info,
+	}
+	for p in pairs(inMatch) do
+		if p:IsDescendantOf(Players) then
+			MapVoteEvent:FireClient(p, startPayload)
+		end
+	end
+
+	local voteConn: RBXScriptConnection? = nil
+	voteConn = MapVoteEvent.OnServerEvent:Connect(function(player, action, mapKey)
+		if action == "Vote" and typeof(mapKey) == "string" and votes[mapKey] ~= nil then
+			if inMatch[player] then
+				local oldChoice = voterChoices[tostring(player.UserId)]
+				if oldChoice then
+					votes[oldChoice] = math.max(0, votes[oldChoice] - 1)
+				end
+				voterChoices[tostring(player.UserId)] = mapKey
+				votes[mapKey] = votes[mapKey] + 1
+
+				local updatePayload = {
+					type = "Update",
+					votes = votes,
+					voterId = player.UserId,
+					map = mapKey,
+				}
+				for target in pairs(inMatch) do
+					if target:IsDescendantOf(Players) then
+						MapVoteEvent:FireClient(target, updatePayload)
+					end
+				end
+			end
+		end
+	end)
+
+	-- Bots cast votes over time (0.6s to duration * 0.65s)
+	for _, b in ipairs(bots) do
+		task.spawn(function()
+			local delaySec = math.random(6, math.floor(duration * 6.5)) / 10
+			task.wait(delaySec)
+			if matchState ~= "MS_VOTE" then return end
+			local choice = pool[math.random(1, #pool)]
+			votes[choice] = (votes[choice] or 0) + 1
+			voterChoices[b.Name] = choice
+
+			local updatePayload = {
+				type = "Update",
+				votes = votes,
+				voterId = b.Name,
+				map = choice,
+			}
+			for target in pairs(inMatch) do
+				if target:IsDescendantOf(Players) then
+					MapVoteEvent:FireClient(target, updatePayload)
+				end
+			end
+		end)
+	end
+
+	local voteStart = os.clock()
+	while (os.clock() - voteStart) < duration do
+		task.wait(0.2)
+		local count = 0
+		for _ in pairs(voterChoices) do
+			count += 1
+		end
+		if count >= #participants then
+			task.wait(0.4)
+			break
+		end
+	end
+
+	if voteConn then
+		voteConn:Disconnect()
+	end
+
+	local bestCount = -1
+	local candidates: { string } = {}
+	for _, mapKey in ipairs(pool) do
+		local c = votes[mapKey] or 0
+		if c > bestCount then
+			bestCount = c
+			candidates = { mapKey }
+		elseif c == bestCount then
+			table.insert(candidates, mapKey)
+		end
+	end
+	local winner = candidates[math.random(1, #candidates)]
+
+	local winnerPayload = {
+		type = "Winner",
+		winner = winner,
+		votes = votes,
+		revealEndsAt = workspace:GetServerTimeNow() + revealTime,
+	}
+	for target in pairs(inMatch) do
+		if target:IsDescendantOf(Players) then
+			MapVoteEvent:FireClient(target, winnerPayload)
+		end
+	end
+	task.wait(revealTime)
+
+	for target in pairs(inMatch) do
+		if target:IsDescendantOf(Players) then
+			MapVoteEvent:FireClient(target, { type = "Close" })
+		end
+	end
+
+	return winner
 end
 
 local function runMatch()
@@ -662,11 +857,18 @@ local function runMatch()
 			end
 		end
 		queued = {}
-		broadcastState(nil) -- clients show the LOADING SCREEN immediately (HRushInMatch = true)
 		if botsNeeded > 0 then
 			print(string.format("[MatchService] Search timed out. Filling with %d bot(s).", botsNeeded))
 			spawnBots(botsNeeded)
 		end
+
+		-- ===== MAP VOTE PHASE =====
+		matchState = "MS_VOTE"
+		broadcastState(nil)
+		local selectedMap = runMapVote()
+		ReplicatedStorage:SetAttribute("HRushSelectedMap", selectedMap)
+		print(string.format("[MatchService] Map vote completed. Selected map: %s", selectedMap))
+
 		-- Place everyone in the arena while the loading screen still covers the view.
 		teleportToSpawns(getParticipants())
 		task.wait(0.5)

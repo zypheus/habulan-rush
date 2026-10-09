@@ -26,12 +26,17 @@
         "SkillLanded":     { "$className": "RemoteEvent" },
         "DiskarteUpdate":  { "$className": "RemoteEvent" },
         "ClutchEvent":     { "$className": "RemoteEvent" },
-        "QueueEvent":      { "$className": "RemoteEvent" }
+        "QueueEvent":      { "$className": "RemoteEvent" },
+        "PartyEvent":      { "$className": "RemoteEvent" },
+        "MapVoteEvent":    { "$className": "RemoteEvent" }
       }
     },
 
     "ServerScriptService": {
       "$className": "ServerScriptService",
+      "PartyService": {
+        "$path": "src/ServerScriptService/PartyService.lua"
+      },
       "MatchService": {
         "$path": "src/ServerScriptService/MatchService.server.lua"
       },
@@ -64,6 +69,9 @@
         },
         "LobbyUI": {
           "$path": "src/StarterPlayerScripts/LobbyUI.client.lua"
+        },
+        "MapVoteUI": {
+          "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"
         }
       }
     }
