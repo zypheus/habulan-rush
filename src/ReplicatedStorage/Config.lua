@@ -93,6 +93,55 @@ Config.Taya = {
 }
 
 -- ============================================================
+-- TARGET LOCK
+-- ============================================================
+-- T16 uses this table, not the legacy Config.Taya lock fields.
+Config.TargetLock = {
+	AcquireRange = 40,
+	BreakRange = 55,
+	LosBreakTime = 1.0,
+	BreakCooldown = 4.0,
+	CandidateRefreshRate = 10, -- scans per second
+	AimPointOffset = Vector3.new(0, 0.5, 0), -- above torso centre
+	CameraAssist = {
+		-- AssistStrength is the exponential response rate k (per second) in
+		-- 1 - exp(-k * dt). I raised the suggested 0.6 to 4.0 because 0.6/s is a
+		-- ~1.67s time constant, far too slow to visibly turn; 4.0/s eases in ~0.25s.
+		AssistStrength = 4.0,
+		MaxTurnRateDegPerSec = 180, -- cap how fast the offset may rotate
+		PitchWeight = 0.35,         -- weaker vertical pull than horizontal
+		InputDampenFactor = 0.25,   -- keep 25% strength while the player steers
+		InputDampenThreshold = 0.1, -- stick magnitude (0-1) or mouse pixel delta
+		MaxPitchDeg = 80,           -- clamp so the camera never flips over
+		Enabled = true,             -- set false to disable the camera assist
+	},
+	-- Reticle is drawn with UI instances only (no image assets).
+	Reticle = {
+		SizePx = 64,                          -- fixed pixel size of the billboard
+		StudsOffset = Vector3.new(0, 0.5, 0), -- lift slightly above the torso centre
+		RingColor = Color3.fromRGB(235, 64, 64),
+		RingThickness = 2,
+		RingTransparency = 0,
+		NotchColor = Color3.fromRGB(255, 255, 255),
+		NotchSizePx = 6,                      -- corner marks so the shape reads without colour
+		StartScale = 0.2,                     -- scale-in begins small
+		EndScale = 0.2,                       -- fade-out shrinks back down
+		ScaleInTime = 0.15,                   -- seconds, ease-out pop on lock
+		FadeOutTime = 0.12,                   -- seconds, ease-in on unlock
+		Animate = true,                       -- set false to skip tweens for testing
+	},
+	Keybinds = {
+		-- User-approved change: Q is dash and E is skill.
+		Toggle = Enum.KeyCode.R,
+		Cycle = Enum.KeyCode.T,
+		GamepadToggle = Enum.KeyCode.ButtonR3,
+		GamepadCycle = Enum.KeyCode.DPadRight,
+	},
+	DebugPrint = true, -- Stage B feedback in client Output
+	DependencyTimeout = 10,
+}
+
+-- ============================================================
 -- MATCH
 -- ============================================================
 Config.Match = {
@@ -130,7 +179,8 @@ Config.Match = {
 
 	-- Queue / bot fill (testing)
 	SearchTimeout = 10,
-	BotFillTarget = 4,     -- total participants after bots fill
+	BotFillTarget = 8,   -- was 4. 8 = 4v4. Bots fill whatever is missing after SearchTimeout.
+	TeamSize      = 4,   -- NEW: players per team (match = 2 teams)
 	AllowBots     = true,  -- set false before release
 }
 
@@ -149,6 +199,10 @@ Config.Events = {
 
 -- Debug switches for playtesting only.
 Config.Debug = {
+	-- TODO: set to false before submission
+	AllowAnyRoleTargetLock = true,
+	-- TODO: remove before submission (delete this flag and all ShowLockDebug blocks)
+	ShowLockDebug = true, -- T16: prove toggle fire count, reticle, acquire blocking
 	-- TODO: set to false before submission
 	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
 	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
@@ -385,6 +439,21 @@ Config.Maps = {
 		rushEvent  = "TubigTumataas",
 		floodSpeedMult       = 0.80, -- -20% in submerged low areas
 		evacSafeWindowDuration = 1.5, -- [SD] one-time per visit
+	},
+}
+
+Config.Party = {
+	MaxSize     = 4,    -- party of up to 4 = one full team
+	SlotSpacing = 3.2,  -- studs between party members in the lobby formation
+}
+
+Config.MapVote = {
+	Pool       = { "Kalsada", "Binaha" }, -- keys of Config.Maps shown on the vote screen
+	Duration   = 10,                       -- seconds to vote (ends early when everyone voted)
+	RevealTime = 1.5,                      -- seconds the winner is shown before loading
+	Info = {
+		Kalsada = { tagline = "Own the court. Outrun the neighborhood.", event = "EVENT · COURT RUSH" },
+		Binaha  = { tagline = "Find high ground. Stay ahead of the flood.", event = "EVENT · TUBIG TUMATAAS" },
 	},
 }
 
