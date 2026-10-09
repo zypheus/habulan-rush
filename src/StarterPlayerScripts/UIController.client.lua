@@ -216,6 +216,72 @@ skillCaption.TextStrokeTransparency = 0.6
 skillCaption.Parent = cluster
 
 -- ── Attribute readers ─────────────────────────────────────────────────────────
+-- Role banner (top center)
+local roleBanner = Instance.new("Frame")
+roleBanner.Name = "RoleBanner"
+roleBanner.AnchorPoint = Vector2.new(0.5, 0)
+roleBanner.Position = UDim2.fromScale(0.5, 0.02)
+roleBanner.Size = UDim2.fromOffset(240, 52)
+roleBanner.BackgroundColor3 = COL_PANEL
+roleBanner.BackgroundTransparency = 0.05
+roleBanner.BorderSizePixel = 0
+roleBanner.Visible = false
+roleBanner.Parent = gui
+corner(roleBanner, 12)
+local roleStroke = stroke(roleBanner, Color3.new(0, 0, 0), 2)
+
+local roleLabel = Instance.new("TextLabel")
+roleLabel.BackgroundTransparency = 1
+roleLabel.Position = UDim2.fromScale(0, 0)
+roleLabel.Size = UDim2.fromScale(1, 0.62)
+roleLabel.Font = Enum.Font.GothamBold
+roleLabel.TextSize = 24
+roleLabel.Text = ""
+roleLabel.TextColor3 = COL_TEXT
+roleLabel.TextStrokeTransparency = 0.4
+roleLabel.Parent = roleBanner
+
+local roleSubLabel = Instance.new("TextLabel")
+roleSubLabel.BackgroundTransparency = 1
+roleSubLabel.Position = UDim2.fromScale(0, 0.6)
+roleSubLabel.Size = UDim2.fromScale(1, 0.4)
+roleSubLabel.Font = Enum.Font.Gotham
+roleSubLabel.TextSize = 11
+roleSubLabel.Text = ""
+roleSubLabel.TextColor3 = COL_TEXT
+roleSubLabel.TextStrokeTransparency = 0.5
+roleSubLabel.Parent = roleBanner
+
+local function updateRoleBanner()
+	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
+	local st = LocalPlayer:GetAttribute("HRushState")
+	local show = inMatch and (st == "MS_03" or st == "MS_04" or st == "MS_05")
+	if show then
+		roleBanner.Visible = true
+		local role = LocalPlayer:GetAttribute("HRushRole")
+	if role == "Taya" then
+			roleLabel.Text = "TAYA"
+			roleLabel.TextColor3 = Color3.fromRGB(255, 90, 90)
+			roleSubLabel.Text = "TAG THEM ALL!"
+			roleSubLabel.TextColor3 = Color3.fromRGB(255, 130, 130)
+			roleStroke.Color = Color3.fromRGB(255, 80, 80)
+			roleStroke.Thickness = 3
+			roleBanner.BackgroundColor3 = Color3.fromRGB(50, 16, 16)
+		else
+			roleLabel.Text = "RUNNER"
+			roleLabel.TextColor3 = Color3.fromRGB(100, 230, 110)
+			roleSubLabel.Text = "DON'T GET TAGGED!"
+			roleSubLabel.TextColor3 = Color3.fromRGB(130, 240, 140)
+			roleStroke.Color = Color3.fromRGB(80, 214, 90)
+			roleStroke.Thickness = 3
+			roleBanner.BackgroundColor3 = Color3.fromRGB(16, 36, 20)
+		end
+	else
+		roleBanner.Visible = false
+	end
+end
+
+-- Attribute readers
 local function attrNum(name: string, fallback: number): number
 	local v = LocalPlayer:GetAttribute(name)
 	if typeof(v) == "number" then
@@ -405,6 +471,7 @@ hookAttr("HRushRole", function()
 	updateVisibility()
 	updateStamina()
 	updateSkillCD()
+	updateRoleBanner()
 end)
 hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
 
@@ -422,8 +489,10 @@ local function applyHudGate()
 	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
 	local st = LocalPlayer:GetAttribute("HRushState")
 	gui.Enabled = inMatch and (st == "MS_03" or st == "MS_04" or st == "MS_05")
+	updateRoleBanner()
 end
 
 LocalPlayer:GetAttributeChangedSignal("HRushInMatch"):Connect(applyHudGate)
 LocalPlayer:GetAttributeChangedSignal("HRushState"):Connect(applyHudGate)
+LocalPlayer:GetAttributeChangedSignal("HRushRole"):Connect(updateRoleBanner)
 applyHudGate()

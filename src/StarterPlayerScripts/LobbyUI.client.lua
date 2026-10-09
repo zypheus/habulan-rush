@@ -16,11 +16,36 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
-local SocialService = game:GetService("SocialService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local SocialService = game:GetService("SocialService")
+
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
+local QueueEvent = Remotes and Remotes:WaitForChild("QueueEvent", 10)
+local PartyEvent = Remotes and Remotes:WaitForChild("PartyEvent", 10)
+
+-- Opens the Roblox friends invite prompt. PartyService puts invitees in your
+-- party automatically via JoinData.LaunchData = your UserId.
+local function promptGameInvite()
+	task.spawn(function()
+		local ok, can = pcall(function()
+			return SocialService:CanSendGameInviteAsync(player)
+		end)
+		if ok and can then
+			local sent = pcall(function()
+				local opts = Instance.new("InviteOptions")
+				opts.LaunchData = tostring(player.UserId)
+				SocialService:PromptGameInvite(player, opts)
+			end)
+			if not sent then
+				pcall(function()
+					SocialService:PromptGameInvite(player)
+				end)
+			end
+		end
+	end)
+end
 
 local CONFIG = {
 	-- Display-only placeholder values (no real currency system is implemented)
@@ -286,6 +311,15 @@ function ICON_BUILDERS.Gem(c, S)
 	corner(centered(d, S * 0.3, S * 0.3, Color3.fromRGB(190, 245, 252)), 2)
 end
 
+function ICON_BUILDERS.GameModes(c, S, color)
+	-- 2x2 grid = mode select
+	for _, pos in ipairs({ Vector2.new(0.29, 0.29), Vector2.new(0.71, 0.29), Vector2.new(0.29, 0.71), Vector2.new(0.71, 0.71) }) do
+		local cell = centered(c, S * 0.34, S * 0.34, color)
+		cell.Position = UDim2.fromScale(pos.X, pos.Y)
+		corner(cell, 3)
+	end
+end
+
 local function makeIcon(kind, parent, S, color, bg, pos)
 	local c = iconContainer(parent, S, pos)
 	if ASSETS[kind] and ASSETS[kind] ~= "" then
@@ -344,8 +378,18 @@ local displayName = CONFIG.PlayerNameOverride or player.DisplayName
 
 -- Handles filled in below, wired up in BUTTON EVENTS
 local playHolderScale, settingsHolderScale, chevronLabel
-local playButton, settingsButton
-local playIconLabel, playTextLabel, playSubLabel
+local playButton, settingsButton, playIcon, playText, cancelHint
+local onInvitePressed -- assigned with the party picker below
+local gmButton, gmScale
+local playModeChipLabel
+
+-- Game modes: GM_01 is playable now; GM_03 / GM_04 are locked stretch goals.
+local GAME_MODES = {
+	{ id = "GM_01", shortName = "CLASSIC HABULAN", locked = false },
+	{ id = "GM_03", shortName = "TEAM HABULAN", locked = true },
+	{ id = "GM_04", shortName = "LAST RUNNER", locked = true },
+}
+local selectedGameMode = "GM_01"
 
 --------------------------------------------------------------------------
 -- TOP BAR (logo + location top-left, currency + avatar top-right)
@@ -515,7 +559,7 @@ end
 --------------------------------------------------------------------------
 local playGroup = createGroup(
 	"PlayGroup",
-	Vector2.new(362, 172),
+	Vector2.new(420, 172),
 	Vector2.new(1, 0), UDim2.fromScale(0.951, 0.553),
 	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.8)
 )
@@ -571,7 +615,7 @@ do
 		Rotation = 90,
 	}, playButton)
 
-	playIconLabel = createLabel({
+	playIcon = createLabel({
 		Position = UDim2.fromOffset(40, 0),
 		Size = UDim2.fromOffset(34, 89),
 		Text = "▶",
@@ -579,7 +623,7 @@ do
 		TextSize = 28,
 		TextColor3 = COLORS.Navy,
 	}, playButton)
-	playTextLabel = createLabel({
+	playText = createLabel({
 		Position = UDim2.fromOffset(88, 0),
 		Size = UDim2.fromOffset(110, 89),
 		Text = "PLAY",
@@ -588,6 +632,35 @@ do
 		TextColor3 = COLORS.Navy,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, playButton)
+	cancelHint = createLabel({
+		Position = UDim2.fromOffset(86, 52),
+		Size = UDim2.fromOffset(190, 24),
+		Text = "TAP TO CANCEL",
+		FontFace = FONTS.Heavy,
+		TextSize = 13,
+		TextColor3 = COLORS.Navy,
+		TextTransparency = 1,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, playButton)
+
+	-- selected game mode chip (top edge of the PLAY button)
+	local modeChip = createFrame({
+		Name = "PlayModeChip",
+		Position = UDim2.fromOffset(281 - 158, -9),
+		Size = UDim2.fromOffset(158, 20),
+		BackgroundColor3 = COLORS.Lime,
+		ZIndex = 5,
+	}, holder)
+	corner(modeChip, 6)
+	stroke(modeChip, COLORS.LimeEdge, 1)
+	playModeChipLabel = createLabel({
+		Size = UDim2.fromScale(1, 1),
+		Text = "GM_01 · CLASSIC HABULAN",
+		FontFace = FONTS.Heavy,
+		TextSize = 10,
+		TextColor3 = COLORS.Navy,
+		ZIndex = 6,
+	}, modeChip)
 	chevronLabel = createLabel({
 		Position = UDim2.fromOffset(216, 0),
 		Size = UDim2.fromOffset(24, 89),
@@ -596,45 +669,53 @@ do
 		TextSize = 36,
 		TextColor3 = COLORS.LimeEdge,
 	}, playButton)
-	playSubLabel = createLabel({
-		Position = UDim2.fromOffset(28, 52),
-		Size = UDim2.fromOffset(190, 24),
-		Text = "",
-		FontFace = FONTS.Heavy,
-		TextSize = 11,
-		TextColor3 = COLORS.Navy,
-		Visible = false,
-	}, playButton)
 
-	-- SETTINGS (small, immediately beside PLAY)
-	local sHolder = createFrame({
-		Name = "SettingsHolder",
-		Position = UDim2.fromOffset(328, 82),
+	-- GAME MODES (small, immediately beside PLAY)
+	local gmHolder = createFrame({
+		Name = "GameModesHolder",
+		Position = UDim2.fromOffset(331, 82),
 		Size = UDim2.fromOffset(68, 74),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 	}, playGroup)
-	settingsHolderScale = create("UIScale", {}, sHolder)
+	gmScale = create("UIScale", {}, gmHolder)
 
 	corner(createFrame({
 		Position = UDim2.fromOffset(0, 9),
 		Size = UDim2.fromOffset(68, 69),
 		BackgroundColor3 = COLORS.Shadow,
 		BackgroundTransparency = 0.7,
-	}, sHolder), 15)
+	}, gmHolder), 15)
 	corner(createFrame({
 		Position = UDim2.fromOffset(0, 5),
 		Size = UDim2.fromOffset(68, 69),
-		BackgroundColor3 = COLORS.CreamEdge,
-	}, sHolder), 15)
+		BackgroundColor3 = COLORS.LimeEdge,
+	}, gmHolder), 15)
+	gmButton = createButton({
+		Name = "GameModesButton",
+		Size = UDim2.fromOffset(68, 69),
+		BackgroundColor3 = COLORS.Slate,
+	}, gmHolder)
+	corner(gmButton, 15)
+	stroke(gmButton, COLORS.SlateLight, 1, 0.6)
+	makeIcon("GameModes", gmButton, 30, COLORS.Lime, COLORS.Slate)
+
+	-- SETTINGS (moved to the top bar, left of the currency pills)
+	local sHolder = createFrame({
+		Name = "SettingsHolder",
+		Position = UDim2.fromOffset(-64, 0),
+		Size = UDim2.fromOffset(50, 50),
+		BackgroundTransparency = 1,
+	}, topRightGroup)
+	settingsHolderScale = create("UIScale", {}, sHolder)
 	settingsButton = createButton({
 		Name = "SettingsButton",
-		Size = UDim2.fromOffset(68, 69),
+		Size = UDim2.fromOffset(50, 50),
 		BackgroundColor3 = COLORS.Cream,
 	}, sHolder)
-	corner(settingsButton, 15)
-	stroke(settingsButton, COLORS.White, 2, 0.3)
-	makeIcon("Settings", settingsButton, 30, COLORS.GearGray, COLORS.Cream)
+	corner(settingsButton, 10)
+	stroke(settingsButton, COLORS.CreamEdge, 1.5, 0.2)
+	makeIcon("Settings", settingsButton, 26, COLORS.GearGray, COLORS.Cream)
 
 	-- subtitle
 	createShadowLabel({
@@ -707,136 +788,287 @@ do
 end
 
 --------------------------------------------------------------------------
--- PARTY SLOTS (Main lobby party bar: 4 avatar slots + '+' invite button)
+-- PARTY SLOTS (you + party members + "+" invite buttons)
+-- Membership comes from the PartyService attributes:
+--   HRushPartyLeader (UserId) / HRushPartySlot (1..4) / HRushPartySize.
 --------------------------------------------------------------------------
 local partyGroup = createGroup(
 	"PartyGroup",
-	Vector2.new(244, 58),
-	Vector2.new(0.5, 1), UDim2.fromScale(0.412, 0.73),
-	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.54)
+	Vector2.new(280, 56),
+	Vector2.new(0.5, 0), UDim2.fromScale(0.412, 0.645),
+	Vector2.new(0.5, 0), UDim2.fromScale(0.5, 0.44)
 )
 
-do
-	local partyContainer = createFrame({
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-	}, partyGroup)
+local partySlots = createFrame({
+	Name = "PartySlots",
+	Size = UDim2.fromOffset(280, 56),
+	BackgroundTransparency = 1,
+}, partyGroup)
 
-	local partySlots = {}
-	for i = 1, 4 do
-		local slotBox = createFrame({
-			Position = UDim2.fromOffset((i - 1) * 62, 0),
-			Size = UDim2.fromOffset(56, 56),
-			BackgroundColor3 = COLORS.Slate,
-		}, partyContainer)
-		corner(slotBox, 12)
-		local sStroke = stroke(slotBox, COLORS.SlateLight, 1.5, 0.5)
+--------------------------------------------------------------------------
+-- STUDIO TEAM-TEST PICKER
+-- Roblox never delivers game invites sent from a Studio playtest, so in
+-- Studio the "+" buttons open this picker instead: pick anyone on this
+-- server to pull into your party (server-side "DebugJoin"). In a published
+-- server the "+" buttons use the real PromptGameInvite flow.
+--------------------------------------------------------------------------
+local pickerHolder = createFrame({
+	Name = "PartyPicker",
+	Size = UDim2.fromOffset(340, 384),
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	BackgroundColor3 = COLORS.PanelBg,
+	Visible = false,
+	ZIndex = 30,
+}, gui)
+corner(pickerHolder, 14)
+stroke(pickerHolder, COLORS.SlateLight, 2, 0.4)
 
-		local avatarImg = Instance.new("ImageLabel")
-		avatarImg.Size = UDim2.fromScale(1, 1)
-		avatarImg.BackgroundTransparency = 1
-		avatarImg.Visible = false
-		avatarImg.Parent = slotBox
-		corner(avatarImg, 12)
+createLabel({
+	Position = UDim2.fromOffset(20, 14),
+	Size = UDim2.fromOffset(260, 22),
+	Text = "ADD PLAYER TO PARTY",
+	FontFace = FONTS.Display,
+	TextSize = 20,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 31,
+}, pickerHolder)
+createLabel({
+	Position = UDim2.fromOffset(20, 40),
+	Size = UDim2.fromOffset(300, 26),
+	Text = "Studio team test only — real invites work in the published game.",
+	FontFace = FONTS.SemiBold,
+	TextSize = 10,
+	TextColor3 = COLORS.TextDim,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextWrapped = true,
+	ZIndex = 31,
+}, pickerHolder)
 
-		local nameLabel = createLabel({
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, 15),
-			Size = UDim2.fromOffset(58, 14),
-			Text = "",
-			FontFace = FONTS.Bold,
-			TextSize = 9,
-			TextColor3 = COLORS.TextDim,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-		}, slotBox)
+local pickerList = createFrame({
+	Name = "List",
+	Position = UDim2.fromOffset(16, 72),
+	Size = UDim2.fromOffset(308, 244),
+	BackgroundTransparency = 1,
+	ZIndex = 31,
+}, pickerHolder)
+create("UIListLayout", {
+	Padding = UDim.new(0, 6),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+}, pickerList)
 
-		local plusBtn = createButton({
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Text = "+",
-			FontFace = FONTS.Heavy,
-			TextSize = 26,
-			TextColor3 = COLORS.Lime,
-			Visible = false,
-		}, slotBox)
-		corner(plusBtn, 12)
+local pickerClose = createButton({
+	Position = UDim2.fromOffset(340 - 46, 12),
+	Size = UDim2.fromOffset(30, 30),
+	BackgroundColor3 = COLORS.Slate,
+	Text = "X",
+	FontFace = FONTS.Heavy,
+	TextSize = 13,
+	ZIndex = 31,
+}, pickerHolder)
+corner(pickerClose, 8)
 
-		plusBtn.Activated:Connect(function()
-			pcall(function()
-				local canInvite = SocialService:CanSendGameInviteAsync(player)
-				if canInvite then
-					local options = Instance.new("ExperienceInviteOptions")
-					options.LaunchData = tostring(player.UserId)
-					SocialService:PromptGameInvite(player, options)
-				else
-					SocialService:PromptGameInvite(player)
+local pickerLeave = createButton({
+	Position = UDim2.fromOffset(16, 384 - 52),
+	Size = UDim2.fromOffset(308, 36),
+	BackgroundColor3 = COLORS.SlateLight,
+	Text = "LEAVE PARTY",
+	FontFace = FONTS.Heavy,
+	TextSize = 13,
+	ZIndex = 31,
+}, pickerHolder)
+corner(pickerLeave, 8)
+
+local function refreshPickerList()
+	for _, c in ipairs(pickerList:GetChildren()) do
+		if c:IsA("Frame") or c:IsA("TextLabel") then
+			c:Destroy()
+		end
+	end
+	local myLeader = player:GetAttribute("HRushPartyLeader") or player.UserId
+	local found = 0
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl ~= player and (pl:GetAttribute("HRushPartyLeader") or pl.UserId) ~= myLeader then
+			found += 1
+			local row = createFrame({
+				Name = "Row_" .. pl.UserId,
+				Size = UDim2.fromOffset(308, 40),
+				BackgroundColor3 = COLORS.Slate,
+				LayoutOrder = found,
+				ZIndex = 31,
+			}, pickerList)
+			corner(row, 8)
+			local av = createFrame({
+				Position = UDim2.fromOffset(6, 5),
+				Size = UDim2.fromOffset(30, 30),
+				BackgroundColor3 = COLORS.Cyan,
+				ZIndex = 32,
+			}, row)
+			corner(av, 15)
+			createLabel({
+				Size = UDim2.fromScale(1, 1),
+				Text = string.upper(string.sub(pl.DisplayName, 1, 1)),
+				FontFace = FONTS.Heavy,
+				TextSize = 14,
+				TextColor3 = COLORS.Navy,
+				ZIndex = 33,
+			}, av)
+			createLabel({
+				Position = UDim2.fromOffset(44, 0),
+				Size = UDim2.fromOffset(160, 40),
+				Text = pl.DisplayName,
+				FontFace = FONTS.Bold,
+				TextSize = 13,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 32,
+			}, row)
+			local addBtn = createButton({
+				Position = UDim2.fromOffset(308 - 86, 5),
+				Size = UDim2.fromOffset(78, 30),
+				BackgroundColor3 = COLORS.Lime,
+				Text = "+ ADD",
+				FontFace = FONTS.Heavy,
+				TextSize = 12,
+				TextColor3 = COLORS.Navy,
+				ZIndex = 32,
+			}, row)
+			corner(addBtn, 8)
+			local targetId = pl.UserId
+			bindButton(addBtn, create("UIScale", {}, addBtn), function()
+				if PartyEvent then
+					PartyEvent:FireServer("DebugJoin", targetId)
 				end
-			end)
-		end)
-
-		partySlots[i] = {
-			Box = slotBox,
-			Stroke = sStroke,
-			Avatar = avatarImg,
-			Name = nameLabel,
-			Plus = plusBtn,
-		}
-	end
-
-	local function refreshPartyUI()
-		local myLeaderId = player:GetAttribute("HRushPartyLeader") or player.UserId
-		local members: { Player } = {}
-		for _, p in ipairs(Players:GetPlayers()) do
-			local lId = p:GetAttribute("HRushPartyLeader") or p.UserId
-			if lId == myLeaderId then
-				table.insert(members, p)
-			end
-		end
-		table.sort(members, function(a, b)
-			local sA = a:GetAttribute("HRushPartySlot") or 99
-			local sB = b:GetAttribute("HRushPartySlot") or 99
-			return sA < sB
-		end)
-
-		for i = 1, 4 do
-			local uiSlot = partySlots[i]
-			local member = members[i]
-			if member then
-				uiSlot.Plus.Visible = false
-				uiSlot.Avatar.Visible = true
-				uiSlot.Name.Text = (member == player) and "YOU" or (member.DisplayName or member.Name)
-				uiSlot.Name.TextColor3 = (member == player) and COLORS.Lime or COLORS.White
-				uiSlot.Stroke.Color = (i == 1) and COLORS.Lime or COLORS.SlateLight
-				uiSlot.Stroke.Transparency = (i == 1) and 0 or 0.4
-				uiSlot.Box.BackgroundColor3 = (member == player) and COLORS.SlateDark or COLORS.Slate
-
-				task.spawn(function()
-					local ok, thumb = pcall(function()
-						return Players:GetUserThumbnailAsync(member.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
-					end)
-					if ok and thumb and uiSlot.Avatar.Parent then
-						uiSlot.Avatar.Image = thumb
-					end
-				end)
-			else
-				uiSlot.Avatar.Visible = false
-				uiSlot.Plus.Visible = true
-				uiSlot.Name.Text = "INVITE"
-				uiSlot.Name.TextColor3 = COLORS.TextDim
-				uiSlot.Stroke.Color = COLORS.SlateLight
-				uiSlot.Stroke.Transparency = 0.7
-				uiSlot.Box.BackgroundColor3 = COLORS.SlateEdge
-			end
+				pickerHolder.Visible = false
+			end, 1.05, 0.95)
 		end
 	end
-
-	player:GetAttributeChangedSignal("HRushPartyLeader"):Connect(refreshPartyUI)
-	player:GetAttributeChangedSignal("HRushPartySlot"):Connect(refreshPartyUI)
-	player:GetAttributeChangedSignal("HRushPartySize"):Connect(refreshPartyUI)
-	Players.PlayerAdded:Connect(refreshPartyUI)
-	Players.PlayerRemoving:Connect(refreshPartyUI)
-	refreshPartyUI()
+	if found == 0 then
+		createLabel({
+			Size = UDim2.fromOffset(308, 60),
+			Text = "No other players on this server.\nUse Test ▸ 2 Players (or Team Test) to add teammates.",
+			FontFace = FONTS.SemiBold,
+			TextSize = 11,
+			TextColor3 = COLORS.TextDim,
+			TextWrapped = true,
+			ZIndex = 31,
+		}, pickerList)
+	end
 end
+
+onInvitePressed = function()
+	if RunService:IsStudio() then
+		refreshPickerList()
+		pickerHolder.Visible = true
+	else
+		promptGameInvite()
+	end
+end
+
+pickerClose.Activated:Connect(function()
+	pickerHolder.Visible = false
+end)
+pickerLeave.Activated:Connect(function()
+	if PartyEvent then
+		PartyEvent:FireServer("Leave")
+	end
+	pickerHolder.Visible = false
+end)
+
+local function refreshPartyRow()
+	for _, c in ipairs(partySlots:GetChildren()) do
+		c:Destroy()
+	end
+
+	local leaderId = player:GetAttribute("HRushPartyLeader") or player.UserId
+	local members = {}
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if pl:GetAttribute("HRushPartyLeader") == leaderId then
+			table.insert(members, pl)
+		end
+	end
+	table.sort(members, function(a, b)
+		return (a:GetAttribute("HRushPartySlot") or 9) < (b:GetAttribute("HRushPartySlot") or 9)
+	end)
+
+	for i = 1, 4 do
+		local m = members[i]
+		local x = (i - 1) * 62
+		if m then
+			local isSelf = (m == player)
+			local chip = createFrame({
+				Name = "PartySlot" .. i,
+				Position = UDim2.fromOffset(x, 4),
+				Size = UDim2.fromOffset(48, 48),
+				BackgroundColor3 = isSelf and COLORS.Orange or COLORS.Cyan,
+			}, partySlots)
+			corner(chip, FULL)
+			stroke(chip, isSelf and COLORS.Cream or COLORS.White, 1.5, 0.3)
+			createLabel({
+				Size = UDim2.fromScale(1, 1),
+				Text = string.upper(string.sub(m.DisplayName, 1, 1)),
+				FontFace = FONTS.Heavy,
+				TextSize = 20,
+				TextColor3 = COLORS.Navy,
+			}, chip)
+			if isSelf then
+				createLabel({
+					Position = UDim2.fromOffset(0, 52),
+					Size = UDim2.fromOffset(48, 14),
+					Text = "YOU",
+					FontFace = FONTS.Heavy,
+					TextSize = 10,
+					TextColor3 = COLORS.TextDim,
+				}, partySlots)
+			end
+		else
+			local plus = createButton({
+				Name = "PartyInvite" .. i,
+				Position = UDim2.fromOffset(x, 4),
+				Size = UDim2.fromOffset(48, 48),
+				BackgroundColor3 = COLORS.Pill,
+				Text = "+",
+				FontFace = FONTS.Heavy,
+				TextSize = 28,
+				TextColor3 = COLORS.Lime,
+			}, partySlots)
+			corner(plus, FULL)
+			stroke(plus, COLORS.SlateLight, 1.5, 0.4)
+			bindButton(plus, create("UIScale", {}, plus), onInvitePressed, 1.1, 0.92)
+		end
+	end
+
+	-- Leave button: only meaningful when someone else is in the party.
+	if #members > 1 then
+		local leaveX = createButton({
+			Name = "LeaveParty",
+			Position = UDim2.fromOffset(244, 14),
+			Size = UDim2.fromOffset(26, 26),
+			BackgroundColor3 = COLORS.Pill,
+			Text = "✕",
+			FontFace = FONTS.Heavy,
+			TextSize = 13,
+			TextColor3 = COLORS.TextDim,
+		}, partySlots)
+		corner(leaveX, 13)
+		stroke(leaveX, COLORS.SlateLight, 1, 0.6)
+		bindButton(leaveX, create("UIScale", {}, leaveX), function()
+			if PartyEvent then
+				PartyEvent:FireServer("Leave")
+			end
+		end, 1.1, 0.9)
+	end
+end
+refreshPartyRow()
+player:GetAttributeChangedSignal("HRushPartySize"):Connect(refreshPartyRow)
+player:GetAttributeChangedSignal("HRushPartyLeader"):Connect(refreshPartyRow)
+player:GetAttributeChangedSignal("HRushPartySlot"):Connect(refreshPartyRow)
+Players.PlayerAdded:Connect(function()
+	task.defer(refreshPartyRow)
+end)
+Players.PlayerRemoving:Connect(function()
+	task.defer(refreshPartyRow)
+end)
 
 --------------------------------------------------------------------------
 -- BOTTOM NAVIGATION (PROFILE / COLLECTION / SHOP + region/ping/version)
@@ -970,15 +1202,22 @@ local function createPanel(name, title, width, height)
 	}, gui)
 	local fit = create("UIScale", {}, holder)
 
-	local canvas = create("CanvasGroup", {
+	-- NOTE: plain Frame, not CanvasGroup — CanvasGroups render dark in this
+	-- environment (~40% brightness). Fading is done by an inner black veil.
+	local canvas = createFrame({
 		Name = "Canvas",
 		Size = UDim2.fromScale(1, 1),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundColor3 = COLORS.PanelBg,
-		BorderSizePixel = 0,
-		GroupTransparency = 1,
 	}, holder)
+	local veil = createFrame({
+		Name = "FadeVeil",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		ZIndex = 50,
+	}, canvas)
 	corner(canvas, 18)
 	stroke(canvas, COLORS.SlateLight, 2, 0.4)
 	local pop = create("UIScale", { Scale = 0.92 }, canvas)
@@ -1026,6 +1265,7 @@ local function createPanel(name, title, width, height)
 		Holder = holder,
 		Fit = fit,
 		Canvas = canvas,
+		Veil = veil,
 		Pop = pop,
 		Content = content,
 		Close = closeBtn,
@@ -1098,10 +1338,10 @@ end
 local function tweenOpen(p)
 	p.Token += 1
 	p.Holder.Visible = true
-	p.Canvas.GroupTransparency = 1
+	p.Veil.BackgroundTransparency = 0
 	p.Canvas.Position = UDim2.fromScale(0.5, 0.54)
 	p.Pop.Scale = 0.92
-	tween(p.Canvas, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 })
+	tween(p.Veil, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
 	tween(p.Canvas, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) })
 	tween(p.Pop, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
 end
@@ -1109,11 +1349,12 @@ end
 local function tweenClose(p)
 	p.Token += 1
 	local token = p.Token
-	local t = tween(p.Canvas, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { GroupTransparency = 1 })
+	local t = tween(p.Veil, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 0 })
 	tween(p.Pop, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0.94 })
 	t.Completed:Connect(function()
 		if p.Token == token then
 			p.Holder.Visible = false
+			p.Veil.BackgroundTransparency = 1
 		end
 	end)
 end
@@ -1156,136 +1397,7 @@ local function openPanel(p)
 	tweenOpen(p)
 end
 
--- PLAY PANEL ----------------------------------------------------------------
-local playPanel = createPanel("Play", "PLAY", 720, 440)
-do
-	local c = playPanel.Content -- 664 x 322
-
-	-- Matchmaking placeholder
-	local mm = createCard(c, 0, 0, 324, 242, "MATCHMAKING")
-	local mmBox = createFrame({
-		Position = UDim2.fromOffset(16, 40),
-		Size = UDim2.fromOffset(292, 150),
-		BackgroundColor3 = COLORS.SlateEdge,
-		BackgroundTransparency = 0.3,
-	}, mm)
-	corner(mmBox, 10)
-	stroke(mmBox, COLORS.SlateLight, 1, 0.6)
-	createLabel({
-		Size = UDim2.fromScale(1, 1),
-		Text = "MATCH SETTINGS\n(placeholder area)",
-		FontFace = FONTS.Bold,
-		TextSize = 14,
-		TextColor3 = COLORS.TextDim,
-	}, mmBox)
-	local statusLabel = createLabel({
-		Position = UDim2.fromOffset(16, 204),
-		Size = UDim2.fromOffset(292, 24),
-		Text = "STATUS: IDLE",
-		FontFace = FONTS.Heavy,
-		TextSize = 12,
-		TextColor3 = COLORS.Lime,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	}, mm)
-
-	-- Party members placeholder
-	local party = createCard(c, 340, 0, 324, 190, "PARTY  1 / 4")
-	for i = 1, 4 do
-		local row = createFrame({
-			Position = UDim2.fromOffset(16, 34 + (i - 1) * 36),
-			Size = UDim2.fromOffset(292, 32),
-			BackgroundColor3 = COLORS.SlateEdge,
-			BackgroundTransparency = i == 1 and 0 or 0.4,
-		}, party)
-		corner(row, 8)
-		local av = createFrame({
-			Position = UDim2.fromOffset(4, 4),
-			Size = UDim2.fromOffset(24, 24),
-			BackgroundColor3 = i == 1 and COLORS.Orange or COLORS.SlateLight,
-		}, row)
-		corner(av, 6)
-		createLabel({
-			Size = UDim2.fromScale(1, 1),
-			Text = i == 1 and string.upper(string.sub(displayName, 1, 1)) or "+",
-			FontFace = FONTS.Heavy,
-			TextSize = 14,
-			TextColor3 = COLORS.Navy,
-		}, av)
-		createLabel({
-			Position = UDim2.fromOffset(38, 0),
-			Size = UDim2.fromOffset(180, 32),
-			Text = i == 1 and displayName or "Empty slot",
-			FontFace = i == 1 and FONTS.Bold or FONTS.SemiBold,
-			TextSize = 13,
-			TextColor3 = i == 1 and COLORS.White or COLORS.TextDim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-		}, row)
-		if i == 1 then
-			createLabel({
-				Position = UDim2.fromOffset(222, 0),
-				Size = UDim2.fromOffset(62, 32),
-				Text = "YOU",
-				FontFace = FONTS.Heavy,
-				TextSize = 11,
-				TextColor3 = COLORS.Lime,
-				TextXAlignment = Enum.TextXAlignment.Right,
-			}, row)
-		end
-	end
-
-	createActionButton(c, "INVITE FRIENDS", "cream", 340, 198, 324, 40, function()
-		statusLabel.Text = "STATUS: INVITE (PLACEHOLDER)"
-	end, 15)
-
-	-- FIND MATCH: server-driven queue (MatchService fires attributes HRushQueue / HRushSearchEndsAt)
-	local queueRemotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
-	local QueueEvent = queueRemotes and queueRemotes:WaitForChild("QueueEvent", 10)
-
-	local findBtn
-	local animToken = 0
-
-	local function refreshQueueUI()
-		animToken += 1
-		local token = animToken
-		local q = player:GetAttribute("HRushQueue") or "Idle"
-
-		if q == "Searching" then
-			statusLabel.Text = "STATUS: SEARCHING..."
-			task.spawn(function()
-				local dots = 0
-				while token == animToken and gui.Parent do
-					dots = (dots % 3) + 1
-					local endsAt = player:GetAttribute("HRushSearchEndsAt")
-					local left = endsAt and math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) or nil
-					findBtn.Text = "SEARCHING" .. string.rep(".", dots)
-						.. (left and ("  " .. left .. "s") or "") .. "  (TAP TO CANCEL)"
-					task.wait(0.4)
-				end
-			end)
-		elseif q == "Busy" then
-			statusLabel.Text = "STATUS: MATCH IN PROGRESS"
-			findBtn.Text = "MATCH IN PROGRESS"
-		elseif q == "InMatch" then
-			statusLabel.Text = "STATUS: STARTING"
-			findBtn.Text = "STARTING..."
-		else
-			statusLabel.Text = "STATUS: IDLE"
-			findBtn.Text = "FIND MATCH"
-		end
-	end
-
-	findBtn = createActionButton(c, "FIND MATCH", "lime", 0, 254, 664, 60, function()
-		if not QueueEvent then
-			return
-		end
-		local q = player:GetAttribute("HRushQueue") or "Idle"
-		QueueEvent:FireServer(q == "Searching" and "Cancel" or "Play")
-	end, 22)
-
-	player:GetAttributeChangedSignal("HRushQueue"):Connect(refreshQueueUI)
-	refreshQueueUI()
-end
+-- (PLAY panel removed: the PLAY button starts matchmaking directly)
 
 -- SETTINGS PANEL ------------------------------------------------------------
 local settingsPanel = createPanel("Settings", "SETTINGS", 520, 360)
@@ -1362,6 +1474,288 @@ do
 		optButtons[i] = b
 	end
 	selectGraphics(3)
+end
+
+-- GAME MODES PANEL -----------------------------------------------------------
+local function updatePlayModeChip()
+	if not playModeChipLabel then
+		return
+	end
+	for _, m in ipairs(GAME_MODES) do
+		if m.id == selectedGameMode then
+			playModeChipLabel.Text = m.id .. " · " .. m.shortName
+			return
+		end
+	end
+end
+
+gameModesPanel = createPanel("GameModes", "GAME MODES", 720, 478)
+
+	-- drawn preview art (palette-consistent), one per mode card
+	local function artCourt(frame)
+		-- barangay street + court for the banner width
+		frame.BackgroundColor3 = Color3.fromRGB(62, 124, 74)
+		local road = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, 0, 0.34, 0),
+			BackgroundColor3 = Color3.fromRGB(70, 74, 78),
+		}, frame)
+		for i = 0, 7 do
+			createFrame({
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.09 + i * 0.12, 0.5),
+				Size = UDim2.fromOffset(22, 4),
+				BackgroundColor3 = Color3.fromRGB(240, 236, 210),
+				BackgroundTransparency = 0.2,
+			}, road)
+		end
+		local court = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.32),
+			Size = UDim2.fromOffset(150, 44),
+			BackgroundColor3 = Color3.fromRGB(160, 110, 72),
+		}, frame)
+		corner(court, 5)
+		createFrame({
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(0.5, 0),
+			Size = UDim2.new(0, 2, 1, 0),
+			BackgroundColor3 = Color3.fromRGB(255, 230, 180),
+			BackgroundTransparency = 0.4,
+		}, court)
+		local ring = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(20, 20),
+			BackgroundTransparency = 1,
+		}, court)
+		stroke(ring, Color3.fromRGB(255, 230, 180), 1.5, 0.4)
+		corner(ring, 10)
+	end
+
+	local function artFreeze(frame)
+		frame.BackgroundColor3 = Color3.fromRGB(88, 150, 192)
+		create("UIGradient", {
+			Color = ColorSequence.new(Color3.fromRGB(178, 224, 246), Color3.fromRGB(70, 130, 178)),
+			Rotation = 60,
+		}, frame)
+		for _, pos in ipairs({ Vector2.new(0.14, 0.3), Vector2.new(0.84, 0.26), Vector2.new(0.08, 0.76), Vector2.new(0.9, 0.7), Vector2.new(0.3, 0.16), Vector2.new(0.68, 0.84) }) do
+			local shard = createFrame({
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(pos.X, pos.Y),
+				Size = UDim2.fromOffset(12, 12),
+				BackgroundColor3 = Color3.fromRGB(235, 250, 255),
+				Rotation = 45,
+			}, frame)
+			corner(shard, 3)
+		end
+		for _, rot in ipairs({ 0, 60, 120 }) do
+			local bar = createFrame({
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(38, 5),
+				BackgroundColor3 = Color3.fromRGB(244, 252, 255),
+				Rotation = rot,
+			}, frame)
+			corner(bar, 3)
+		end
+	end
+
+	local function artElimination(frame)
+		frame.BackgroundColor3 = Color3.fromRGB(40, 22, 30)
+		create("UIGradient", {
+			Color = ColorSequence.new(Color3.fromRGB(64, 32, 42), Color3.fromRGB(22, 12, 18)),
+			Rotation = 90,
+		}, frame)
+		-- faded elimination rings trailing across the banner
+		for _, pos in ipairs({ Vector2.new(0.18, 0.5), Vector2.new(0.82, 0.5) }) do
+			local faded = createFrame({
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(pos.X, pos.Y),
+				Size = UDim2.fromOffset(40, 40),
+				BackgroundTransparency = 1,
+			}, frame)
+			stroke(faded, Color3.fromRGB(235, 64, 64), 2, 0.55)
+			corner(faded, 20)
+		end
+		local ring = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(54, 54),
+			BackgroundTransparency = 1,
+		}, frame)
+		stroke(ring, Color3.fromRGB(235, 64, 64), 4)
+		corner(ring, 27)
+		createFrame({
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.fromScale(0.5, 0.42),
+			Size = UDim2.fromOffset(8, 20),
+			BackgroundColor3 = Color3.fromRGB(246, 190, 50),
+		}, ring)
+		local dot = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.68),
+			Size = UDim2.fromOffset(8, 8),
+			BackgroundColor3 = Color3.fromRGB(246, 190, 50),
+		}, ring)
+		corner(dot, 4)
+	end
+do
+	local c = gameModesPanel.Content -- 664 x 352
+
+	local MODE_INFO = {
+		GM_01 = {
+			title = "CLASSIC HABULAN",
+			tag = "MVP · CORE MODE",
+			art = artCourt,
+			desc = "FFA hot-potato tag · 4-8 players · 3 rounds x 150s · Skill Draft each round · fair shuffle-bag Taya · safe windows + post-tag boosts",
+			win = "WIN: Lowest total Taya Time takes 1st + MVP.",
+		},
+		GM_03 = {
+			title = "TEAM HABULAN",
+			tag = "COMING SOON · P2",
+			art = artFreeze,
+			desc = "FREEZE TAG · 4v4 street Ice-Water: tagged Runners freeze in place; teammates rescue them by touch.",
+			win = "WIN: Freeze them all — or survive to the end.",
+		},
+		GM_04 = {
+			title = "LAST RUNNER STANDING",
+			tag = "COMING SOON · P2",
+			art = artElimination,
+			desc = "ELIMINATION FFA: when the buzzer expires, whoever holds the Taya is out of the match.",
+			win = "WIN: Be the last Runner standing.",
+		},
+	}
+
+	local rows = {}
+	local function refreshModeRows()
+		for _, row in ipairs(rows) do
+			local selected = (row.id == selectedGameMode)
+			row.SelectBtn.Text = selected and "✓ SELECTED" or "SELECT"
+			row.SelectBtn.BackgroundColor3 = selected and COLORS.Lime or COLORS.Cream
+			row.CardStroke.Color = selected and COLORS.Lime or COLORS.SlateLight
+			row.CardStroke.Transparency = selected and 0 or 0.6
+		end
+	end
+
+	local CARD_W, CARD_H = 208, 344
+	for idx, m in ipairs(GAME_MODES) do
+		local info = MODE_INFO[m.id]
+		local card = createCard(c, (idx - 1) * (CARD_W + 20), 0, CARD_W, CARD_H)
+		local cardStroke = stroke(card, COLORS.SlateLight, 1, 0.6)
+
+		-- preview banner across the top of the card (map-vote style)
+		local picture = createFrame({
+			Position = UDim2.fromOffset(11, 11),
+			Size = UDim2.fromOffset(CARD_W - 22, 84),
+			BackgroundColor3 = COLORS.SlateEdge,
+			ClipsDescendants = true,
+		}, card)
+		corner(picture, 10)
+		info.art(picture)
+
+		-- status chip riding the banner (top-right)
+		local chip = createFrame({
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromOffset(CARD_W - 17, 17),
+			Size = UDim2.fromOffset(96, 16),
+			BackgroundColor3 = m.locked and COLORS.SlateDark or COLORS.Lime,
+			ZIndex = 7,
+		}, card)
+		corner(chip, 8)
+		createLabel({
+			Size = UDim2.fromScale(1, 1),
+			Text = info.tag,
+			FontFace = FONTS.Heavy,
+			TextSize = 8,
+			TextColor3 = m.locked and COLORS.TextDim or COLORS.Navy,
+			ZIndex = 8,
+		}, chip)
+
+		if m.locked then
+			local dim = createFrame({
+				Size = UDim2.fromScale(1, 1),
+				BackgroundColor3 = COLORS.Navy,
+				BackgroundTransparency = 0.45,
+				ZIndex = 5,
+			}, picture)
+			createLabel({
+				Size = UDim2.fromScale(1, 1),
+				Text = "COMING SOON",
+				FontFace = FONTS.Heavy,
+				TextSize = 13,
+				TextColor3 = COLORS.TextDim,
+				ZIndex = 6,
+			}, dim)
+		end
+
+		-- mode name (no GM_ prefix), wraps to two lines on a portrait card
+		createLabel({
+			Position = UDim2.fromOffset(12, 102),
+			Size = UDim2.fromOffset(CARD_W - 24, 46),
+			Text = info.title,
+			FontFace = FONTS.Display,
+			TextSize = 19,
+			TextColor3 = m.locked and COLORS.TextDim or COLORS.White,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+		}, card)
+
+		-- rule summary
+		createLabel({
+			Position = UDim2.fromOffset(12, 152),
+			Size = UDim2.fromOffset(CARD_W - 24, 74),
+			Text = info.desc,
+			FontFace = FONTS.SemiBold,
+			TextSize = 10,
+			TextColor3 = COLORS.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+		}, card)
+
+		-- win condition
+		createLabel({
+			Position = UDim2.fromOffset(12, 230),
+			Size = UDim2.fromOffset(CARD_W - 24, 40),
+			Text = info.win,
+			FontFace = FONTS.Heavy,
+			TextSize = 9,
+			TextColor3 = m.locked and COLORS.TextDim or COLORS.Lime,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+		}, card)
+
+		-- full-width action at the bottom; locked modes show a chip
+		if m.locked then
+			local lockedChip = createFrame({
+				Position = UDim2.fromOffset(11, CARD_H - 42),
+				Size = UDim2.fromOffset(CARD_W - 22, 30),
+				BackgroundColor3 = COLORS.SlateEdge,
+			}, card)
+			corner(lockedChip, 8)
+			createLabel({
+				Size = UDim2.fromScale(1, 1),
+				Text = "LOCKED",
+				FontFace = FONTS.Heavy,
+				TextSize = 11,
+				TextColor3 = COLORS.TextDim,
+			}, lockedChip)
+		else
+			local selectBtn = createActionButton(card, "SELECT", "lime", 11, CARD_H - 46, CARD_W - 22, 32, function()
+				selectedGameMode = m.id
+				refreshModeRows()
+				updatePlayModeChip()
+				closePanel() -- back to the lobby; PLAY now shows the chosen mode
+			end, 14)
+			table.insert(rows, { id = m.id, SelectBtn = selectBtn, CardStroke = cardStroke })
+		end
+	end
+
+	refreshModeRows()
 end
 
 -- PROFILE PANEL -------------------------------------------------------------
@@ -1517,83 +1911,20 @@ end
 --------------------------------------------------------------------------
 -- BUTTON EVENTS
 --------------------------------------------------------------------------
-local queueRemotes = ReplicatedStorage:WaitForChild("Remotes", 10)
-local QueueEvent = queueRemotes and queueRemotes:WaitForChild("QueueEvent", 10) :: RemoteEvent?
-
+-- PLAY starts matchmaking directly; tapping it again while searching cancels.
 bindButton(playButton, playHolderScale, function()
-	if not QueueEvent then return end
 	local q = player:GetAttribute("HRushQueue") or "Idle"
-	if q == "Searching" then
-		QueueEvent:FireServer("Cancel")
-	else
-		QueueEvent:FireServer("Play")
+	if QueueEvent then
+		QueueEvent:FireServer(q == "Searching" and "Cancel" or "Play")
 	end
 end, 1.04, 0.96)
 
-local queueAnimToken = 0
-local function refreshPlayButtonUI()
-	queueAnimToken += 1
-	local token = queueAnimToken
-	local q = player:GetAttribute("HRushQueue") or "Idle"
-
-	if q == "Searching" then
-		playIconLabel.Visible = false
-		playTextLabel.Position = UDim2.fromOffset(24, 8)
-		playTextLabel.Size = UDim2.fromOffset(190, 42)
-		playTextLabel.TextSize = 32
-		playSubLabel.Visible = true
-		chevronLabel.Text = "X"
-		chevronLabel.TextColor3 = COLORS.Navy
-		chevronLabel.Position = UDim2.fromOffset(226, 0)
-
-		task.spawn(function()
-			local dots = 0
-			while token == queueAnimToken and gui.Parent do
-				dots = (dots % 3) + 1
-				local endsAt = player:GetAttribute("HRushSearchEndsAt")
-				local left = endsAt and math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) or nil
-				playTextLabel.Text = "SEARCHING" .. string.rep(".", dots)
-				playSubLabel.Text = (left and (string.format("%02d", left) .. "s  ") or "") .. "(TAP TO CANCEL)"
-				task.wait(0.4)
-			end
-		end)
-	elseif q == "Busy" then
-		playIconLabel.Visible = false
-		playTextLabel.Position = UDim2.fromOffset(24, 18)
-		playTextLabel.Size = UDim2.fromOffset(230, 50)
-		playTextLabel.TextSize = 26
-		playTextLabel.Text = "IN MATCH"
-		playSubLabel.Visible = false
-		chevronLabel.Text = "•"
-		chevronLabel.TextColor3 = COLORS.Navy
-	elseif q == "InMatch" then
-		playIconLabel.Visible = false
-		playTextLabel.Position = UDim2.fromOffset(24, 18)
-		playTextLabel.Size = UDim2.fromOffset(230, 50)
-		playTextLabel.TextSize = 28
-		playTextLabel.Text = "MATCH FOUND"
-		playSubLabel.Visible = false
-		chevronLabel.Text = "✓"
-		chevronLabel.TextColor3 = COLORS.Navy
-	else
-		playIconLabel.Visible = true
-		playTextLabel.Position = UDim2.fromOffset(88, 0)
-		playTextLabel.Size = UDim2.fromOffset(110, 89)
-		playTextLabel.TextSize = 58
-		playTextLabel.Text = "PLAY"
-		playSubLabel.Visible = false
-		chevronLabel.Text = "›"
-		chevronLabel.TextColor3 = COLORS.LimeEdge
-		chevronLabel.Position = UDim2.fromOffset(216, 0)
-	end
-end
-
-player:GetAttributeChangedSignal("HRushQueue"):Connect(refreshPlayButtonUI)
-player:GetAttributeChangedSignal("HRushSearchEndsAt"):Connect(refreshPlayButtonUI)
-refreshPlayButtonUI()
-
 bindButton(settingsButton, settingsHolderScale, function()
 	openPanel(settingsPanel)
+end, 1.08, 0.92)
+
+bindButton(gmButton, gmScale, function()
+	openPanel(gameModesPanel)
 end, 1.08, 0.92)
 
 bindButton(navButtons.Profile.Button, navButtons.Profile.Scale, function()
@@ -1617,6 +1948,58 @@ tween(chevronLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirecti
 })
 
 --------------------------------------------------------------------------
+-- PLAY BUTTON QUEUE STATE
+-- Idle -> "PLAY" | Searching -> "SEARCHING Ns / TAP TO CANCEL" | InMatch / Busy.
+-- Driven by the MatchService attributes (HRushQueue / HRushSearchEndsAt).
+--------------------------------------------------------------------------
+local queueStateToken = 0
+local function refreshPlayButton()
+	queueStateToken += 1
+	local token = queueStateToken
+	local q = player:GetAttribute("HRushQueue") or "Idle"
+
+	if q == "Searching" then
+		playText.Position = UDim2.fromOffset(84, 10)
+		playText.Size = UDim2.fromOffset(190, 44)
+		playText.TextSize = 36
+		cancelHint.TextTransparency = 0.25
+		chevronLabel.TextTransparency = 1
+		task.spawn(function()
+			while token == queueStateToken and gui.Parent do
+				local endsAt = player:GetAttribute("HRushSearchEndsAt")
+				local left = (typeof(endsAt) == "number") and math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) or 10
+				playText.Text = "SEARCHING " .. left .. "s"
+				task.wait(0.25)
+			end
+		end)
+	elseif q == "InMatch" then
+		playText.Position = UDim2.fromOffset(84, 0)
+		playText.Size = UDim2.fromOffset(190, 89)
+		playText.TextSize = 40
+		playText.Text = "STARTING..."
+		cancelHint.TextTransparency = 1
+		chevronLabel.TextTransparency = 1
+	elseif q == "Busy" then
+		playText.Position = UDim2.fromOffset(66, 0)
+		playText.Size = UDim2.fromOffset(220, 89)
+		playText.TextSize = 30
+		playText.Text = "MATCH IN PROGRESS"
+		cancelHint.TextTransparency = 1
+		chevronLabel.TextTransparency = 1
+	else
+		playText.Position = UDim2.fromOffset(88, 0)
+		playText.Size = UDim2.fromOffset(110, 89)
+		playText.TextSize = 58
+		playText.Text = "PLAY"
+		cancelHint.TextTransparency = 1
+		chevronLabel.TextTransparency = 0
+	end
+end
+player:GetAttributeChangedSignal("HRushQueue"):Connect(refreshPlayButton)
+player:GetAttributeChangedSignal("HRushSearchEndsAt"):Connect(refreshPlayButton)
+refreshPlayButton()
+
+--------------------------------------------------------------------------
 -- CAMERA
 --------------------------------------------------------------------------
 local isPortrait = false
@@ -1638,7 +2021,7 @@ local function setupLobbyCamera()
 	if CONFIG.DisableMovement then
 		task.spawn(function()
 			local ok, module = pcall(function()
-				return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+				return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule", 5))
 			end)
 			if ok and module then
 				pcall(function()
@@ -1723,9 +2106,7 @@ setupLobbyCamera()
 local function setControlsEnabled(enabled)
 	task.spawn(function()
 		local ok, module = pcall(function()
-			local ps = player:WaitForChild("PlayerScripts", 10)
-			local pm = ps and ps:WaitForChild("PlayerModule", 10)
-			return pm and require(pm)
+			return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule", 5))
 		end)
 		if ok and module then
 			pcall(function()
@@ -1798,12 +2179,19 @@ local loadingGui = create("ScreenGui", {
 	Enabled = false,
 }, playerGui)
 
-local loadingGroup = create("CanvasGroup", {
+-- NOTE: plain Frame, not CanvasGroup — CanvasGroups render dark in this
+-- environment. Fading is done by an inner black veil instead.
+local loadingGroup = createFrame({
 	Size = UDim2.fromScale(1, 1),
 	BackgroundColor3 = COLORS.Navy,
-	BorderSizePixel = 0,
-	GroupTransparency = 1,
 }, loadingGui)
+local loadingVeil = createFrame({
+	Name = "FadeVeil",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 1,
+	ZIndex = 100,
+}, loadingGroup)
 create("UIGradient", {
 	Color = ColorSequence.new(COLORS.Slate, COLORS.Navy),
 	Rotation = 90,
@@ -1931,20 +2319,28 @@ local function setLoadingVisible(visible)
 	if visible then
 		loadingShownAt = os.clock()
 		loadingGui.Enabled = true
+		loadingVeil.BackgroundTransparency = 0
 		loadingTip.Text = LOADING_TIPS[math.random(1, #LOADING_TIPS)]
-		tween(loadingGroup, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 })
+		tween(loadingVeil, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
 		task.spawn(runLoadingAnimation, token)
 	else
-		-- never flash: keep it up for a minimum time, then fade out
-		local remaining = math.max(0, LOADING_MIN_SECONDS - (os.clock() - loadingShownAt))
+		-- never flash: keep it up for a minimum time, then fade out.
+		-- Exception: into MS_VOTE — the vote screen must be visible immediately.
+		local remaining
+		if player:GetAttribute("HRushState") == "MS_VOTE" then
+			remaining = 0
+		else
+			remaining = math.max(0, LOADING_MIN_SECONDS - (os.clock() - loadingShownAt))
+		end
 		task.delay(remaining, function()
 			if loadingToken ~= token then
 				return
 			end
-			local t = tween(loadingGroup, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { GroupTransparency = 1 })
+			local t = tween(loadingVeil, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 0 })
 			t.Completed:Connect(function()
 				if loadingToken == token then
 					loadingGui.Enabled = false
+					loadingVeil.BackgroundTransparency = 1
 				end
 			end)
 		end)

@@ -29,22 +29,22 @@ local COLORS = {
 	Lime = Color3.fromRGB(221, 247, 100),
 	LimeLight = Color3.fromRGB(236, 255, 130),
 	LimeDark = Color3.fromRGB(152, 180, 40),
-	Navy = Color3.fromRGB(20, 32, 40),
-	NavyDeep = Color3.fromRGB(13, 22, 28),
+	Navy = Color3.fromRGB(30, 46, 58),
+	NavyDeep = Color3.fromRGB(24, 38, 48),
 	Slate = Color3.fromRGB(44, 66, 76),
-	SlateDark = Color3.fromRGB(30, 48, 56),
+	SlateDark = Color3.fromRGB(40, 62, 72),
 	SlateLight = Color3.fromRGB(75, 102, 114),
-	CardBg = Color3.fromRGB(36, 56, 66),
-	CardBgSelected = Color3.fromRGB(45, 72, 85),
+	CardBg = Color3.fromRGB(56, 84, 96),
+	CardBgSelected = Color3.fromRGB(66, 100, 114),
 	White = Color3.fromRGB(255, 255, 255),
-	TextDim = Color3.fromRGB(160, 182, 190),
+	TextDim = Color3.fromRGB(198, 216, 224),
 	TextDark = Color3.fromRGB(22, 34, 42),
 	Gold = Color3.fromRGB(246, 190, 50),
 	Orange = Color3.fromRGB(238, 152, 88),
 	Cyan = Color3.fromRGB(110, 225, 240),
-	BlueWater = Color3.fromRGB(40, 100, 140),
-	CourtBrown = Color3.fromRGB(140, 95, 60),
-	CourtGreen = Color3.fromRGB(50, 100, 60),
+	BlueWater = Color3.fromRGB(56, 128, 172),
+	CourtBrown = Color3.fromRGB(160, 110, 72),
+	CourtGreen = Color3.fromRGB(66, 128, 78),
 }
 
 local FONTS = {
@@ -93,23 +93,34 @@ screenGui.Name = "MapVoteUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 60
+screenGui.DisplayOrder = 120 -- above LobbyLoading (100): the vote screen is never dimmed by it
 screenGui.Enabled = false
 screenGui.Parent = PlayerGui
 
-local rootCanvas = Instance.new("CanvasGroup")
+-- NOTE: plain Frame, not CanvasGroup — CanvasGroups render dark in this
+-- environment, which made the whole vote screen look dimmed (~40% brightness).
+local rootCanvas = Instance.new("Frame")
 rootCanvas.Name = "RootCanvas"
 rootCanvas.Size = UDim2.fromScale(1, 1)
 rootCanvas.BackgroundColor3 = COLORS.NavyDeep
 rootCanvas.BorderSizePixel = 0
-rootCanvas.GroupTransparency = 1
 rootCanvas.Parent = screenGui
+
+-- The show/hide fade is done by a black veil on top instead of GroupTransparency.
+local fadeVeil = Instance.new("Frame")
+fadeVeil.Name = "FadeVeil"
+fadeVeil.Size = UDim2.fromScale(1, 1)
+fadeVeil.BackgroundColor3 = Color3.new(0, 0, 0)
+fadeVeil.BackgroundTransparency = 1
+fadeVeil.BorderSizePixel = 0
+fadeVeil.ZIndex = 1000
+fadeVeil.Parent = screenGui
 
 local bgGrad = Instance.new("UIGradient")
 bgGrad.Color = ColorSequence.new({
 	ColorSequenceKeypoint.new(0, COLORS.SlateDark),
 	ColorSequenceKeypoint.new(0.5, COLORS.NavyDeep),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 16, 20)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 32, 42)),
 })
 bgGrad.Rotation = 90
 bgGrad.Parent = rootCanvas
@@ -293,7 +304,7 @@ local function createMapCard(x: number, key: string, name: string, tagline: stri
 	card.BackgroundColor3 = COLORS.CardBg
 	card.Parent = cardsHolder
 	corner(card, 16)
-	local cStroke = stroke(card, COLORS.SlateLight, 1.5, 0.5)
+	local cStroke = stroke(card, COLORS.SlateLight, 2, 0.15)
 
 	-- Upper Banner Preview
 	local preview = Instance.new("Frame")
@@ -496,7 +507,7 @@ local function createMapCard(x: number, key: string, name: string, tagline: stri
 	voteBtn.AutoButtonColor = false
 	voteBtn.Parent = voteHolder
 	corner(voteBtn, 14)
-	stroke(voteBtn, COLORS.LimeLight, 1.5, 0.4)
+	stroke(voteBtn, COLORS.LimeLight, 2, 0.1)
 
 	local btnScale = Instance.new("UIScale")
 	btnScale.Parent = voteHolder
@@ -830,17 +841,33 @@ end
 -- ============================================================
 -- EVENT LISTENERS
 -- ============================================================
+local fadeToken = 0
 local function showUI()
+	fadeToken += 1
+	local token = fadeToken
 	screenGui.Enabled = true
-	rootCanvas.GroupTransparency = 1
-	tween(rootCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 })
+	fadeVeil.BackgroundTransparency = 0
+	tween(fadeVeil, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
+	task.delay(0.35, function()
+		if token == fadeToken then
+			fadeVeil.BackgroundTransparency = 1
+		end
+	end)
 end
 
 local function hideUI()
 	timerRunning = false
-	local t = tween(rootCanvas, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { GroupTransparency = 1 })
+	fadeToken += 1
+	local token = fadeToken
+	if not screenGui.Enabled then
+		return
+	end
+	local t = tween(fadeVeil, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 0 })
 	t.Completed:Connect(function()
-		screenGui.Enabled = false
+		if token == fadeToken then
+			screenGui.Enabled = false
+			fadeVeil.BackgroundTransparency = 1
+		end
 	end)
 end
 
@@ -862,7 +889,7 @@ MapVoteEvent.OnClientEvent:Connect(function(payload: any)
 			card.VoteBtn.BackgroundColor3 = COLORS.Lime
 			card.VoteBtn.TextColor3 = COLORS.TextDark
 			card.Stroke.Color = COLORS.SlateLight
-			card.Stroke.Transparency = 0.5
+			card.Stroke.Transparency = 0.15
 			card.Card.BackgroundColor3 = COLORS.CardBg
 			card.Badge.Visible = false
 			card.VoteCountLabel.Text = "0"

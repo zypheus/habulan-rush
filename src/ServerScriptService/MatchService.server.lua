@@ -513,7 +513,7 @@ QueueEvent.OnServerEvent:Connect(function(player, action)
 					if m.Parent then
 						queued[m] = true
 						m:SetAttribute("HRushQueue", "Searching")
-						m:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+						m:SetAttribute("HRushSearchEndsAt", searchEndsAt or (workspace:GetServerTimeNow() + SEARCH_TIMEOUT))
 					end
 				end
 			else
@@ -523,7 +523,7 @@ QueueEvent.OnServerEvent:Connect(function(player, action)
 		else
 			queued[player] = true
 			player:SetAttribute("HRushQueue", "Searching")
-			player:SetAttribute("HRushSearchEndsAt", searchEndsAt)
+			player:SetAttribute("HRushSearchEndsAt", searchEndsAt or (workspace:GetServerTimeNow() + SEARCH_TIMEOUT))
 		end
 	elseif action == "Cancel" then
 		local party = PartyService.GetParty(player)

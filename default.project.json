@@ -11,6 +11,12 @@
       "TagRules": {
         "$path": "src/ReplicatedStorage/TagRules.lua"
       },
+      "VFX": {
+        "$path": "src/ReplicatedStorage/VFX"
+      },
+      "Cosmetics": {
+        "$path": "src/ReplicatedStorage/Cosmetics"
+      },
       "Remotes": {
         "$className": "Folder",
         "RequestPounce":   { "$className": "RemoteEvent" },
@@ -49,6 +55,9 @@
       "EventService": {
         "$path": "src/ServerScriptService/EventService.server.lua"
       },
+      "RunStyleService": {
+        "$path": "src/ServerScriptService/RunStyleService.server.lua"
+      },
       "Bootstrap": {
         "$path": "src/ServerScriptService/Bootstrap.server.lua"
       }
@@ -62,6 +71,9 @@
           "$path": "src/StarterPlayerScripts/MovementController.client.lua"
         },
         "TargetLockController": {
+          "$path": "src/StarterPlayerScripts/TargetLockController.lua"
+        },
+        "TargetLockController.client.lua": {
           "$path": "src/StarterPlayerScripts/TargetLockController.client.lua"
         },
         "UIController": {

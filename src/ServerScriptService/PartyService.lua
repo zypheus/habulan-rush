@@ -11,6 +11,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local PARTY = Config.Party
@@ -193,6 +194,18 @@ end)
 PartyEvent.OnServerEvent:Connect(function(player: Player, action: any, arg: any)
 	if action == "Leave" then
 		PartyService.Leave(player)
+	elseif action == "DebugJoin" and typeof(arg) == "number" then
+		-- Studio team test only: pulls a solo player on this server into your
+		-- party. Real invitations go through PromptGameInvite + LaunchData.
+		if not RunService:IsStudio() then
+			return
+		end
+		local target = Players:GetPlayerByUserId(arg)
+		if target and target ~= player then
+			if not PartyService.Join(target, player) then
+				warn(string.format("[PartyService] DebugJoin failed for %s (not solo / party full / locked).", target.Name))
+			end
+		end
 	elseif action == "Kick" and typeof(arg) == "number" then
 		local party = partyOf[player]
 		if party and party.leader == player and not party.locked then
