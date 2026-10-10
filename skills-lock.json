@@ -25,6 +25,12 @@
       "skillPath": "skills/disciplines/level-design/SKILL.md",
       "computedHash": "30d5498877bacdfb4cb0fd2b287be802e65c4a1d068248c971b0eea756778ee9"
     },
+    "ponytail": {
+      "source": "dietrichgebert/ponytail",
+      "sourceType": "github",
+      "skillPath": "skills/ponytail/SKILL.md",
+      "computedHash": "dc44b17f49b1228761af8303a51bc028cd1cca866ba8d23d6072ef5fd4e0ba94"
+    },
     "roblox-architecture": {
       "source": "tabooharmony/roblox-brain",
       "sourceType": "github",
