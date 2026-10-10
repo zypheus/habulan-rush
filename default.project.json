@@ -11,6 +11,9 @@
       "TagRules": {
         "$path": "src/ReplicatedStorage/TagRules.lua"
       },
+      "TsinelasArc": {
+        "$path": "src/ReplicatedStorage/TsinelasArc.lua"
+      },
       "Remotes": {
         "$className": "Folder",
         "RequestPounce":   { "$className": "RemoteEvent" },

@@ -6,6 +6,7 @@ _T05 [Management/P0] • Assigned: 2026-10-07_
 | Module | Location | Owner | Task Ref |
 |--------|----------|-------|---------|
 | Config | `ReplicatedStorage/Config.lua` | Designer + Programmer (shared) | T03, T04 |
+| TsinelasArc | `ReplicatedStorage/TsinelasArc.lua` | **Programmer B** | T18 |
 | MatchService | `ServerScriptService/MatchService.lua` | **Programmer A** | T07, T10 |
 | TagService | `ServerScriptService/TagService.lua` | **Programmer A** | T11, T12, T13 |
 | SkillService | `ServerScriptService/SkillService.lua` | **Programmer B** | T18, T19, T21, T22 |

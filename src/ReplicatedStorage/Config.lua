@@ -281,29 +281,40 @@ Config.Skills = {
 		type     = "Stun",
 		cooldown = 25, -- [LOCKED] spec
 		duration = 1.0, -- [LOCKED] stun duration on hit (s)
-		range    = 25,  -- [LOCKED] max projectile range (studs)
+		range    = 40,  -- [SD] raised from locked 25 with team sign-off 2026-10-10
 		params   = {
-			projectileSpeed = 30, -- [SD] studs/s; slower than pounce lunge (45) so it stays dodgeable
-			projectileRadius = 3, -- [SD] hit radius around projectile center (studs)
-			launchHeight = 0, -- [SD] spawn height above caster root center (root sits ~3 up; flight stays chest high so low cover blocks)
-			stepDt = 1 / 60, -- [SD] server sim step (s)
-			maxLifetime = 1.0, -- [SD] flight cap (s); covers 25 studs at 30 studs/s plus margin
+			projectileRadius = 3, -- [SD] hit radius around the arc segment (studs)
+			launchHeight = 0, -- [SD] spawn height above caster root center (studs)
+			stepDt = 1 / 60, -- [SD] arc sim time step (s)
+			arcGravity = 80, -- [SD] slipper gravity (studs/s^2); 45 degree lob, 1.0 s at max range
+			minDistance = 3, -- [SD] closest landing point (studs); closer aims throw here
+			maxHeightDiff = 6, -- [SD] target height clamp above or below launch (studs)
 			pendingTimeout = 1.5, -- [SD] drop a lost server reply after this (s)
+			maxHoldTime = 3.0, -- [SD] max G hold before aim auto cancels without firing (s)
 		},
 		vfx = { -- every burst stays under 30 particles (mobile budget)
-			arcCount = 12, -- [SD] trail puffs along the cosmetic arc
 			impactCount = 16, -- [SD] star burst particles on hit
 			spinRate = 720, -- [SD] cosmetic slipper spin (deg/s)
 			slipperColor = Color3.fromRGB(70, 140, 255), -- [SD] placeholder blue
 			slipperSize = Vector3.new(0.8, 0.35, 1.6), -- [SD] cosmetic slipper part (studs)
-			arcLift = 1.0, -- [SD] peak height of the cosmetic arc above the straight line (studs)
+			trailLifetime = 0.4, -- [SD] ribbon segment fade (s)
+			trailColorStart = Color3.fromRGB(150, 220, 255), -- [SD] ribbon head color
+			trailColorEnd = Color3.fromRGB(60, 120, 230), -- [SD] ribbon tail color
+			trailWidth = 1.6, -- [SD] spacing between the slipper ribbon attachments (studs)
+			trailTransparencyIn = 0.2, -- [SD] ribbon birth transparency (0 = opaque, 1 = invisible)
+			aimDotCount = 12, -- [SD] dots drawing the aim parabola
+			aimDotSize = 0.4, -- [SD] aim dot diameter (studs)
+			aimMarkerSize = 2.0, -- [SD] landing marker diameter (studs)
+			aimColor = Color3.fromRGB(255, 230, 150), -- [SD] aim dots and marker color
+			aimBlockedColor = Color3.fromRGB(226, 61, 61), -- [SD] aim color when a wall cuts the arc
+			aimTransparency = 0.5, -- [SD] aim dots and marker transparency (0 = opaque, 1 = invisible)
+			aimRayLength = 100, -- [SD] camera ray length for the target point (studs)
 			starColor = Color3.fromRGB(255, 220, 80), -- [SD] impact star color
 			starSize = 0.6, -- [SD] impact star particle start size (studs)
 			starLife = 0.5, -- [SD] impact star particle lifetime (s)
 			starSpeedMin = 6, -- [SD] impact star speed low (studs/s)
 			starSpeedMax = 14, -- [SD] impact star speed high (studs/s)
 			impactRingTime = 0.25, -- [SD] impact ring grow/fade (s)
-			arcTime = 0.85, -- [SD] cosmetic flight time (s); matches server flight
 		},
 		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
 			throw = "", -- arm swing whoosh
@@ -466,6 +477,39 @@ Config.Maps = {
 		rushEvent  = "TubigTumataas",
 		floodSpeedMult       = 0.80, -- -20% in submerged low areas
 		evacSafeWindowDuration = 1.5, -- [SD] one-time per visit
+	},
+}
+
+-- ============================================================
+-- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
+-- ============================================================
+-- RS_03 Tsinelas Throw slot: second chip in the MoveCluster beside the RS_01
+-- chip, same wipe/countdown/pulse patterns. KeyLabel moves to E at T17.
+Config.UI = {
+	Tsinelas = {
+		SlotSize = 44, -- [SD] chip diameter (px, matches dash + RS_01 chips)
+		SlotOffsetX = 356, -- [SD] chip X in the cluster (dash 236, RS_01 296)
+		KeyLabel = "G", -- [SD] TEMP keycap text until T17 draft
+		CaptionText = "TSINELAS", -- [SD] caption under the chip
+		ReadyPulseTime = 0.16, -- [SD] ready pulse half cycle (s)
+		ReadyPulseGrow = 52, -- [SD] chip size at pulse peak (px)
+		AimStrokeColor = Color3.fromRGB(255, 210, 90), -- [SD] aiming border
+		AimStrokeThickness = 3, -- [SD] aiming border thickness (px)
+		UnavailableTransparency = 0.6, -- [SD] dim level when unavailable
+		CountdownTextSize = 18, -- [SD] cooldown seconds text (spec mobile min)
+		TouchSizePx = 76, -- [SD] touch button size (spec min 64)
+		TouchPosition = UDim2.new(0.88, 0, 0.68, 0), -- [SD] scale spot, thumb zone
+	},
+	-- RS_03 first person aim camera: eases in on aim, back out on exit.
+	-- Disabled whole by Enabled (accessibility; aiming stays third person).
+	TsinelasCam = {
+		Enabled = true, -- [SD] false keeps third person aiming (reduced camera effects)
+		InTime = 0.25, -- [SD] ease into first person (s)
+		OutTime = 0.2, -- [SD] ease back to third person (s)
+		FirstPersonDistance = 0.5, -- [SD] zoom distance held in first person (studs)
+		MouseSensitivity = 0.7, -- [SD] mouse look scale while aiming (1 = unchanged)
+		FovDelta = 0, -- [SD] FOV shift while aiming (0 = off)
+		ReticleSizePx = 12, -- [SD] center reticle diameter while aiming
 	},
 }
 

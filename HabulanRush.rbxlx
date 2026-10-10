@@ -289,29 +289,40 @@ Config.Skills = {
 		type     = "Stun",
 		cooldown = 25, -- [LOCKED] spec
 		duration = 1.0, -- [LOCKED] stun duration on hit (s)
-		range    = 25,  -- [LOCKED] max projectile range (studs)
+		range    = 40,  -- [SD] raised from locked 25 with team sign-off 2026-10-10
 		params   = {
-			projectileSpeed = 30, -- [SD] studs/s; slower than pounce lunge (45) so it stays dodgeable
-			projectileRadius = 3, -- [SD] hit radius around projectile center (studs)
-			launchHeight = 0, -- [SD] spawn height above caster root center (root sits ~3 up; flight stays chest high so low cover blocks)
-			stepDt = 1 / 60, -- [SD] server sim step (s)
-			maxLifetime = 1.0, -- [SD] flight cap (s); covers 25 studs at 30 studs/s plus margin
+			projectileRadius = 3, -- [SD] hit radius around the arc segment (studs)
+			launchHeight = 0, -- [SD] spawn height above caster root center (studs)
+			stepDt = 1 / 60, -- [SD] arc sim time step (s)
+			arcGravity = 80, -- [SD] slipper gravity (studs/s^2); 45 degree lob, 1.0 s at max range
+			minDistance = 3, -- [SD] closest landing point (studs); closer aims throw here
+			maxHeightDiff = 6, -- [SD] target height clamp above or below launch (studs)
 			pendingTimeout = 1.5, -- [SD] drop a lost server reply after this (s)
+			maxHoldTime = 3.0, -- [SD] max G hold before aim auto cancels without firing (s)
 		},
 		vfx = { -- every burst stays under 30 particles (mobile budget)
-			arcCount = 12, -- [SD] trail puffs along the cosmetic arc
 			impactCount = 16, -- [SD] star burst particles on hit
 			spinRate = 720, -- [SD] cosmetic slipper spin (deg/s)
 			slipperColor = Color3.fromRGB(70, 140, 255), -- [SD] placeholder blue
 			slipperSize = Vector3.new(0.8, 0.35, 1.6), -- [SD] cosmetic slipper part (studs)
-			arcLift = 1.0, -- [SD] peak height of the cosmetic arc above the straight line (studs)
+			trailLifetime = 0.4, -- [SD] ribbon segment fade (s)
+			trailColorStart = Color3.fromRGB(150, 220, 255), -- [SD] ribbon head color
+			trailColorEnd = Color3.fromRGB(60, 120, 230), -- [SD] ribbon tail color
+			trailWidth = 1.6, -- [SD] spacing between the slipper ribbon attachments (studs)
+			trailTransparencyIn = 0.2, -- [SD] ribbon birth transparency (0 = opaque, 1 = invisible)
+			aimDotCount = 12, -- [SD] dots drawing the aim parabola
+			aimDotSize = 0.4, -- [SD] aim dot diameter (studs)
+			aimMarkerSize = 2.0, -- [SD] landing marker diameter (studs)
+			aimColor = Color3.fromRGB(255, 230, 150), -- [SD] aim dots and marker color
+			aimBlockedColor = Color3.fromRGB(226, 61, 61), -- [SD] aim color when a wall cuts the arc
+			aimTransparency = 0.5, -- [SD] aim dots and marker transparency (0 = opaque, 1 = invisible)
+			aimRayLength = 100, -- [SD] camera ray length for the target point (studs)
 			starColor = Color3.fromRGB(255, 220, 80), -- [SD] impact star color
 			starSize = 0.6, -- [SD] impact star particle start size (studs)
 			starLife = 0.5, -- [SD] impact star particle lifetime (s)
 			starSpeedMin = 6, -- [SD] impact star speed low (studs/s)
 			starSpeedMax = 14, -- [SD] impact star speed high (studs/s)
 			impactRingTime = 0.25, -- [SD] impact ring grow/fade (s)
-			arcTime = 0.85, -- [SD] cosmetic flight time (s); matches server flight
 		},
 		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
 			throw = "", -- arm swing whoosh
@@ -477,6 +488,39 @@ Config.Maps = {
 	},
 }
 
+-- ============================================================
+-- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
+-- ============================================================
+-- RS_03 Tsinelas Throw slot: second chip in the MoveCluster beside the RS_01
+-- chip, same wipe/countdown/pulse patterns. KeyLabel moves to E at T17.
+Config.UI = {
+	Tsinelas = {
+		SlotSize = 44, -- [SD] chip diameter (px, matches dash + RS_01 chips)
+		SlotOffsetX = 356, -- [SD] chip X in the cluster (dash 236, RS_01 296)
+		KeyLabel = "G", -- [SD] TEMP keycap text until T17 draft
+		CaptionText = "TSINELAS", -- [SD] caption under the chip
+		ReadyPulseTime = 0.16, -- [SD] ready pulse half cycle (s)
+		ReadyPulseGrow = 52, -- [SD] chip size at pulse peak (px)
+		AimStrokeColor = Color3.fromRGB(255, 210, 90), -- [SD] aiming border
+		AimStrokeThickness = 3, -- [SD] aiming border thickness (px)
+		UnavailableTransparency = 0.6, -- [SD] dim level when unavailable
+		CountdownTextSize = 18, -- [SD] cooldown seconds text (spec mobile min)
+		TouchSizePx = 76, -- [SD] touch button size (spec min 64)
+		TouchPosition = UDim2.new(0.88, 0, 0.68, 0), -- [SD] scale spot, thumb zone
+	},
+	-- RS_03 first person aim camera: eases in on aim, back out on exit.
+	-- Disabled whole by Enabled (accessibility; aiming stays third person).
+	TsinelasCam = {
+		Enabled = true, -- [SD] false keeps third person aiming (reduced camera effects)
+		InTime = 0.25, -- [SD] ease into first person (s)
+		OutTime = 0.2, -- [SD] ease back to third person (s)
+		FirstPersonDistance = 0.5, -- [SD] zoom distance held in first person (studs)
+		MouseSensitivity = 0.7, -- [SD] mouse look scale while aiming (1 = unchanged)
+		FovDelta = 0, -- [SD] FOV shift while aiming (0 = off)
+		ReticleSizePx = 12, -- [SD] center reticle diameter while aiming
+	},
+}
+
 return Config
 ]]></string>
       </Properties>
@@ -595,12 +639,114 @@ end
 return TagRules</string>
       </Properties>
     </Item>
+    <Item class="ModuleScript" referent="18">
+      <Properties>
+        <string name="Name">TsinelasArc</string>
+        <string name="Source"><![CDATA[--!strict
+-- ReplicatedStorage/TsinelasArc.lua
+-- Owner: Programmer B (T18)
+-- Responsibility: pure parabolic arc math for RS_03 Tsinelas Throw.
+-- WHY: the server hit test, the client slipper, and the aim indicator must
+-- follow the same curve, so the model lives in ONE module with no side
+-- effects that all three call. Server authoritative; the client only reads.
+-- Math: fixed 45 degree launch. Flat ground: v = sqrt(g * d), apex d / 4,
+-- flight time sqrt(2 * d / g). Height h above launch: v^2 = g * d^2 / (d - h)
+-- with g = (0, -G, 0) from Config. Position: x(t) = 0.5*g*t*t + v0*t + x0.
+-- Range is the maximum horizontal distance from thrower to landing point.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+
+local TsinelasArc = {}
+
+-- Slipper gravity, always pointing down. Never workspace.Gravity: the throw
+-- must feel slow and light and stay tunable from Config.
+function TsinelasArc.gravity(): Vector3
+	return Vector3.new(0, -Config.Skills.RS_03.params.arcGravity, 0)
+end
+
+-- Fixed 45 degree launch solved from distance. Returns the launch velocity,
+-- the flight time, true when the target was clamped for reachability
+-- ("short": the indicator shows the blocked color), and the effective
+-- landing point. Pure math; the server and all clients reach the same
+-- answer from the same inputs. The payload carries the landing point so
+-- the cosmetic arc matches the sim exactly.
+function TsinelasArc.solveArc(origin: Vector3, desired: Vector3): (Vector3, number, boolean, Vector3)
+	local params = Config.Skills.RS_03.params
+	local g = params.arcGravity -- positive magnitude; gravity points down
+	local maxRange: number = Config.Skills.RS_03.range
+	local target = TsinelasArc.clampTarget(origin, desired, maxRange)
+	local flat = Vector3.new(target.X - origin.X, 0, target.Z - origin.Z)
+	local d = flat.Magnitude
+	local short = false
+	if d < params.minDistance then
+		-- Too close: throw to the minimum distance along the same heading
+		-- so close range never becomes a tiny hop.
+		local push = if d > 0.001 then flat.Unit else Vector3.new(0, 0, -1)
+		target = Vector3.new(origin.X + push.X * params.minDistance, target.Y, origin.Z + push.Z * params.minDistance)
+		d = params.minDistance
+	end
+	local h = math.clamp(target.Y - origin.Y, -params.maxHeightDiff, params.maxHeightDiff)
+	if h > d - 0.5 then
+		-- Too high to reach at 45 degrees: clamp to the highest reachable
+		-- height and flag it short.
+		h = d - 0.5
+		short = true
+	end
+	-- 45 degree launch: vh equals vy, so v^2 = g * d^2 / (d - h).
+	local v = math.sqrt(g * d * d / (d - h))
+	local vh = v / math.sqrt(2)
+	local dirXZ = Vector3.new(flat.X, 0, flat.Z)
+	if dirXZ.Magnitude < 0.001 then
+		dirXZ = Vector3.new(0, 0, -1)
+	else
+		dirXZ = dirXZ.Unit
+	end
+	local v0 = Vector3.new(dirXZ.X * vh, vh, dirXZ.Z * vh)
+	local landed = Vector3.new(target.X, origin.Y + h, target.Z)
+	return v0, d / vh, short, landed
+end
+
+-- Arc position at time t after launch.
+function TsinelasArc.position(x0: Vector3, v0: Vector3, t: number): Vector3
+	local g = TsinelasArc.gravity()
+	return 0.5 * g * t * t + v0 * t + x0
+end
+
+-- Clamps the desired point to maxRange horizontal studs from origin,
+-- keeping its height. Pure math; callers supply raycast heights.
+function TsinelasArc.clampTarget(origin: Vector3, desired: Vector3, maxRange: number): Vector3
+	local flat = Vector3.new(desired.X - origin.X, 0, desired.Z - origin.Z)
+	local dist = flat.Magnitude
+	if dist <= maxRange or dist < 0.001 then
+		return desired
+	end
+	local clamped = flat.Unit * maxRange
+	return Vector3.new(origin.X + clamped.X, desired.Y, origin.Z + clamped.Z)
+end
+
+-- Shortest distance from p to the segment a-b. The arc curves, so the hit
+-- test measures against segments, not points.
+function TsinelasArc.distToSegment(p: Vector3, a: Vector3, b: Vector3): number
+	local ab = b - a
+	local denom = ab:Dot(ab)
+	if denom < 0.000001 then
+		return (p - a).Magnitude
+	end
+	local t = math.clamp((p - a):Dot(ab) / denom, 0, 1)
+	return (p - (a + ab * t)).Magnitude
+end
+
+return TsinelasArc
+]]></string>
+      </Properties>
+    </Item>
   </Item>
-  <Item class="ServerScriptService" referent="18">
+  <Item class="ServerScriptService" referent="19">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="19">
+    <Item class="Script" referent="20">
       <Properties>
         <string name="Name">Bootstrap</string>
         <token name="RunContext">0</token>
@@ -986,7 +1132,7 @@ print(string.format(
 ))</string>
       </Properties>
     </Item>
-    <Item class="Script" referent="20">
+    <Item class="Script" referent="21">
       <Properties>
         <string name="Name">EventService</string>
         <token name="RunContext">0</token>
@@ -1008,7 +1154,7 @@ print("[EventService] Loaded — stub only. Implement T24–T26.")
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="21">
+    <Item class="Script" referent="22">
       <Properties>
         <string name="Name">MatchService</string>
         <token name="RunContext">0</token>
@@ -1823,7 +1969,7 @@ print("[MatchService] MatchService v1.1 initialized (queue + bot fill + ShuffleB
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="22">
+    <Item class="Script" referent="23">
       <Properties>
         <string name="Name">SkillService</string>
         <token name="RunContext">0</token>
@@ -1835,8 +1981,9 @@ print("[MatchService] MatchService v1.1 initialized (queue + bot fill + ShuffleB
 --                 ONLY to the requesting player, SkillVFX goes to ALL players
 --                 for visuals. Denies are silent.
 --                 RS_01: sets IsAirborne; the client reports landing via SkillLanded.
---                 RS_03: the server simulates the slipper projectile and owns
---                 the hit test; on hit it stuns the Taya via HRushStunned.
+--                 RS_03: the server solves a parabolic arc to the aimed point
+--                 and owns the stepped hit test; on hit it stuns the Taya via
+--                 HRushStunned. Arc math lives in ReplicatedStorage/TsinelasArc.
 -- See System Specification section 5 and Config.Skills.
 --
 -- IN THIS SLICE: RS_01 + RS_03. Server role authority arrives with TagService
@@ -1848,6 +1995,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
 local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
@@ -1930,6 +2078,39 @@ local function sanitizeDir(dir: unknown, root: BasePart): Vector3
 		return flatLook.Unit
 	end
 	return Vector3.new(0, 0, -1)
+end
+
+-- Aim sanity for client-submitted dirs (RS_03 only): finite components and a
+-- magnitude near 1, since honest clients send a unit vector. NaN defeats
+-- comparisons, so finiteness is checked first. Failure denies silently.
+-- The RS_01 path keeps its fallback and is untouched.
+local function isSaneDir(dir: unknown): boolean
+	if typeof(dir) ~= "Vector3" then
+		return false
+	end
+	local v = dir :: Vector3
+	if v.X ~= v.X or v.Y ~= v.Y or v.Z ~= v.Z then
+		return false -- NaN
+	end
+	if math.abs(v.X) == math.huge or math.abs(v.Y) == math.huge or math.abs(v.Z) == math.huge then
+		return false
+	end
+	local mag = v.Magnitude
+	return mag >= 0.5 and mag <= 2.0
+end
+
+-- Aim point sanity (RS_03 only): a finite Vector3. Magnitude is NOT bounded
+-- here: these are world coordinates, and the server clamps to range itself.
+-- Non-finite input denies silently.
+local function isFiniteVec(value: unknown): boolean
+	if typeof(value) ~= "Vector3" then
+		return false
+	end
+	local v = value :: Vector3
+	return v.X == v.X and v.Y == v.Y and v.Z == v.Z
+		and math.abs(v.X) ~= math.huge
+		and math.abs(v.Y) ~= math.huge
+		and math.abs(v.Z) ~= math.huge
 end
 
 -- Returns the live root part of a player, or nil when dead or missing.
@@ -2050,35 +2231,35 @@ local function resolveTayaTarget(caster: Player, origin: Vector3, dir: Vector3, 
 	return nil
 end
 
--- Server-owned projectile simulation. The loop below is the only hit test;
--- no client claim is trusted. Walls block the slipper; only the resolved
--- Taya can be hit; anything else is a miss.
-local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3, dir: Vector3)
+-- Server-owned arc simulation. The loop below is the only hit test; no
+-- client claim is trusted, and the client v0 is never used: the server
+-- solves its own from the clamped target. Each arc segment is raycast
+-- against world geometry; a wall or ground hit ends the flight as a miss
+-- at that point. Only the resolved Taya can be hit, tested by segment
+-- distance so the curve cannot tunnel past them.
+local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3, v0: Vector3, flightT: number, dir: Vector3)
 	local sk = Config.Skills.RS_03
-	local speed: number = sk.params.projectileSpeed
 	local radius: number = sk.params.projectileRadius
-	local maxRange: number = sk.range
-	local maxLifetime: number = sk.params.maxLifetime
 	local stepDt: number = sk.params.stepDt
 	task.spawn(function()
-		local pos = origin
-		local traveled = 0
-		local elapsed = 0
+		local t = 0
+		local prev = origin
 		local hitPos: Vector3? = nil
 		local rayParams = RaycastParams.new()
 		rayParams.FilterType = Enum.RaycastFilterType.Exclude
 		rayParams.IgnoreWater = true
-		while traveled < maxRange and elapsed < maxLifetime do
+		while t < flightT do
 			if caster.Parent == nil then
 				break -- caster left mid flight: miss
 			end
 			if ReplicatedStorage:GetAttribute("HRushRoundState") ~= "MS_04" then
 				break -- round ended mid flight: miss, stun never applies
 			end
-			local step = speed * stepDt
-			local nextPos = pos + dir * step
-			-- Wall check so cover blocks the slipper. Both characters are
-			-- excluded; the Taya uses the distance check below instead.
+			local nt = math.min(t + stepDt, flightT)
+			local nextPos = TsinelasArc.position(origin, v0, nt)
+			-- Wall and ground check so cover and floors block the slipper.
+			-- Both characters are excluded; the Taya uses the segment
+			-- check below instead.
 			local ignore: { Instance } = {}
 			local casterChar = caster.Character
 			if casterChar ~= nil then
@@ -2091,24 +2272,23 @@ local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3
 				end
 			end
 			rayParams.FilterDescendantsInstances = ignore
-			local wall = Workspace:Raycast(pos, dir * step, rayParams)
+			local wall = Workspace:Raycast(prev, nextPos - prev, rayParams)
 			if wall ~= nil then
-				pos = wall.Position
-				break -- blocked by cover: miss
+				prev = wall.Position
+				break -- blocked by cover or ground: miss
 			end
-			pos = nextPos
-			traveled += step
-			elapsed += stepDt
 			if target ~= nil then
 				local targetRoot = getLiveRoot(target :: Player)
 				if targetRoot == nil then
 					break -- Taya died or left mid flight: miss
 				end
-				if (pos - targetRoot.Position).Magnitude <= radius then
+				if TsinelasArc.distToSegment(targetRoot.Position, prev, nextPos) <= radius then
 					hitPos = targetRoot.Position
 					break
 				end
 			end
+			prev = nextPos
+			t = nt
 			task.wait(stepDt)
 		end
 		if hitPos ~= nil and target ~= nil then
@@ -2127,7 +2307,7 @@ local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3
 				skillId = "RS_03",
 				dir = dir,
 				phase = "miss",
-				hitPos = pos,
+				hitPos = prev,
 			})
 			debugPrint("Tsinelas miss (range, wall, or no target)") -- TODO: remove before submission
 		end
@@ -2136,14 +2316,30 @@ end
 
 -- RS_03 cast path. No airborne or grounded checks: a Runner may throw midair,
 -- and the throw never grants tag immunity, so IsAirborne is untouched.
-local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unknown, root: BasePart, now: number)
+-- Range is the maximum horizontal distance from thrower to landing point.
+local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unknown, aimPoint: unknown, root: BasePart, now: number)
+	if not isSaneDir(dir) then
+		deny(caster, skillId, "bad direction")
+		return
+	end
+	if not isFiniteVec(aimPoint) then
+		deny(caster, skillId, "bad aim")
+		return
+	end
 	if not checkAndSetCooldown(caster, skillId, sk.cooldown, now) then
 		return
 	end
 	local castDir = sanitizeDir(dir, root)
+	-- Origin rule shared with the client indicator: root center pushed two
+	-- studs along the throw dir, so both sides agree on x0.
 	local origin = root.Position + Vector3.new(0, sk.params.launchHeight, 0) + castDir * 2
+	-- Fixed 45 degree solve: the server clamps and recomputes everything
+	-- itself, never trusting client speed. The payload carries the solved
+	-- landing point so every client flies the same arc.
+	local v0, flightT, _short, target = TsinelasArc.solveArc(origin, aimPoint :: Vector3)
 	-- Split reply (spec architecture): approved event ONLY to the caster,
-	-- VFX event to ALL clients. Clients render cosmetics only.
+	-- VFX event to ALL clients. Clients render cosmetics only. The cast
+	-- payload carries the clamped target so every client flies the same arc.
 	SkillApproved:FireClient(caster, {
 		skillId = skillId,
 		dir = castDir,
@@ -2155,16 +2351,17 @@ local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unk
 		dir = castDir,
 		phase = "cast",
 		origin = origin,
+		target = target,
 	})
 	debugPrint("validation APPROVED for " .. caster.Name .. " (RS_03); SkillApproved to caster, SkillVFX to all") -- TODO: remove before submission
-	local target = resolveTayaTarget(caster, origin, castDir, sk.range)
-	if target == nil then
+	local taya = resolveTayaTarget(caster, origin, castDir, sk.range)
+	if taya == nil then
 		debugPrint("Tsinelas cast with no live Taya; cosmetic flight only") -- TODO: remove before submission
 	end
-	simulateTsinelas(caster, target, origin, castDir)
+	simulateTsinelas(caster, taya, origin, v0, flightT, castDir)
 end
 
-RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, dir: unknown)
+RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, dir: unknown, aimPoint: unknown)
 	if typeof(skillId) ~= "string" then
 		return
 	end
@@ -2223,7 +2420,7 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, di
 	-- Per-type branch. RS_02 and TS_01-03 are not implemented yet: deny
 	-- instead of falling into a path that reads params they do not have.
 	if skillId == "RS_03" then
-		handleTsinelas(player, sk, skillId, dir, typedRoot, now)
+		handleTsinelas(player, sk, skillId, dir, aimPoint, typedRoot, now)
 		return
 	end
 	if skillId ~= "RS_01" then
@@ -2314,7 +2511,7 @@ print("[SkillService] Loaded - RS_01 + RS_03 slice (validation + server CD + app
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Script" referent="23">
+    <Item class="Script" referent="24">
       <Properties>
         <string name="Name">TagService</string>
         <token name="RunContext">0</token>
@@ -2344,15 +2541,15 @@ print("[TagService] Loaded — stub only. Implement T11–T13.")
       </Properties>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="24">
+  <Item class="StarterPlayer" referent="25">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="25">
+    <Item class="StarterPlayerScripts" referent="26">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="26">
+      <Item class="LocalScript" referent="27">
         <Properties>
           <string name="Name">LobbyUI</string>
           <string name="Source"><![CDATA[--[[
@@ -4103,7 +4300,7 @@ refreshLoading()
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="27">
+      <Item class="LocalScript" referent="28">
         <Properties>
           <string name="Name">MovementController</string>
           <string name="Source"><![CDATA[--!strict
@@ -4128,9 +4325,11 @@ refreshLoading()
 --     server validates (round/stun/ground/airborne/CD) and broadcasts SkillEvent,
 --     caster runs windup (0.1s crouch) -> takeoff (single impulse, CD starts)
 --     -> locked-direction flight -> landing recovery (0.2s no sprint).
---   • Skill RS_03 Tsinelas Throw (T18 slice, cosmetics only): TEMP G key sends
---     the request; server simulates the projectile and owns the hit test.
---     This client renders the spinning slipper arc plus the impact star.
+--   • Skill RS_03 Tsinelas Throw (T18 slice, cosmetics only): TEMP hold G to
+--     aim at a target point from the camera view, release to throw; X cancels.
+--     Aiming eases the camera into first person and restores it on exit.
+--     Server solves the 45 degree parabolic arc and owns the hit test. This client draws
+--     the arc dots plus landing marker and flies the slipper on the same arc.
 --     Grant list: Config.Skills.testGrant, role gate via Config.Debug flag.
 --
 -- Does NOT handle: tag detection/validation (TagService owns truth),
@@ -4150,6 +4349,7 @@ local Workspace = game:GetService("Workspace")
 
 -- ── Config ──────────────────────────────────────────────────────────────────
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Mv     = Config.Movement   -- shorthand
 
 -- ── Player / character refs ──────────────────────────────────────────────────
@@ -4213,10 +4413,16 @@ local skillApprovedActive = false -- true from SkillApproved until SkillLanded s
 local skillDebugTick = 0.0 -- throttles the debug label text update
 
 -- Tsinelas Throw (RS_03, T18 slice): TEMP cast path until T17 draft owns skill
--- selection. G fires RequestSkill for RS_03; the server validates, simulates
+-- selection. Hold G to aim, release to throw; the server validates, simulates
 -- the projectile, and broadcasts SkillVFX cast/impact/miss phases. Cosmetics
 -- only: this client never decides hits. Removed when PickSkill owns unlocks.
-local tsinelasRequested = false -- buffered G press
+local TSINELAS_KEY = Enum.KeyCode.G -- TEMP (T18): test key until T17 draft
+local TSINELAS_CANCEL_KEY = Enum.KeyCode.X -- TEMP (T18): explicit aim cancel
+local tsinelasHeld = false -- G physically held (sprintHeld pattern)
+local tsinelasAiming = false -- aim line live, waiting for release
+local tsinelasAimHoldLeft = 0.0 -- max hold countdown while aiming
+local tsinelasAimDots: { BasePart } = {} -- parabola dots, owner only
+local tsinelasAimMarker: BasePart? = nil -- landing marker, owner only
 local tsinelasPending = false -- request sent, waiting for the server reply
 local tsinelasPendingLeft = 0.0 -- clears a lost reply so input cannot wedge
 local tsinelasCooldownLeft = 0.0 -- local mirror of the server cooldown ledger
@@ -4376,7 +4582,9 @@ end
 --   HRushStamina (0–100), HRushStaminaMax, HRushDashCD, HRushSlideCD,
 --   HRushDashing (bool), HRushSliding (bool), HRushBoost (seconds left),
 --   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar),
---   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left).
+--   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left),
+--   HRushSkillId_RS03 ("RS_03" when granted, "" = none),
+--   HRushSkillCD_RS03 (RS_03 seconds left), HRushAiming ("RS_03" while aiming).
 -- Grant lookup (TEMP list until T17 draft owns unlocks). The role check stays
 -- but is skipped while Config.Debug.AllowAnyRoleForSkills is on, so any role
 -- can test skills; flip the flag off to restore the Runner-only rule.
@@ -4388,6 +4596,23 @@ local function grantedSkillId(): string
 		local sk = Config.Skills[id]
 		if sk and (Config.Debug.AllowAnyRoleForSkills or sk.role == role) then
 			return id
+		end
+	end
+	return ""
+end
+
+-- RS_03 grant for the UI slot: same TEMP list and role gate as above, but
+-- for Tsinelas Throw specifically (grantedSkillId returns the first grant).
+local function grantedTsinelas(): string
+	if role ~= "Runner" and not Config.Debug.AllowAnyRoleForSkills then
+		return ""
+	end
+	for _, id in Config.Skills.testGrant do
+		if id == "RS_03" then
+			local sk = Config.Skills[id]
+			if sk and (Config.Debug.AllowAnyRoleForSkills or sk.role == role) then
+				return id
+			end
 		end
 	end
 	return ""
@@ -4424,6 +4649,8 @@ local function pushAttributes(force: boolean?)
 	LocalPlayer:SetAttribute("HRushSkillId", skillId)
 	LocalPlayer:SetAttribute("HRushSkillCD", skillCooldownLeft)
 	LocalPlayer:SetAttribute("HRushSkillCD_RS03", tsinelasCooldownLeft)
+	LocalPlayer:SetAttribute("HRushSkillId_RS03", grantedTsinelas())
+	LocalPlayer:SetAttribute("HRushAiming", if tsinelasAiming then "RS_03" else "")
 end
 
 -- ── Dash VFX (client-side juice) ─────────────────────────────────────────────
@@ -4986,7 +5213,7 @@ local function playSkillCastFX(casterId: number, sid: string, dir: Vector3)
 end
 
 -- ── Tsinelas Throw cosmetics (RS_03, visuals only, never mechanics) ──────────
--- Game-feel light tier: spinning slipper + trail puffs on cast, star burst +
+-- Game-feel light tier: spinning slipper + ribbon trail on cast, star burst +
 -- eased ring pop + impact sound hook on hit. Every channel is transient and
 -- self cleans, so the scene always returns to rest. All values from
 -- Config.Skills.RS_03. No camera shake: the stun itself is the punishment.
@@ -4999,19 +5226,30 @@ local function tsinelasCleanup(casterId: number)
 	if s.conn ~= nil then
 		s.conn:Disconnect()
 	end
-	if s.part.Parent ~= nil then
-		s.part:Destroy()
+	if s.part.Parent == nil then
+		return
 	end
+	-- Fade, do not pop: stop new ribbon segments and hide the remnant so the
+	-- existing segments decay over trailLifetime. Debris is margin only.
+	local ribbon = s.part:FindFirstChild("TsinelasRibbon")
+	if ribbon and ribbon:IsA("Trail") then
+		ribbon.Enabled = false
+	end
+	s.part.Transparency = 1
+	Debris:AddItem(s.part, Config.Skills.RS_03.vfx.trailLifetime + 0.2)
 end
 
-local function spawnSlipper(casterId: number, origin: Vector3, dir: Vector3)
+-- Cosmetic slipper: flies the shared arc over the shared flight time, so the
+-- visual never disagrees with the server hit. Spin, ribbon, and impact star
+-- are kept; the old style-only lift is gone, replaced by the real arc.
+local function spawnSlipper(casterId: number, origin: Vector3, target: Vector3, dir: Vector3)
 	tsinelasCleanup(casterId) -- one slipper per caster; a re-cast replaces it
 	local sk = Config.Skills.RS_03
 	if sk == nil then
 		return
 	end
 	local v = sk.vfx
-	local speed: number = sk.params.projectileSpeed
+	local v0, flightT = TsinelasArc.solveArc(origin, target)
 	local flat = Vector3.new(dir.X, 0, dir.Z)
 	if flat.Magnitude < 0.01 then
 		flat = Vector3.new(0, 0, -1)
@@ -5037,41 +5275,40 @@ local function spawnSlipper(casterId: number, origin: Vector3, dir: Vector3)
 	end
 	part.CFrame = CFrame.new(origin)
 	part.Parent = Workspace
-	-- Trail puffs mark the arc path. Rate spreads arcCount puffs over the
-	-- flight, so the total stays inside the mobile particle budget.
-	local att = Instance.new("Attachment")
-	att.Name = "TsinelasTrail"
-	att.Parent = part
-	local trail = Instance.new("ParticleEmitter")
-	trail.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	trail.Rate = v.arcCount / v.arcTime
-	trail.Lifetime = NumberRange.new(v.arcTime * 0.6)
-	trail.Speed = NumberRange.new(0) -- puffs hang where spawned, tracing the arc
-	trail.SpreadAngle = Vector2.new(20, 20)
-	trail.Color = ColorSequence.new(v.slipperColor)
-	trail.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, v.starSize),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.4),
+	-- Ribbon trail between opposite ends of the slipper (dash trail pattern):
+	-- two attachments, one Trail, FaceCamera. The slipper spins end over end
+	-- so the ribbon reads as the spinning slipper arc. Cleanup disables it
+	-- so segments fade instead of popping.
+	local attA = Instance.new("Attachment")
+	attA.Name = "TsinelasRibbonA"
+	attA.Position = Vector3.new(0, 0, -v.trailWidth / 2)
+	attA.Parent = part
+	local attB = Instance.new("Attachment")
+	attB.Name = "TsinelasRibbonB"
+	attB.Position = Vector3.new(0, 0, v.trailWidth / 2)
+	attB.Parent = part
+	local ribbon = Instance.new("Trail")
+	ribbon.Name = "TsinelasRibbon"
+	ribbon.Attachment0 = attA
+	ribbon.Attachment1 = attB
+	ribbon.FaceCamera = true
+	ribbon.Lifetime = v.trailLifetime
+	ribbon.Color = ColorSequence.new(v.trailColorStart, v.trailColorEnd)
+	ribbon.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, v.trailTransparencyIn),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	trail.Parent = att
+	ribbon.Enabled = true
+	ribbon.Parent = part
 	local entry: { part: BasePart, conn: RBXScriptConnection? } = { part = part, conn = nil }
 	local elapsed = 0
 	entry.conn = RunService.Heartbeat:Connect(function(dt: number)
 		elapsed += dt
-		if activeSlippers[casterId] == nil or elapsed >= v.arcTime then
-			tsinelasCleanup(casterId) -- flight over: fade out via particle lifetime
+		if activeSlippers[casterId] == nil or elapsed >= flightT then
+			tsinelasCleanup(casterId) -- flight over: ribbon fades via trailLifetime
 			return
 		end
-		-- Cosmetic arc: straight server line plus a small style lift that
-		-- peaks mid flight and lands back on the line, so endpoints agree
-		-- with the server hit test.
-		local t = elapsed / v.arcTime
-		local lift = v.arcLift * 4 * t * (1 - t)
-		local pos = origin + flat * (speed * elapsed) + Vector3.new(0, lift, 0)
+		local pos = TsinelasArc.position(origin, v0, elapsed)
 		part.CFrame = CFrame.new(pos) * CFrame.fromAxisAngle(axis, math.rad(v.spinRate) * elapsed)
 	end)
 	activeSlippers[casterId] = entry
@@ -5149,7 +5386,10 @@ local function playTsinelasFX(payload: any)
 		local origin = if typeof(payload.origin) == "Vector3"
 			then payload.origin
 			else (hrp :: BasePart).Position
-		spawnSlipper(casterId, origin, dir)
+		if typeof(payload.target) ~= "Vector3" then
+			return -- server always sends the clamped target; no arc without it
+		end
+		spawnSlipper(casterId, origin, payload.target, dir)
 		playSkillSound(hrp :: BasePart, sk.sounds.throw)
 		playSkillSound(hrp :: BasePart, sk.sounds.whoosh)
 		if casterId == LocalPlayer.UserId then
@@ -5169,26 +5409,475 @@ local function playTsinelasFX(payload: any)
 	end
 end
 
--- TEMP (T18): G key casts RS_03 until T17 draft owns skill selection.
-local function requestTsinelas()
+-- TEMP (T18): hold G to aim RS_03 until T17 draft owns skill selection.
+-- The throw dir reads the camera look flattened to XZ, with HRP facing
+-- fallback. The target point comes from a camera raycast to ground or
+-- surface, clamped to range by the shared arc module. Same logic on
+-- keyboard, gamepad, and mobile: all platforms aim with the camera.
+-- Read only: aiming never writes camera state, so it cannot fight the
+-- TargetLock assist or the RS_01 camera feel.
+-- Returns the throw dir, the clamped target, and true when the aim was
+-- limited (clamped to max range). Nil triple when unknown.
+local function tsinelasAim(): (Vector3?, Vector3?, boolean)
+	if not Humanoid or not HRP then
+		return nil, nil, false
+	end
+	local sk = Config.Skills.RS_03
+	if sk == nil then
+		return nil, nil, false
+	end
+	local cam = Workspace.CurrentCamera
+	local flat: Vector3? = nil
+	if cam then
+		local look = cam.CFrame.LookVector
+		local f = Vector3.new(look.X, 0, look.Z)
+		if f.Magnitude >= 0.01 then
+			flat = f.Unit
+		end
+	end
+	if flat == nil then
+		local face = HRP.CFrame.LookVector
+		local ff = Vector3.new(face.X, 0, face.Z)
+		if ff.Magnitude >= 0.01 then
+			flat = ff.Unit
+		end
+	end
+	if flat == nil then
+		return nil, nil, false
+	end
+	-- Origin rule shared with the server: root center pushed two studs along
+	-- the throw dir, so the indicator solves from the same x0.
+	local origin = HRP.Position + Vector3.new(0, sk.params.launchHeight, 0) + flat * 2
+	local desired: Vector3? = nil
+	if cam then
+		local rayParams = RaycastParams.new()
+		rayParams.FilterType = Enum.RaycastFilterType.Exclude
+		rayParams.FilterDescendantsInstances = { Character }
+		rayParams.IgnoreWater = true
+		local hit = Workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * sk.vfx.aimRayLength, rayParams)
+		if hit then
+			desired = hit.Position
+		end
+	end
+	if desired == nil then
+		-- No surface in view: max range along the look, dropped to the
+		-- ground under that point (origin height when none is found).
+		local farXZ = origin + flat * sk.range
+		local downParams = RaycastParams.new()
+		downParams.FilterType = Enum.RaycastFilterType.Exclude
+		downParams.FilterDescendantsInstances = { Character }
+		downParams.IgnoreWater = true
+		local ground = Workspace:Raycast(farXZ + Vector3.new(0, 2, 0), Vector3.new(0, -80, 0), downParams)
+		if ground then
+			desired = Vector3.new(farXZ.X, ground.Position.Y, farXZ.Z)
+		else
+			desired = Vector3.new(farXZ.X, origin.Y, farXZ.Z)
+		end
+	end
+	local clamped = TsinelasArc.clampTarget(origin, desired, sk.range)
+	local limited = Vector3.new(clamped.X - desired.X, 0, clamped.Z - desired.Z).Magnitude > 0.01
+	return flat, clamped, limited
+end
+
+-- Same gates as the cast: aiming is only entered and only fires while a
+-- throw right now would be valid.
+local function tsinelasCanCast(): boolean
 	if not roundLive or inputLocked then
-		return
+		return false
 	end
 	if tsinelasPending or tsinelasCooldownLeft > 0 then
+		return false
+	end
+	if not Humanoid or not HRP then
+		return false
+	end
+	return true
+end
+
+local function tsinelasHideAim()
+	for _, dot in tsinelasAimDots do
+		if dot.Parent ~= nil then
+			dot:Destroy()
+		end
+	end
+	table.clear(tsinelasAimDots)
+	local marker = tsinelasAimMarker
+	tsinelasAimMarker = nil
+	if marker ~= nil and marker.Parent ~= nil then
+		marker:Destroy()
+	end
+end
+
+local function tsinelasCancelAim(reason: string)
+	if not tsinelasAiming then
 		return
 	end
+	tsinelasAiming = false
+	tsinelasAimHoldLeft = 0
+	tsinelasHideAim()
+	tsinelasRestoreCamera() -- every aim exit restores the camera
+	pushAttributes(true) -- UI clears the aiming border at once
+	debugPrint("RS_03 aim cancelled (" .. reason .. ")") -- TODO: remove before submission
+end
+
+-- ── RS_03 first person aim camera ─────────────────────────────────────────
+-- While aiming, the camera eases into first person and back out on exit.
+-- Technique: a Scriptable blend at Camera priority + 2 (above the
+-- TargetLock assist and the RS_01 shake), then a handoff to the default
+-- camera with zoom forced to first person, so mouse, stick, and touch all
+-- look natively with no custom look code. The assist backs out on its own
+-- while CameraType is Scriptable and resumes on the next lock action.
+-- One cleanup function restores everything; cancel and release call it,
+-- so every aiming exit is covered. The character never turns: aim uses
+-- the camera vector and movement is untouched.
+local AIMCAM_BIND = "TsinelasAimCam"
+type AimCamSaved = {
+	cameraType: Enum.CameraType,
+	cameraCFrame: CFrame,
+	fieldOfView: number,
+	maxDistance: number,
+	mouseBehavior: Enum.MouseBehavior,
+	mouseSensitivity: number,
+}
+local aimCamActive = false -- an aim session captured state
+local aimCamBound = false -- render step bound
+local aimCamAlpha = 0.0 -- 0 third person, 1 first person
+local aimCamTarget = 0 -- 0 exit, 1 first person
+local aimCamStart = 0.0 -- alpha at retarget
+local aimCamT = 0.0 -- time since retarget
+local aimCamFrom: CFrame? = nil -- live pose at retarget
+local aimCamFromRoot: Vector3? = nil -- root pos at entry
+local aimCamSaved: AimCamSaved? = nil
+local aimReticle: TextLabel? = nil
+
+-- Head pose with the live look direction, so mouse, stick, and touch keep
+-- steering through the transition.
+local function aimCamHeadPose(): CFrame?
+	local cam = Workspace.CurrentCamera
+	if cam == nil or Character == nil then
+		return nil
+	end
+	local headPos: Vector3? = nil
+	local head = Character:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		headPos = head.Position
+	elseif HRP then
+		headPos = HRP.Position + Vector3.new(0, 2, 0)
+	end
+	if headPos == nil then
+		return nil
+	end
+	return CFrame.new(headPos, headPos + cam.CFrame.LookVector)
+end
+
+-- Client-side head fade so the camera never clips inside the skull. The
+-- slipper and the aim dots live in Workspace, so they stay visible.
+local function aimCamApplyFade(alpha: number)
+	if Character == nil then
+		return
+	end
+	for _, d in Character:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = alpha
+		end
+	end
+end
+
+local function aimCamUnbind()
+	if aimCamBound then
+		RunService:UnbindFromRenderStep(AIMCAM_BIND)
+		aimCamBound = false
+	end
+end
+
+-- Single cleanup: restores every captured state. Safe to call when idle.
+local function tsinelasRestoreCamera()
+	local saved = aimCamSaved
+	aimCamSaved = nil
+	aimCamActive = false
+	aimCamUnbind()
+	aimCamApplyFade(0)
+	local cam = Workspace.CurrentCamera
+	if saved ~= nil and cam ~= nil then
+		-- Return to the entry pose translated by how far the player moved
+		-- during the aim, so walking aimers do not snap back.
+		local restorePose = saved.cameraCFrame
+		if aimCamFromRoot ~= nil and HRP then
+			restorePose = restorePose + (HRP.Position - aimCamFromRoot)
+		end
+		cam.CameraType = saved.cameraType
+		cam.CFrame = restorePose
+		cam.FieldOfView = saved.fieldOfView
+		LocalPlayer.CameraMaxDistance = saved.maxDistance
+	end
+	if saved ~= nil then
+		UserInputService.MouseBehavior = saved.mouseBehavior
+		UserInputService.MouseDeltaSensitivity = saved.mouseSensitivity
+	end
+	aimCamFromRoot = nil
+	if aimReticle ~= nil and aimReticle.Parent ~= nil then
+		aimReticle.Visible = false
+	end
+end
+
+local function aimCamStep(dt: number)
+	local cam = Workspace.CurrentCamera
+	local cfg = Config.UI.TsinelasCam
+	if cam == nil then
+		return
+	end
+	local dur = if aimCamTarget == 1 then cfg.InTime else cfg.OutTime
+	aimCamT += dt
+	local raw = math.clamp(aimCamT / math.max(dur, 0.01), 0, 1)
+	local eased: number
+	if aimCamTarget == 1 then
+		eased = 1 - (1 - raw) * (1 - raw) -- ease out
+	else
+		eased = if raw < 0.5 -- ease in out
+			then 2 * raw * raw
+			else 1 - (-2 * raw + 2) * (-2 * raw + 2) / 2
+	end
+	aimCamAlpha = aimCamStart + (aimCamTarget - aimCamStart) * eased
+	local fromPose = aimCamFrom
+	if fromPose == nil then
+		return
+	end
+	local goal = aimCamHeadPose()
+	if goal == nil then
+		return
+	end
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.CFrame = fromPose:Lerp(goal, aimCamAlpha)
+	aimCamApplyFade(aimCamAlpha)
+	if raw >= 1 then
+		if aimCamTarget == 1 then
+			-- Hand off to the default camera locked in first person.
+			cam.CameraType = Enum.CameraType.Custom
+			LocalPlayer.CameraMaxDistance = cfg.FirstPersonDistance
+			aimCamUnbind()
+		else
+			tsinelasRestoreCamera()
+		end
+	end
+end
+
+local function aimCamEnsureReticle()
+	if aimReticle ~= nil then
+		return
+	end
+	local cfg = Config.UI.TsinelasCam
+	local guiParent = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if guiParent == nil then
+		return
+	end
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "TsinelasAimGui"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 20
+	gui.Parent = guiParent
+	local dot = Instance.new("TextLabel")
+	dot.Name = "AimReticle"
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.fromScale(0.5, 0.5)
+	dot.Size = UDim2.fromOffset(cfg.ReticleSizePx, cfg.ReticleSizePx)
+	dot.BackgroundTransparency = 1
+	dot.Font = Enum.Font.GothamBold
+	dot.TextSize = cfg.ReticleSizePx
+	dot.Text = "+"
+	dot.TextColor3 = Config.Skills.RS_03.vfx.aimColor
+	dot.TextStrokeTransparency = 0.5
+	dot.Visible = false
+	dot.Parent = gui
+	aimReticle = dot
+end
+
+local function tsinelasAimCamTo(target: number)
+	local cfg = Config.UI.TsinelasCam
+	if not cfg.Enabled then
+		return
+	end
+	local cam = Workspace.CurrentCamera
+	if cam == nil or Character == nil then
+		return
+	end
+	if not aimCamActive then
+		-- Capture once per aim session; the single cleanup restores this.
+		aimCamSaved = {
+			cameraType = cam.CameraType,
+			cameraCFrame = cam.CFrame,
+			fieldOfView = cam.FieldOfView,
+			maxDistance = LocalPlayer.CameraMaxDistance,
+			mouseBehavior = UserInputService.MouseBehavior,
+			mouseSensitivity = UserInputService.MouseDeltaSensitivity,
+		}
+		aimCamActive = true
+		if HRP then
+			aimCamFromRoot = HRP.Position
+		end
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		UserInputService.MouseDeltaSensitivity = cfg.MouseSensitivity
+		if cfg.FovDelta ~= 0 then
+			cam.FieldOfView = cam.FieldOfView + cfg.FovDelta
+		end
+	end
+	-- Retarget from the live pose: mid-way reversals never snap.
+	aimCamFrom = cam.CFrame
+	aimCamStart = aimCamAlpha
+	aimCamT = 0
+	aimCamTarget = target
+	if not aimCamBound then
+		RunService:BindToRenderStep(AIMCAM_BIND, Enum.RenderPriority.Camera.Value + 2, aimCamStep)
+		aimCamBound = true
+	end
+	aimCamEnsureReticle()
+	if aimReticle ~= nil then
+		aimReticle.Visible = true
+	end
+end
+
+-- Aim indicator: dots along the shared arc plus a landing marker at the end.
+-- The march raycasts every dot segment exactly like the server hit test, so
+-- a wall cuts the indicator where it cuts the flight, in the blocked color.
+-- 12 dots plus 1 marker, 0 emitters: inside Performance budget.
+local function tsinelasUpdateAim()
+	if #tsinelasAimDots == 0 or tsinelasAimMarker == nil then
+		return
+	end
+	if not HRP then
+		return
+	end
+	local sk = Config.Skills.RS_03
+	if sk == nil then
+		return
+	end
+	local v = sk.vfx
+	local dir, target, limited = tsinelasAim()
+	if dir == nil or target == nil then
+		return
+	end
+	local origin = HRP.Position + Vector3.new(0, sk.params.launchHeight, 0) + dir * 2
+	local v0, flightT, short = TsinelasArc.solveArc(origin, target)
+	local count = v.aimDotCount
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { Character }
+	rayParams.IgnoreWater = true
+	local blocked = short -- unreachable height shows the short color
+	local prev = origin
+	local placed = 0
+	for i = 1, count do
+		local p = TsinelasArc.position(origin, v0, flightT * i / count)
+		local wall = Workspace:Raycast(prev, p - prev, rayParams)
+		if wall ~= nil then
+			p = wall.Position
+			blocked = true
+		end
+		placed += 1
+		local dot = tsinelasAimDots[placed]
+		dot.CFrame = CFrame.new(p)
+		dot.Color = if blocked then v.aimBlockedColor else v.aimColor
+		prev = p
+		if blocked then
+			break
+		end
+	end
+	-- Park unused dots past a wall cut far below the map.
+	for j = placed + 1, #tsinelasAimDots do
+		tsinelasAimDots[j].CFrame = CFrame.new(0, -1000, 0)
+	end
+	local marker = tsinelasAimMarker
+	if marker ~= nil then
+		marker.CFrame = CFrame.new(prev.X, prev.Y + 0.12, prev.Z) * CFrame.Angles(0, 0, math.rad(90))
+		marker.Color = if blocked then v.aimBlockedColor else v.aimColor
+	end
+	-- Center reticle follows the same alert rule: red when the aim is
+	-- clamped to max range or too high to reach.
+	if aimReticle ~= nil then
+		aimReticle.TextColor3 = if blocked or limited then v.aimBlockedColor else v.aimColor
+	end
+end
+
+local function tsinelasShowAim()
+	tsinelasHideAim()
 	if not Humanoid or not HRP then
 		return
 	end
-	local look = HRP.CFrame.LookVector
-	local dir = Vector3.new(look.X, 0, look.Z)
-	if dir.Magnitude < 0.01 then
+	local sk = Config.Skills.RS_03
+	if sk == nil then
+		return
+	end
+	local v = sk.vfx
+	for _ = 1, v.aimDotCount do
+		local dot = Instance.new("Part")
+		dot.Name = "TsinelasAimDot"
+		dot.Shape = Enum.PartType.Ball
+		dot.Size = Vector3.new(v.aimDotSize, v.aimDotSize, v.aimDotSize)
+		dot.Color = v.aimColor
+		dot.Material = Enum.Material.Neon
+		dot.Transparency = v.aimTransparency
+		dot.Anchored = true
+		dot.CanCollide = false
+		dot.CanQuery = false
+		dot.CanTouch = false
+		dot.CastShadow = false
+		dot.Parent = Workspace
+		table.insert(tsinelasAimDots, dot)
+	end
+	local marker = Instance.new("Part")
+	marker.Name = "TsinelasAimMarker"
+	marker.Shape = Enum.PartType.Cylinder
+	marker.Size = Vector3.new(0.2, v.aimMarkerSize, v.aimMarkerSize)
+	marker.Color = v.aimColor
+	marker.Material = Enum.Material.Neon
+	marker.Transparency = v.aimTransparency
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.CanTouch = false
+	marker.CastShadow = false
+	marker.CFrame = CFrame.new(0, -1000, 0) * CFrame.Angles(0, 0, math.rad(90))
+	marker.Parent = Workspace
+	tsinelasAimMarker = marker
+	tsinelasUpdateAim()
+end
+
+local function tsinelasBeginAim()
+	if tsinelasAiming or not tsinelasCanCast() then
+		return -- on cooldown, busy, or round not live: ignore the press
+	end
+	tsinelasAiming = true
+	tsinelasAimHoldLeft = Config.Skills.RS_03.params.maxHoldTime
+	tsinelasShowAim()
+	tsinelasAimCamTo(1) -- ease into first person
+	pushAttributes(true) -- UI shows the aiming border at once
+	debugPrint("RS_03 aiming") -- TODO: remove before submission
+end
+
+-- Release path: exit aiming first, then throw only if the cast is still
+-- valid. A release after cooldown started, stun, or round end cancels
+-- silently without firing.
+local function tsinelasReleaseThrow()
+	if not tsinelasAiming then
+		return
+	end
+	tsinelasAiming = false
+	tsinelasAimHoldLeft = 0
+	tsinelasHideAim()
+	tsinelasRestoreCamera() -- every throw exit restores the camera
+	pushAttributes(true) -- UI clears the aiming border at once
+	if not tsinelasCanCast() then
+		debugPrint("RS_03 release no longer valid; cancelled") -- TODO: remove before submission
+		return
+	end
+	local dir, target = tsinelasAim()
+	if dir == nil or target == nil then
 		return
 	end
 	tsinelasPending = true
 	tsinelasPendingLeft = Config.Skills.RS_03.params.pendingTimeout
-	RequestSkill:FireServer("RS_03", dir.Unit)
-	debugPrint("RS_03 request sent") -- TODO: remove before submission
+	RequestSkill:FireServer("RS_03", dir, target)
+	debugPrint("RS_03 request sent (aimed)") -- TODO: remove before submission
 end
 
 local function launchSkill()
@@ -5287,6 +5976,7 @@ SkillEvent.OnClientEvent:Connect(function(payload: any)
 	if payload.type == "deny" then
 		if payload.skillId == "RS_03" then
 			tsinelasPending = false
+			tsinelasCancelAim("deny")
 			debugPrint("RS_03 denied by server (pending cleared)") -- TODO: remove before submission
 			return
 		end
@@ -5309,6 +5999,7 @@ SkillApproved.OnClientEvent:Connect(function(payload: any)
 	-- projectile). Start the local cooldown mirror and clear pending.
 	if payload.skillId == "RS_03" then
 		tsinelasPending = false
+		tsinelasCancelAim("approved")
 		local sk = Config.Skills.RS_03
 		if sk then
 			tsinelasCooldownLeft = sk.cooldown
@@ -5379,6 +6070,12 @@ local function tickCooldowns(dt: number)
 		tsinelasPendingLeft = math.max(0, tsinelasPendingLeft - dt)
 		if tsinelasPendingLeft <= 0 then
 			tsinelasPending = false -- a lost server reply must never wedge input
+		end
+	end
+	if tsinelasAiming then
+		tsinelasAimHoldLeft = math.max(0, tsinelasAimHoldLeft - dt)
+		if tsinelasAimHoldLeft <= 0 then
+			tsinelasCancelAim("hold expired")
 		end
 	end
 	if skillWindupLeft > 0 then
@@ -5572,9 +6269,12 @@ local function startHeartbeat()
 			skillRequested = false
 			requestSkill()
 		end
-		if tsinelasRequested then
-			tsinelasRequested = false
-			requestTsinelas()
+		if tsinelasAiming then
+			if not tsinelasCanCast() then
+				tsinelasCancelAim("no longer valid")
+			else
+				tsinelasUpdateAim()
+			end
 		end
 	end)
 end
@@ -5628,6 +6328,8 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 			reportLanded() -- windup cancelled mid-approval: still clear IsAirborne
 			skillPending = false -- round over: drop any request still in flight
 			tsinelasPending = false -- round over: drop any RS_03 request too
+			tsinelasHeld = false
+			tsinelasCancelAim("round end")
 			for id, _ in activeSlippers do
 				tsinelasCleanup(id) -- round over: retire cosmetic slippers
 			end
@@ -5677,8 +6379,11 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 		slideRequested_KB = true
 	elseif kc == Enum.KeyCode.E then
 		skillRequested = true -- Skill cast (UI/UX Spec §4)
-	elseif kc == Enum.KeyCode.G then
-		tsinelasRequested = true -- TEMP (T18): RS_03 test key until T17 draft
+	elseif kc == TSINELAS_KEY then
+		tsinelasHeld = true -- TEMP (T18): RS_03 test key until T17 draft
+		tsinelasBeginAim()
+	elseif kc == TSINELAS_CANCEL_KEY then
+		tsinelasCancelAim("X key") -- TEMP (T18): explicit aim cancel
 	end
 end
 
@@ -5686,11 +6391,20 @@ local function onInputEnded(input: InputObject, _gameProcessed: boolean)
 	local kc = input.KeyCode
 	if kc == Enum.KeyCode.LeftShift or kc == Enum.KeyCode.RightShift then
 		sprintHeld_KB = false
+	elseif kc == TSINELAS_KEY then
+		tsinelasHeld = false
+		tsinelasReleaseThrow()
 	end
 end
 
 UserInputService.InputBegan:Connect(onInputBegan)
 UserInputService.InputEnded:Connect(onInputEnded)
+-- A release outside the window never fires InputEnded: cancel instead of
+-- wedging the aim state.
+UserInputService.WindowFocusReleased:Connect(function()
+	tsinelasHeld = false
+	tsinelasCancelAim("focus lost")
+end)
 
 -- ── Gamepad bindings (UI/UX Spec §4) ─────────────────────────────────────────
 -- Sprint: Left trigger hold (ButtonL2) OR left stick full tilt (see heartbeat).
@@ -5731,6 +6445,21 @@ ContextActionService:BindAction(SKILL_GP_ACTION, function(_name, state, _obj)
 	end
 	return Enum.ContextActionResult.Pass
 end, false, Enum.KeyCode.ButtonX)
+
+-- TEMP (T18): RS_03 hold-to-aim until T17 draft. ButtonA is the only free
+-- face button (X skill, B dash, Y Diskarte, bumpers and triggers reserved
+-- by the spec for lock and pounce). Same three calls as the G key.
+local TSINELAS_GP_ACTION = "HRUSH_Tsinelas_GP"
+ContextActionService:BindAction(TSINELAS_GP_ACTION, function(_name, state, _obj)
+	if state == Enum.UserInputState.Begin then
+		tsinelasBeginAim()
+	elseif state == Enum.UserInputState.End then
+		tsinelasReleaseThrow()
+	elseif state == Enum.UserInputState.Cancel then
+		tsinelasCancelAim("gamepad cancel")
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.ButtonA)
 
 -- ── Mobile touch buttons (UI/UX Spec §4) ───────────────────────────────────────
 -- UIController creates on-screen Sprint / Dash / Slide buttons (min 64px).
@@ -5784,6 +6513,7 @@ local function hookMobileBindables()
 			local skillBe = ReplicatedStorage:FindFirstChild("MobileSkillPressed")
 			local sprintBegin = ReplicatedStorage:FindFirstChild("MobileSprintBegan")
 			local sprintEnd = ReplicatedStorage:FindFirstChild("MobileSprintEnded")
+			local tsinelasBe = ReplicatedStorage:FindFirstChild("MobileTsinelas")
 			if dashBe and dashBe:IsA("BindableEvent") then
 				dashBe.Event:Connect(function()
 					dashRequested_KB = true
@@ -5809,7 +6539,23 @@ local function hookMobileBindables()
 					sprintHeld_KB = false
 				end)
 			end
-			if dashBe or slideBe or skillBe or sprintBegin or sprintEnd then
+			-- RS_03 touch bridge (UIController touch button): one event
+			-- carrying Begin/End/Cancel, same three calls as G and gamepad.
+			if tsinelasBe and tsinelasBe:IsA("BindableEvent") then
+				tsinelasBe.Event:Connect(function(action: unknown)
+					if typeof(action) ~= "string" then
+						return
+					end
+					if action == "Begin" then
+						tsinelasBeginAim()
+					elseif action == "End" then
+						tsinelasReleaseThrow()
+					elseif action == "Cancel" then
+						tsinelasCancelAim("touch cancel")
+					end
+				end)
+			end
+			if dashBe or slideBe or skillBe or sprintBegin or sprintEnd or tsinelasBe then
 				break
 			end
 			task.wait(0.2)
@@ -5852,10 +6598,12 @@ local function onCharacterAdded(char: Model)
 	skillFlightLeft = 0
 	skillRequested = false
 	skillPending = false
-	tsinelasRequested = false -- respawn drops any buffered RS_03 press
+	tsinelasHeld = false -- respawn drops any held G press
+	tsinelasCancelAim("respawn")
 	tsinelasPending = false
 	tsinelasPendingLeft = 0
-	tsinelasCooldownLeft = 0
+	-- The local cooldown mirror survives death like the server ledger does,
+	-- so the slot cannot show ready early (deny stays the backstop).
 	do
 		local ids: { number } = {}
 		for id, _ in activeSlippers do
@@ -5972,6 +6720,8 @@ local function onCharacterAdded(char: Model)
 
 	-- Death cleanup: end slide/dash/skill visuals so respawn state is clean.
 	Humanoid.Died:Connect(function()
+		tsinelasHeld = false
+		tsinelasCancelAim("death") -- death ends aiming and restores the camera
 		if isSliding then
 			isSliding = false
 		end
@@ -6005,7 +6755,7 @@ print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/da
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="28">
+      <Item class="LocalScript" referent="29">
         <Properties>
           <string name="Name">TargetLockBootstrap</string>
           <string name="Source"><![CDATA[--!strict
@@ -6020,7 +6770,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">TargetLockController</string>
           <string name="Source"><![CDATA[--!strict
@@ -6627,7 +7377,7 @@ return TargetLockController
 ]]></string>
         </Properties>
       </Item>
-      <Item class="LocalScript" referent="30">
+      <Item class="LocalScript" referent="31">
         <Properties>
           <string name="Name">UIController</string>
           <string name="Source"><![CDATA[--!strict
@@ -6645,6 +7395,12 @@ return TargetLockController
 --     pops green the instant it becomes ready
 --   • Skill chip — "E" keycap + skill name caption, cooldown wipe/countdown from
 --     Config.Skills (RS_01 slice); hides while HRushSkillId == "" (Taya / ungranted)
+--   • Tsinelas chip (T18 RS_03 slice) — TEMP keycap + caption from Config.UI,
+--     wipe plus ceil-seconds countdown from HRushSkillCD_RS03, gold aiming
+--     border from HRushAiming, dimmed while stunned or round not live.
+--   • Tsinelas touch button (mobile only) — the slot itself is the button in
+--     the right thumb zone, mirroring the chip state including the cooldown
+--     fill. Press and hold to aim, release inside to throw, slide off to cancel.
 -- Data source: HRush* attribute bridge on LocalPlayer (MovementController pushes
 -- at 10 Hz + forced on role/state/tag events). Poll-free via GetAttributeChangedSignal.
 --
@@ -6656,9 +7412,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
 local RunService        = game:GetService("RunService")
+local UserInputService  = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Mv     = Config.Movement
+local TS     = Config.UI.Tsinelas -- RS_03 slot sizes, labels, and timings
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
@@ -6847,6 +7605,137 @@ skillCaption.TextColor3 = COL_TEXT
 skillCaption.TextStrokeTransparency = 0.6
 skillCaption.Parent = cluster
 
+-- Tsinelas chip (right of the skill chip): same circle pattern, all slot
+-- values from Config.UI.Tsinelas. KeyLabel moves to E at T17.
+local tsinelasChip = Instance.new("Frame")
+tsinelasChip.Name = "TsinelasChip"
+tsinelasChip.Position = UDim2.fromOffset(TS.SlotOffsetX, 10)
+tsinelasChip.Size = UDim2.fromOffset(TS.SlotSize, TS.SlotSize)
+tsinelasChip.BackgroundColor3 = COL_PANEL
+tsinelasChip.BackgroundTransparency = 0.15
+tsinelasChip.BorderSizePixel = 0
+tsinelasChip.Parent = cluster
+corner(tsinelasChip, TS.SlotSize / 2) -- circle, stays round if size changes
+local tsinelasStroke = stroke(tsinelasChip, COL_STROKE_CD, 2)
+
+local tsinelasWipe = Instance.new("Frame") -- dark overlay shrinking top to bottom
+tsinelasWipe.Name = "CooldownWipe"
+tsinelasWipe.AnchorPoint = Vector2.new(0, 0)
+tsinelasWipe.Position = UDim2.fromScale(0, 0)
+tsinelasWipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+tsinelasWipe.BackgroundColor3 = COL_COOLDOWN
+tsinelasWipe.BackgroundTransparency = 0.25
+tsinelasWipe.BorderSizePixel = 0
+tsinelasWipe.ZIndex = 1
+tsinelasWipe.Parent = tsinelasChip
+corner(tsinelasWipe, TS.SlotSize / 2) -- follows the circular chip outline
+
+local tsinelasKey = Instance.new("TextLabel")
+tsinelasKey.Name = "KeyOrCd"
+tsinelasKey.BackgroundTransparency = 1
+tsinelasKey.Size = UDim2.fromScale(1, 1)
+tsinelasKey.Font = Enum.Font.GothamBold
+tsinelasKey.TextSize = TS.CountdownTextSize
+tsinelasKey.Text = TS.KeyLabel
+tsinelasKey.TextColor3 = COL_TEXT
+tsinelasKey.TextStrokeTransparency = 0.5
+tsinelasKey.ZIndex = 2
+tsinelasKey.Parent = tsinelasChip
+
+local tsinelasCaption = Instance.new("TextLabel")
+tsinelasCaption.Name = "TsinelasCaption"
+tsinelasCaption.BackgroundTransparency = 1
+tsinelasCaption.Position = UDim2.fromOffset(TS.SlotOffsetX - 12, 44)
+tsinelasCaption.Size = UDim2.fromOffset(76, 12)
+tsinelasCaption.Font = Enum.Font.Gotham
+tsinelasCaption.TextSize = 9
+tsinelasCaption.Text = TS.CaptionText
+tsinelasCaption.TextColor3 = COL_TEXT
+tsinelasCaption.TextStrokeTransparency = 0.6
+tsinelasCaption.Parent = cluster
+
+-- Tsinelas touch button (mobile only, created once): bottom-right thumb zone,
+-- scale positioned with a physical size above the 64 px spec minimum. The
+-- button mirrors the chip state, so the cooldown fill shows on it. Fires the
+-- MobileTsinelas bridge event; MovementController hooks it like the legacy
+-- buttons. No per-round Instances; state resets come through attributes.
+local function mobileTsinelasEvent(): BindableEvent
+	local existing = ReplicatedStorage:FindFirstChild("MobileTsinelas")
+	if existing and existing:IsA("BindableEvent") then
+		return existing
+	end
+	local be = Instance.new("BindableEvent")
+	be.Name = "MobileTsinelas"
+	be.Parent = ReplicatedStorage
+	return be
+end
+
+local tsinelasTouch: TextButton? = nil
+local tsinelasTouchStroke: UIStroke? = nil
+local tsinelasTouchWipe: Frame? = nil
+local tsinelasTouchKey: TextLabel? = nil
+if UserInputService.TouchEnabled then
+	local btn = Instance.new("TextButton")
+	btn.Name = "TsinelasTouch"
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.Position = TS.TouchPosition
+	btn.Size = UDim2.fromOffset(TS.TouchSizePx, TS.TouchSizePx)
+	btn.BackgroundColor3 = COL_PANEL
+	btn.BackgroundTransparency = 0.15
+	btn.BorderSizePixel = 0
+	btn.Text = ""
+	btn.AutoButtonColor = false -- state colors come from updateTsinelasCD
+	btn.Parent = gui
+	corner(btn, TS.TouchSizePx / 2) -- circle like the chip
+	tsinelasTouchStroke = stroke(btn, COL_STROKE_CD, 2)
+	local touchWipe = Instance.new("Frame")
+	touchWipe.Name = "CooldownWipe"
+	touchWipe.AnchorPoint = Vector2.new(0, 0)
+	touchWipe.Position = UDim2.fromScale(0, 0)
+	touchWipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+	touchWipe.BackgroundColor3 = COL_COOLDOWN
+	touchWipe.BackgroundTransparency = 0.25
+	touchWipe.BorderSizePixel = 0
+	touchWipe.ZIndex = 1
+	touchWipe.Parent = btn
+	corner(touchWipe, TS.TouchSizePx / 2)
+	tsinelasTouchWipe = touchWipe
+	local touchKey = Instance.new("TextLabel")
+	touchKey.Name = "KeyOrCd"
+	touchKey.BackgroundTransparency = 1
+	touchKey.Size = UDim2.fromScale(1, 1)
+	touchKey.Font = Enum.Font.GothamBold
+	touchKey.TextSize = TS.CountdownTextSize
+	touchKey.Text = TS.KeyLabel
+	touchKey.TextColor3 = COL_TEXT
+	touchKey.TextStrokeTransparency = 0.5
+	touchKey.ZIndex = 2
+	touchKey.Parent = btn
+	tsinelasTouchKey = touchKey
+	btn.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		mobileTsinelasEvent():Fire("Begin")
+	end)
+	btn.InputEnded:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		-- Slide-off cancels: the finger left the button, so this is not a
+		-- throw. Default to Cancel when uncertain.
+		local pos = input.Position
+		local absPos = btn.AbsolutePosition
+		local absSize = btn.AbsoluteSize
+		local inside = pos.X >= absPos.X
+			and pos.X <= absPos.X + absSize.X
+			and pos.Y >= absPos.Y
+			and pos.Y <= absPos.Y + absSize.Y
+		mobileTsinelasEvent():Fire(if inside then "End" else "Cancel")
+	end)
+	tsinelasTouch = btn
+end
+
 -- ── Attribute readers ─────────────────────────────────────────────────────────
 local function attrNum(name: string, fallback: number): number
 	local v = LocalPlayer:GetAttribute(name)
@@ -6915,7 +7804,7 @@ local function updateVisibility()
 	barBg.Visible = isRunner
 	chip.Visible = isRunner
 	chipCaption.Visible = isRunner
-	cluster.Visible = isRunner or hasSkill
+	cluster.Visible = isRunner or hasSkill or attrStr("HRushSkillId_RS03", "") ~= ""
 end
 
 -- ── Dash cooldown chip logic ──────────────────────────────────────────────────
@@ -7020,6 +7909,99 @@ local function updateSkillCD()
 	lastSkillCD = cd
 end
 
+-- ── Tsinelas cooldown chip logic (RS_03 slice) ─────────────────────────────────
+-- Four states on one slot: hidden (ungranted), dimmed (stunned or round not
+-- live), gold border (aiming), wipe plus ceil seconds (cooling), keycap plus
+-- green border (ready, with a one-time pulse on the transition).
+local lastTsinelasCD = 0.0
+
+local function popTsinelasReady()
+	tsinelasKey.Text = TS.KeyLabel
+	tsinelasStroke.Color = COL_STROKE_RDY
+	-- Ready pulse: the border thickens once, so the state reads even in
+	-- grayscale (shape/motion, not color alone).
+	tsinelasStroke.Thickness = 2
+	local pulse = TweenService:Create(
+		tsinelasStroke,
+		TweenInfo.new(TS.ReadyPulseTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+		{ Thickness = 4 }
+	)
+	pulse:Play()
+	pulse.Completed:Connect(function()
+		TweenService:Create(
+			tsinelasStroke,
+			TweenInfo.new(TS.ReadyPulseTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+			{ Thickness = 2 }
+		):Play()
+	end)
+	local up = TweenService:Create(
+		tsinelasChip,
+		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(TS.ReadyPulseGrow, TS.ReadyPulseGrow) }
+	)
+	up:Play()
+	up.Completed:Connect(function()
+		TweenService:Create(
+			tsinelasChip,
+			TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.fromOffset(TS.SlotSize, TS.SlotSize) }
+		):Play()
+	end)
+end
+
+local function updateTsinelasCD()
+	local granted = attrStr("HRushSkillId_RS03", "") == "RS_03"
+	tsinelasChip.Visible = granted
+	tsinelasCaption.Visible = granted
+	local showTouch = granted and tsinelasTouch ~= nil
+	if tsinelasTouch ~= nil then
+		tsinelasTouch.Visible = showTouch
+	end
+	if not granted then
+		return
+	end
+	tsinelasCaption.Text = TS.CaptionText
+	-- Resolve one visual state, then apply it to the chip and the touch
+	-- button together so they can never disagree.
+	local keyText = TS.KeyLabel
+	local strokeColor = COL_STROKE_RDY
+	local strokeThickness = 2
+	local wipeRatio = 0
+	local dimmed = false
+	local stunned = LocalPlayer:GetAttribute("HRushStunned") == true
+	if stunned or attrStr("HRushState", "") ~= "MS_04" then
+		dimmed = true
+		strokeColor = COL_STROKE_CD
+	elseif attrStr("HRushAiming", "") == "RS_03" then
+		strokeColor = TS.AimStrokeColor
+		strokeThickness = TS.AimStrokeThickness
+	else
+		local cd = attrNum("HRushSkillCD_RS03", 0)
+		local sk = Config.Skills.RS_03
+		local total = math.max(0.01, sk and sk.cooldown or 1)
+		wipeRatio = math.clamp(cd / total, 0, 1)
+		if cd > 0 then
+			keyText = tostring(math.ceil(cd))
+			strokeColor = COL_STROKE_CD
+		elseif lastTsinelasCD > 0 then
+			popTsinelasReady() -- transition to 0: flash ready state
+		end
+		lastTsinelasCD = cd
+	end
+	tsinelasChip.BackgroundTransparency = if dimmed then TS.UnavailableTransparency else 0.15
+	tsinelasKey.Text = keyText
+	tsinelasStroke.Color = strokeColor
+	tsinelasStroke.Thickness = strokeThickness
+	tsinelasWipe.Size = UDim2.fromScale(1, wipeRatio)
+	if tsinelasTouch ~= nil and tsinelasTouchStroke ~= nil and tsinelasTouchWipe ~= nil and tsinelasTouchKey ~= nil then
+		tsinelasTouch.BackgroundTransparency = if dimmed then TS.UnavailableTransparency else 0.15
+		tsinelasTouchKey.Text = keyText
+		tsinelasTouchStroke.Color = strokeColor
+		tsinelasTouchStroke.Thickness = strokeThickness
+		tsinelasTouchWipe.Size = UDim2.fromScale(1, wipeRatio)
+	end
+end
+
 -- ── Bridge wiring (poll-free) ─────────────────────────────────────────────────
 local function hookAttr(name: string, fn: () -> ())
 	local signal = LocalPlayer:GetAttributeChangedSignal(name)
@@ -7032,20 +8014,27 @@ hookAttr("HRushStaminaMax", updateStamina)
 hookAttr("HRushDashCD", updateDashCD)
 hookAttr("HRushSkillCD", updateSkillCD)
 hookAttr("HRushSkillId", updateSkillCD)
+hookAttr("HRushSkillCD_RS03", updateTsinelasCD)
+hookAttr("HRushSkillId_RS03", updateTsinelasCD)
+hookAttr("HRushAiming", updateTsinelasCD)
+hookAttr("HRushStunned", updateTsinelasCD)
 hookAttr("HRushRole", function()
 	curRole = attrStr("HRushRole", curRole)
 	updateVisibility()
 	updateStamina()
 	updateSkillCD()
+	updateTsinelasCD()
 end)
 hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
+hookAttr("HRushState", updateTsinelasCD) -- round transitions refresh the dimmed state
 
 updateVisibility()
 updateStamina()
 updateDashCD()
 updateSkillCD()
+updateTsinelasCD()
 
-print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")
+print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip + RS_03 tsinelas chip). T14 partial; T17, T27 TODO.")
 
 -- ============================================================
 -- MATCH GATE: HUD only exists during a match (MS_03..MS_05)
@@ -7064,17 +8053,17 @@ applyHudGate()
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="31">
+  <Item class="Workspace" referent="32">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
     </Properties>
-    <Item class="Model" referent="32">
+    <Item class="Model" referent="33">
       <Properties>
         <string name="Name">Map</string>
         <bool name="NeedsPivotMigration">false</bool>
       </Properties>
-      <Item class="Part" referent="33">
+      <Item class="Part" referent="34">
         <Properties>
           <string name="Name">Baseplate</string>
           <bool name="Anchored">true</bool>
@@ -7101,7 +8090,7 @@ applyHudGate()
           <token name="TopSurface">0</token>
         </Properties>
       </Item>
-      <Item class="SpawnLocation" referent="34">
+      <Item class="SpawnLocation" referent="35">
         <Properties>
           <string name="Name">Spawn</string>
           <bool name="Anchored">true</bool>

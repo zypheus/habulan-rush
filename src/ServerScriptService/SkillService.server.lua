@@ -6,8 +6,9 @@
 --                 ONLY to the requesting player, SkillVFX goes to ALL players
 --                 for visuals. Denies are silent.
 --                 RS_01: sets IsAirborne; the client reports landing via SkillLanded.
---                 RS_03: the server simulates the slipper projectile and owns
---                 the hit test; on hit it stuns the Taya via HRushStunned.
+--                 RS_03: the server solves a parabolic arc to the aimed point
+--                 and owns the stepped hit test; on hit it stuns the Taya via
+--                 HRushStunned. Arc math lives in ReplicatedStorage/TsinelasArc.
 -- See System Specification section 5 and Config.Skills.
 --
 -- IN THIS SLICE: RS_01 + RS_03. Server role authority arrives with TagService
@@ -19,6 +20,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
 local SkillEvent = Remotes:WaitForChild("SkillEvent") :: RemoteEvent
@@ -101,6 +103,39 @@ local function sanitizeDir(dir: unknown, root: BasePart): Vector3
 		return flatLook.Unit
 	end
 	return Vector3.new(0, 0, -1)
+end
+
+-- Aim sanity for client-submitted dirs (RS_03 only): finite components and a
+-- magnitude near 1, since honest clients send a unit vector. NaN defeats
+-- comparisons, so finiteness is checked first. Failure denies silently.
+-- The RS_01 path keeps its fallback and is untouched.
+local function isSaneDir(dir: unknown): boolean
+	if typeof(dir) ~= "Vector3" then
+		return false
+	end
+	local v = dir :: Vector3
+	if v.X ~= v.X or v.Y ~= v.Y or v.Z ~= v.Z then
+		return false -- NaN
+	end
+	if math.abs(v.X) == math.huge or math.abs(v.Y) == math.huge or math.abs(v.Z) == math.huge then
+		return false
+	end
+	local mag = v.Magnitude
+	return mag >= 0.5 and mag <= 2.0
+end
+
+-- Aim point sanity (RS_03 only): a finite Vector3. Magnitude is NOT bounded
+-- here: these are world coordinates, and the server clamps to range itself.
+-- Non-finite input denies silently.
+local function isFiniteVec(value: unknown): boolean
+	if typeof(value) ~= "Vector3" then
+		return false
+	end
+	local v = value :: Vector3
+	return v.X == v.X and v.Y == v.Y and v.Z == v.Z
+		and math.abs(v.X) ~= math.huge
+		and math.abs(v.Y) ~= math.huge
+		and math.abs(v.Z) ~= math.huge
 end
 
 -- Returns the live root part of a player, or nil when dead or missing.
@@ -221,35 +256,35 @@ local function resolveTayaTarget(caster: Player, origin: Vector3, dir: Vector3, 
 	return nil
 end
 
--- Server-owned projectile simulation. The loop below is the only hit test;
--- no client claim is trusted. Walls block the slipper; only the resolved
--- Taya can be hit; anything else is a miss.
-local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3, dir: Vector3)
+-- Server-owned arc simulation. The loop below is the only hit test; no
+-- client claim is trusted, and the client v0 is never used: the server
+-- solves its own from the clamped target. Each arc segment is raycast
+-- against world geometry; a wall or ground hit ends the flight as a miss
+-- at that point. Only the resolved Taya can be hit, tested by segment
+-- distance so the curve cannot tunnel past them.
+local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3, v0: Vector3, flightT: number, dir: Vector3)
 	local sk = Config.Skills.RS_03
-	local speed: number = sk.params.projectileSpeed
 	local radius: number = sk.params.projectileRadius
-	local maxRange: number = sk.range
-	local maxLifetime: number = sk.params.maxLifetime
 	local stepDt: number = sk.params.stepDt
 	task.spawn(function()
-		local pos = origin
-		local traveled = 0
-		local elapsed = 0
+		local t = 0
+		local prev = origin
 		local hitPos: Vector3? = nil
 		local rayParams = RaycastParams.new()
 		rayParams.FilterType = Enum.RaycastFilterType.Exclude
 		rayParams.IgnoreWater = true
-		while traveled < maxRange and elapsed < maxLifetime do
+		while t < flightT do
 			if caster.Parent == nil then
 				break -- caster left mid flight: miss
 			end
 			if ReplicatedStorage:GetAttribute("HRushRoundState") ~= "MS_04" then
 				break -- round ended mid flight: miss, stun never applies
 			end
-			local step = speed * stepDt
-			local nextPos = pos + dir * step
-			-- Wall check so cover blocks the slipper. Both characters are
-			-- excluded; the Taya uses the distance check below instead.
+			local nt = math.min(t + stepDt, flightT)
+			local nextPos = TsinelasArc.position(origin, v0, nt)
+			-- Wall and ground check so cover and floors block the slipper.
+			-- Both characters are excluded; the Taya uses the segment
+			-- check below instead.
 			local ignore: { Instance } = {}
 			local casterChar = caster.Character
 			if casterChar ~= nil then
@@ -262,24 +297,23 @@ local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3
 				end
 			end
 			rayParams.FilterDescendantsInstances = ignore
-			local wall = Workspace:Raycast(pos, dir * step, rayParams)
+			local wall = Workspace:Raycast(prev, nextPos - prev, rayParams)
 			if wall ~= nil then
-				pos = wall.Position
-				break -- blocked by cover: miss
+				prev = wall.Position
+				break -- blocked by cover or ground: miss
 			end
-			pos = nextPos
-			traveled += step
-			elapsed += stepDt
 			if target ~= nil then
 				local targetRoot = getLiveRoot(target :: Player)
 				if targetRoot == nil then
 					break -- Taya died or left mid flight: miss
 				end
-				if (pos - targetRoot.Position).Magnitude <= radius then
+				if TsinelasArc.distToSegment(targetRoot.Position, prev, nextPos) <= radius then
 					hitPos = targetRoot.Position
 					break
 				end
 			end
+			prev = nextPos
+			t = nt
 			task.wait(stepDt)
 		end
 		if hitPos ~= nil and target ~= nil then
@@ -298,7 +332,7 @@ local function simulateTsinelas(caster: Player, target: Player?, origin: Vector3
 				skillId = "RS_03",
 				dir = dir,
 				phase = "miss",
-				hitPos = pos,
+				hitPos = prev,
 			})
 			debugPrint("Tsinelas miss (range, wall, or no target)") -- TODO: remove before submission
 		end
@@ -307,14 +341,30 @@ end
 
 -- RS_03 cast path. No airborne or grounded checks: a Runner may throw midair,
 -- and the throw never grants tag immunity, so IsAirborne is untouched.
-local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unknown, root: BasePart, now: number)
+-- Range is the maximum horizontal distance from thrower to landing point.
+local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unknown, aimPoint: unknown, root: BasePart, now: number)
+	if not isSaneDir(dir) then
+		deny(caster, skillId, "bad direction")
+		return
+	end
+	if not isFiniteVec(aimPoint) then
+		deny(caster, skillId, "bad aim")
+		return
+	end
 	if not checkAndSetCooldown(caster, skillId, sk.cooldown, now) then
 		return
 	end
 	local castDir = sanitizeDir(dir, root)
+	-- Origin rule shared with the client indicator: root center pushed two
+	-- studs along the throw dir, so both sides agree on x0.
 	local origin = root.Position + Vector3.new(0, sk.params.launchHeight, 0) + castDir * 2
+	-- Fixed 45 degree solve: the server clamps and recomputes everything
+	-- itself, never trusting client speed. The payload carries the solved
+	-- landing point so every client flies the same arc.
+	local v0, flightT, _short, target = TsinelasArc.solveArc(origin, aimPoint :: Vector3)
 	-- Split reply (spec architecture): approved event ONLY to the caster,
-	-- VFX event to ALL clients. Clients render cosmetics only.
+	-- VFX event to ALL clients. Clients render cosmetics only. The cast
+	-- payload carries the clamped target so every client flies the same arc.
 	SkillApproved:FireClient(caster, {
 		skillId = skillId,
 		dir = castDir,
@@ -326,16 +376,17 @@ local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unk
 		dir = castDir,
 		phase = "cast",
 		origin = origin,
+		target = target,
 	})
 	debugPrint("validation APPROVED for " .. caster.Name .. " (RS_03); SkillApproved to caster, SkillVFX to all") -- TODO: remove before submission
-	local target = resolveTayaTarget(caster, origin, castDir, sk.range)
-	if target == nil then
+	local taya = resolveTayaTarget(caster, origin, castDir, sk.range)
+	if taya == nil then
 		debugPrint("Tsinelas cast with no live Taya; cosmetic flight only") -- TODO: remove before submission
 	end
-	simulateTsinelas(caster, target, origin, castDir)
+	simulateTsinelas(caster, taya, origin, v0, flightT, castDir)
 end
 
-RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, dir: unknown)
+RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, dir: unknown, aimPoint: unknown)
 	if typeof(skillId) ~= "string" then
 		return
 	end
@@ -394,7 +445,7 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, di
 	-- Per-type branch. RS_02 and TS_01-03 are not implemented yet: deny
 	-- instead of falling into a path that reads params they do not have.
 	if skillId == "RS_03" then
-		handleTsinelas(player, sk, skillId, dir, typedRoot, now)
+		handleTsinelas(player, sk, skillId, dir, aimPoint, typedRoot, now)
 		return
 	end
 	if skillId ~= "RS_01" then

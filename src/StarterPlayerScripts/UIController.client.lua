@@ -13,6 +13,12 @@
 --     pops green the instant it becomes ready
 --   • Skill chip — "E" keycap + skill name caption, cooldown wipe/countdown from
 --     Config.Skills (RS_01 slice); hides while HRushSkillId == "" (Taya / ungranted)
+--   • Tsinelas chip (T18 RS_03 slice) — TEMP keycap + caption from Config.UI,
+--     wipe plus ceil-seconds countdown from HRushSkillCD_RS03, gold aiming
+--     border from HRushAiming, dimmed while stunned or round not live.
+--   • Tsinelas touch button (mobile only) — the slot itself is the button in
+--     the right thumb zone, mirroring the chip state including the cooldown
+--     fill. Press and hold to aim, release inside to throw, slide off to cancel.
 -- Data source: HRush* attribute bridge on LocalPlayer (MovementController pushes
 -- at 10 Hz + forced on role/state/tag events). Poll-free via GetAttributeChangedSignal.
 --
@@ -24,9 +30,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
 local RunService        = game:GetService("RunService")
+local UserInputService  = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Mv     = Config.Movement
+local TS     = Config.UI.Tsinelas -- RS_03 slot sizes, labels, and timings
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
@@ -215,6 +223,137 @@ skillCaption.TextColor3 = COL_TEXT
 skillCaption.TextStrokeTransparency = 0.6
 skillCaption.Parent = cluster
 
+-- Tsinelas chip (right of the skill chip): same circle pattern, all slot
+-- values from Config.UI.Tsinelas. KeyLabel moves to E at T17.
+local tsinelasChip = Instance.new("Frame")
+tsinelasChip.Name = "TsinelasChip"
+tsinelasChip.Position = UDim2.fromOffset(TS.SlotOffsetX, 10)
+tsinelasChip.Size = UDim2.fromOffset(TS.SlotSize, TS.SlotSize)
+tsinelasChip.BackgroundColor3 = COL_PANEL
+tsinelasChip.BackgroundTransparency = 0.15
+tsinelasChip.BorderSizePixel = 0
+tsinelasChip.Parent = cluster
+corner(tsinelasChip, TS.SlotSize / 2) -- circle, stays round if size changes
+local tsinelasStroke = stroke(tsinelasChip, COL_STROKE_CD, 2)
+
+local tsinelasWipe = Instance.new("Frame") -- dark overlay shrinking top to bottom
+tsinelasWipe.Name = "CooldownWipe"
+tsinelasWipe.AnchorPoint = Vector2.new(0, 0)
+tsinelasWipe.Position = UDim2.fromScale(0, 0)
+tsinelasWipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+tsinelasWipe.BackgroundColor3 = COL_COOLDOWN
+tsinelasWipe.BackgroundTransparency = 0.25
+tsinelasWipe.BorderSizePixel = 0
+tsinelasWipe.ZIndex = 1
+tsinelasWipe.Parent = tsinelasChip
+corner(tsinelasWipe, TS.SlotSize / 2) -- follows the circular chip outline
+
+local tsinelasKey = Instance.new("TextLabel")
+tsinelasKey.Name = "KeyOrCd"
+tsinelasKey.BackgroundTransparency = 1
+tsinelasKey.Size = UDim2.fromScale(1, 1)
+tsinelasKey.Font = Enum.Font.GothamBold
+tsinelasKey.TextSize = TS.CountdownTextSize
+tsinelasKey.Text = TS.KeyLabel
+tsinelasKey.TextColor3 = COL_TEXT
+tsinelasKey.TextStrokeTransparency = 0.5
+tsinelasKey.ZIndex = 2
+tsinelasKey.Parent = tsinelasChip
+
+local tsinelasCaption = Instance.new("TextLabel")
+tsinelasCaption.Name = "TsinelasCaption"
+tsinelasCaption.BackgroundTransparency = 1
+tsinelasCaption.Position = UDim2.fromOffset(TS.SlotOffsetX - 12, 44)
+tsinelasCaption.Size = UDim2.fromOffset(76, 12)
+tsinelasCaption.Font = Enum.Font.Gotham
+tsinelasCaption.TextSize = 9
+tsinelasCaption.Text = TS.CaptionText
+tsinelasCaption.TextColor3 = COL_TEXT
+tsinelasCaption.TextStrokeTransparency = 0.6
+tsinelasCaption.Parent = cluster
+
+-- Tsinelas touch button (mobile only, created once): bottom-right thumb zone,
+-- scale positioned with a physical size above the 64 px spec minimum. The
+-- button mirrors the chip state, so the cooldown fill shows on it. Fires the
+-- MobileTsinelas bridge event; MovementController hooks it like the legacy
+-- buttons. No per-round Instances; state resets come through attributes.
+local function mobileTsinelasEvent(): BindableEvent
+	local existing = ReplicatedStorage:FindFirstChild("MobileTsinelas")
+	if existing and existing:IsA("BindableEvent") then
+		return existing
+	end
+	local be = Instance.new("BindableEvent")
+	be.Name = "MobileTsinelas"
+	be.Parent = ReplicatedStorage
+	return be
+end
+
+local tsinelasTouch: TextButton? = nil
+local tsinelasTouchStroke: UIStroke? = nil
+local tsinelasTouchWipe: Frame? = nil
+local tsinelasTouchKey: TextLabel? = nil
+if UserInputService.TouchEnabled then
+	local btn = Instance.new("TextButton")
+	btn.Name = "TsinelasTouch"
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.Position = TS.TouchPosition
+	btn.Size = UDim2.fromOffset(TS.TouchSizePx, TS.TouchSizePx)
+	btn.BackgroundColor3 = COL_PANEL
+	btn.BackgroundTransparency = 0.15
+	btn.BorderSizePixel = 0
+	btn.Text = ""
+	btn.AutoButtonColor = false -- state colors come from updateTsinelasCD
+	btn.Parent = gui
+	corner(btn, TS.TouchSizePx / 2) -- circle like the chip
+	tsinelasTouchStroke = stroke(btn, COL_STROKE_CD, 2)
+	local touchWipe = Instance.new("Frame")
+	touchWipe.Name = "CooldownWipe"
+	touchWipe.AnchorPoint = Vector2.new(0, 0)
+	touchWipe.Position = UDim2.fromScale(0, 0)
+	touchWipe.Size = UDim2.fromScale(1, 0) -- 0 = ready
+	touchWipe.BackgroundColor3 = COL_COOLDOWN
+	touchWipe.BackgroundTransparency = 0.25
+	touchWipe.BorderSizePixel = 0
+	touchWipe.ZIndex = 1
+	touchWipe.Parent = btn
+	corner(touchWipe, TS.TouchSizePx / 2)
+	tsinelasTouchWipe = touchWipe
+	local touchKey = Instance.new("TextLabel")
+	touchKey.Name = "KeyOrCd"
+	touchKey.BackgroundTransparency = 1
+	touchKey.Size = UDim2.fromScale(1, 1)
+	touchKey.Font = Enum.Font.GothamBold
+	touchKey.TextSize = TS.CountdownTextSize
+	touchKey.Text = TS.KeyLabel
+	touchKey.TextColor3 = COL_TEXT
+	touchKey.TextStrokeTransparency = 0.5
+	touchKey.ZIndex = 2
+	touchKey.Parent = btn
+	tsinelasTouchKey = touchKey
+	btn.InputBegan:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		mobileTsinelasEvent():Fire("Begin")
+	end)
+	btn.InputEnded:Connect(function(input: InputObject)
+		if input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		-- Slide-off cancels: the finger left the button, so this is not a
+		-- throw. Default to Cancel when uncertain.
+		local pos = input.Position
+		local absPos = btn.AbsolutePosition
+		local absSize = btn.AbsoluteSize
+		local inside = pos.X >= absPos.X
+			and pos.X <= absPos.X + absSize.X
+			and pos.Y >= absPos.Y
+			and pos.Y <= absPos.Y + absSize.Y
+		mobileTsinelasEvent():Fire(if inside then "End" else "Cancel")
+	end)
+	tsinelasTouch = btn
+end
+
 -- ── Attribute readers ─────────────────────────────────────────────────────────
 local function attrNum(name: string, fallback: number): number
 	local v = LocalPlayer:GetAttribute(name)
@@ -283,7 +422,7 @@ local function updateVisibility()
 	barBg.Visible = isRunner
 	chip.Visible = isRunner
 	chipCaption.Visible = isRunner
-	cluster.Visible = isRunner or hasSkill
+	cluster.Visible = isRunner or hasSkill or attrStr("HRushSkillId_RS03", "") ~= ""
 end
 
 -- ── Dash cooldown chip logic ──────────────────────────────────────────────────
@@ -388,6 +527,99 @@ local function updateSkillCD()
 	lastSkillCD = cd
 end
 
+-- ── Tsinelas cooldown chip logic (RS_03 slice) ─────────────────────────────────
+-- Four states on one slot: hidden (ungranted), dimmed (stunned or round not
+-- live), gold border (aiming), wipe plus ceil seconds (cooling), keycap plus
+-- green border (ready, with a one-time pulse on the transition).
+local lastTsinelasCD = 0.0
+
+local function popTsinelasReady()
+	tsinelasKey.Text = TS.KeyLabel
+	tsinelasStroke.Color = COL_STROKE_RDY
+	-- Ready pulse: the border thickens once, so the state reads even in
+	-- grayscale (shape/motion, not color alone).
+	tsinelasStroke.Thickness = 2
+	local pulse = TweenService:Create(
+		tsinelasStroke,
+		TweenInfo.new(TS.ReadyPulseTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+		{ Thickness = 4 }
+	)
+	pulse:Play()
+	pulse.Completed:Connect(function()
+		TweenService:Create(
+			tsinelasStroke,
+			TweenInfo.new(TS.ReadyPulseTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+			{ Thickness = 2 }
+		):Play()
+	end)
+	local up = TweenService:Create(
+		tsinelasChip,
+		TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Size = UDim2.fromOffset(TS.ReadyPulseGrow, TS.ReadyPulseGrow) }
+	)
+	up:Play()
+	up.Completed:Connect(function()
+		TweenService:Create(
+			tsinelasChip,
+			TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.fromOffset(TS.SlotSize, TS.SlotSize) }
+		):Play()
+	end)
+end
+
+local function updateTsinelasCD()
+	local granted = attrStr("HRushSkillId_RS03", "") == "RS_03"
+	tsinelasChip.Visible = granted
+	tsinelasCaption.Visible = granted
+	local showTouch = granted and tsinelasTouch ~= nil
+	if tsinelasTouch ~= nil then
+		tsinelasTouch.Visible = showTouch
+	end
+	if not granted then
+		return
+	end
+	tsinelasCaption.Text = TS.CaptionText
+	-- Resolve one visual state, then apply it to the chip and the touch
+	-- button together so they can never disagree.
+	local keyText = TS.KeyLabel
+	local strokeColor = COL_STROKE_RDY
+	local strokeThickness = 2
+	local wipeRatio = 0
+	local dimmed = false
+	local stunned = LocalPlayer:GetAttribute("HRushStunned") == true
+	if stunned or attrStr("HRushState", "") ~= "MS_04" then
+		dimmed = true
+		strokeColor = COL_STROKE_CD
+	elseif attrStr("HRushAiming", "") == "RS_03" then
+		strokeColor = TS.AimStrokeColor
+		strokeThickness = TS.AimStrokeThickness
+	else
+		local cd = attrNum("HRushSkillCD_RS03", 0)
+		local sk = Config.Skills.RS_03
+		local total = math.max(0.01, sk and sk.cooldown or 1)
+		wipeRatio = math.clamp(cd / total, 0, 1)
+		if cd > 0 then
+			keyText = tostring(math.ceil(cd))
+			strokeColor = COL_STROKE_CD
+		elseif lastTsinelasCD > 0 then
+			popTsinelasReady() -- transition to 0: flash ready state
+		end
+		lastTsinelasCD = cd
+	end
+	tsinelasChip.BackgroundTransparency = if dimmed then TS.UnavailableTransparency else 0.15
+	tsinelasKey.Text = keyText
+	tsinelasStroke.Color = strokeColor
+	tsinelasStroke.Thickness = strokeThickness
+	tsinelasWipe.Size = UDim2.fromScale(1, wipeRatio)
+	if tsinelasTouch ~= nil and tsinelasTouchStroke ~= nil and tsinelasTouchWipe ~= nil and tsinelasTouchKey ~= nil then
+		tsinelasTouch.BackgroundTransparency = if dimmed then TS.UnavailableTransparency else 0.15
+		tsinelasTouchKey.Text = keyText
+		tsinelasTouchStroke.Color = strokeColor
+		tsinelasTouchStroke.Thickness = strokeThickness
+		tsinelasTouchWipe.Size = UDim2.fromScale(1, wipeRatio)
+	end
+end
+
 -- ── Bridge wiring (poll-free) ─────────────────────────────────────────────────
 local function hookAttr(name: string, fn: () -> ())
 	local signal = LocalPlayer:GetAttributeChangedSignal(name)
@@ -400,20 +632,27 @@ hookAttr("HRushStaminaMax", updateStamina)
 hookAttr("HRushDashCD", updateDashCD)
 hookAttr("HRushSkillCD", updateSkillCD)
 hookAttr("HRushSkillId", updateSkillCD)
+hookAttr("HRushSkillCD_RS03", updateTsinelasCD)
+hookAttr("HRushSkillId_RS03", updateTsinelasCD)
+hookAttr("HRushAiming", updateTsinelasCD)
+hookAttr("HRushStunned", updateTsinelasCD)
 hookAttr("HRushRole", function()
 	curRole = attrStr("HRushRole", curRole)
 	updateVisibility()
 	updateStamina()
 	updateSkillCD()
+	updateTsinelasCD()
 end)
 hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
+hookAttr("HRushState", updateTsinelasCD) -- round transitions refresh the dimmed state
 
 updateVisibility()
 updateStamina()
 updateDashCD()
 updateSkillCD()
+updateTsinelasCD()
 
-print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip). T14 partial; T17, T27 TODO.")
+print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip + RS_03 tsinelas chip). T14 partial; T17, T27 TODO.")
 
 -- ============================================================
 -- MATCH GATE: HUD only exists during a match (MS_03..MS_05)
