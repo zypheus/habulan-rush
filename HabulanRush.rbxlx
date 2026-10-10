@@ -4486,8 +4486,20 @@ end
 -- speeds for 2s (PostTagSpeedBoostMult/Duration); stamina rules unchanged.
 -- Taya is a flat 18 with no stamina. Slide holds its entry speed (momentum).
 -- Call this any time role / sprint / boost / lock state changes.
+-- Stun gate (RS_03/T13): the server owns HRushStunned. While it is true the
+-- client holds speed at 0 and starts no movement action. One helper plus
+-- one attribute signal; entry gates also poll it because attribute
+-- replication lags the server by a few frames.
+local function isStunned(): boolean
+	return LocalPlayer:GetAttribute("HRushStunned") == true
+end
+
 local function applySpeed()
 	if not Humanoid then
+		return
+	end
+	if isStunned() then
+		Humanoid.WalkSpeed = 0 -- stunned: hold until the server clears
 		return
 	end
 	if skillFlightLeft > 0 or skillWindupLeft > 0 then
@@ -4546,8 +4558,9 @@ local function updateStamina(dt: number)
 
 	-- Decide if we're actually sprinting this frame.
 	-- Landing recovery (RS_01) keeps sprint off briefly without blocking walk.
+	-- Stun keeps sprint off without blocking regen.
 	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing
-		and skillRecoveryLeft <= 0
+		and skillRecoveryLeft <= 0 and not isStunned()
 	if isDepletion and stamina < Mv.StaminaDepletedMin then
 		wantSprint = false -- forced walk until stamina recovers enough
 	elseif isDepletion and stamina >= Mv.StaminaDepletedMin then
@@ -4765,6 +4778,9 @@ local function performDash()
 	if not roundLive or inputLocked then
 		return
 	end
+	if isStunned() then
+		return -- stunned: no new actions
+	end
 	if role ~= "Runner" then
 		return
 	end
@@ -4858,6 +4874,9 @@ end
 local function performSlide()
 	if not roundLive or inputLocked then
 		return
+	end
+	if isStunned() then
+		return -- stunned: no new actions
 	end
 	if role ~= "Runner" then
 		return
@@ -5485,6 +5504,9 @@ local function tsinelasCanCast(): boolean
 	if not roundLive or inputLocked then
 		return false
 	end
+	if isStunned() then
+		return false -- stunned: aim exits through the upkeep cancel
+	end
 	if tsinelasPending or tsinelasCooldownLeft > 0 then
 		return false
 	end
@@ -5880,10 +5902,46 @@ local function tsinelasReleaseThrow()
 	debugPrint("RS_03 request sent (aimed)") -- TODO: remove before submission
 end
 
+-- ── Stun enter/exit (server-owned HRushStunned) ──────────────────────────────
+-- Enter cancels every movement state through the existing exit paths, so no
+-- dash, slide, flight, aim, or camera state outlives the stun. Exit hands
+-- speed back to applySpeed, which recomputes the role speed from scratch.
+-- The server clears WalkSpeed to its stored value first and nils the
+-- attribute second; both orders land on the same role speed here.
+local function onStunChanged()
+	if isStunned() then
+		cancelDash()
+		if isSliding then
+			endSlide()
+		end
+		endSkillFlight(false) -- covers windup, queued takeoff, and flight
+		tsinelasCancelAim("stun")
+		if Humanoid then
+			Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+		end
+		applySpeed() -- hold 0 at once, ahead of the next heartbeat
+		pushAttributes(true)
+		debugPrint("stunned: actions cancelled, speed held at 0") -- TODO: remove before submission
+	else
+		if Humanoid then
+			Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+		end
+		applySpeed() -- normal path: 16/21xboost Runner, 18 Taya
+		pushAttributes(true)
+		debugPrint("stun cleared: speed recomputed") -- TODO: remove before submission
+	end
+end
+
+LocalPlayer:GetAttributeChangedSignal("HRushStunned"):Connect(onStunChanged)
+
 local function launchSkill()
 	local sk = Config.Skills[skillId]
 	if sk == nil or not Humanoid or not HRP then
 		cancelWindup()
+		return
+	end
+	if isStunned() then
+		cancelWindup() -- stunned mid-windup: never take off
 		return
 	end
 	if skillCastHip > 0 then
@@ -5922,6 +5980,9 @@ end
 local function requestSkill()
 	if not roundLive or inputLocked then
 		return -- round gate (countdown, lobby, round end)
+	end
+	if isStunned() then
+		return -- stunned: no new actions (server would deny anyway)
 	end
 	if skillPending or skillApprovedActive or skillPendingVelocity ~= nil then
 		return -- one cast in flight at a time (covers the windup->takeoff gap)
