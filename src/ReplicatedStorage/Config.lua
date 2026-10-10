@@ -279,10 +279,37 @@ Config.Skills = {
 		name     = "Tsinelas Throw",
 		role     = "Runner",
 		type     = "Stun",
-		cooldown = 25,
-		duration = 1.0, -- stun duration on hit
-		range    = 25,  -- max projectile range (studs)
-		params   = {},
+		cooldown = 25, -- [LOCKED] spec
+		duration = 1.0, -- [LOCKED] stun duration on hit (s)
+		range    = 25,  -- [LOCKED] max projectile range (studs)
+		params   = {
+			projectileSpeed = 30, -- [SD] studs/s; slower than pounce lunge (45) so it stays dodgeable
+			projectileRadius = 3, -- [SD] hit radius around projectile center (studs)
+			launchHeight = 0, -- [SD] spawn height above caster root center (root sits ~3 up; flight stays chest high so low cover blocks)
+			stepDt = 1 / 60, -- [SD] server sim step (s)
+			maxLifetime = 1.0, -- [SD] flight cap (s); covers 25 studs at 30 studs/s plus margin
+			pendingTimeout = 1.5, -- [SD] drop a lost server reply after this (s)
+		},
+		vfx = { -- every burst stays under 30 particles (mobile budget)
+			arcCount = 12, -- [SD] trail puffs along the cosmetic arc
+			impactCount = 16, -- [SD] star burst particles on hit
+			spinRate = 720, -- [SD] cosmetic slipper spin (deg/s)
+			slipperColor = Color3.fromRGB(70, 140, 255), -- [SD] placeholder blue
+			slipperSize = Vector3.new(0.8, 0.35, 1.6), -- [SD] cosmetic slipper part (studs)
+			arcLift = 1.0, -- [SD] peak height of the cosmetic arc above the straight line (studs)
+			starColor = Color3.fromRGB(255, 220, 80), -- [SD] impact star color
+			starSize = 0.6, -- [SD] impact star particle start size (studs)
+			starLife = 0.5, -- [SD] impact star particle lifetime (s)
+			starSpeedMin = 6, -- [SD] impact star speed low (studs/s)
+			starSpeedMax = 14, -- [SD] impact star speed high (studs/s)
+			impactRingTime = 0.25, -- [SD] impact ring grow/fade (s)
+			arcTime = 0.85, -- [SD] cosmetic flight time (s); matches server flight
+		},
+		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
+			throw = "", -- arm swing whoosh
+			whoosh = "", -- flight loop whoosh
+			impact = "", -- star impact hit
+		},
 		tell     = { vfx = "SlipperArc", sfx = "Whoosh" },
 		weakness = "Linear projectile; short stun only",
 		counterCondition = "Hit on Taya mid-wind-up or mid-skill cast",
@@ -329,7 +356,8 @@ Config.Skills = {
 	-- TEMP (T17 Skill Draft absent): skills granted for immediate playtesting.
 	-- Single source of truth — read by MovementController (client gates + HUD)
 	-- and SkillService (server validation). Remove when PickSkill owns unlocks.
-	testGrant = { "RS_01" },
+	-- TEMP (T18): RS_03 added so 2 player manual tests can cast Tsinelas Throw.
+	testGrant = { "RS_01", "RS_03" },
 }
 
 -- ============================================================

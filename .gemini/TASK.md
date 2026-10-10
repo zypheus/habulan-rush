@@ -92,10 +92,10 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [ ] 12s draft modal displaying 2 Runner + 2 Taya cards.
   - [ ] Skill cards with icon, name, cooldown, tell, and weakness.
   - [ ] Implement `PickSkill(slot, skillId)` with server validation and timeout auto-pick.
-- [ ] (2026-10-14) **T18 [Code/P0] SkillService: Runner Skills (RS_01 to RS_03)**
+- [ ] (2026-10-14) **T18 [Code/P0] SkillService: Runner Skills (RS_01 to RS_03)** — 🟡 **PARTIAL** (RS_01 done earlier; RS_03 server + cosmetics done 2026-10-10, manual 2-player test pending; RS_02 not started)
   - [ ] `RS_01` *Luksong Baka*: 14 studs height, 18 studs distance impulse, no air steering, 12s CD.
   - [ ] `RS_02` *Pekeng Takbo*: Decoy spawner, 4s running duration, lock-break, 18s CD.
-  - [ ] `RS_03` *Tsinelas Throw*: Physics projectile (25 studs range), 1.0s Taya stun on hit, 25s CD.
+  - [x] (2026-10-10) `RS_03` *Tsinelas Throw*: Physics projectile (25 studs range), 1.0s Taya stun on hit, 25s CD. (Server owns sim + hit test + HRushStunned stun in SkillService.server.lua; spinning slipper arc + impact star cosmetics + TEMP G test key in MovementController.client.lua; tunables in Config.Skills.RS_03. Needs live 2-player test before merge. Depends on TagService T11 for ServerRole; TEMP debug fallback in place. Safe Window does not protect; no F07 interaction.)
 - [ ] (2026-10-14) **T19 [Code/P0] SkillService: Taya Skills (TS_01 to TS_03)**
   - [ ] `TS_01` *Sigaw*: 40 stud radial reveal for 2s, 20s CD.
   - [ ] `TS_02` *Lambat*: 8 stud net zone, -40% runner slow for 5s, 22s CD.

@@ -20,10 +20,13 @@
 --     server validates (round/stun/ground/airborne/CD) and broadcasts SkillEvent,
 --     caster runs windup (0.1s crouch) -> takeoff (single impulse, CD starts)
 --     -> locked-direction flight -> landing recovery (0.2s no sprint).
+--   • Skill RS_03 Tsinelas Throw (T18 slice, cosmetics only): TEMP G key sends
+--     the request; server simulates the projectile and owns the hit test.
+--     This client renders the spinning slipper arc plus the impact star.
 --     Grant list: Config.Skills.testGrant, role gate via Config.Debug flag.
 --
 -- Does NOT handle: tag detection/validation (TagService owns truth),
--- skill draft/unlocks (T17), remaining skills (RS_02/03, TS_*) and Diskarte
+-- skill draft/unlocks (T17), remaining skills (RS_02, TS_*) and Diskarte
 -- (T18/T19), timers/scores (MatchService), or lock camera.
 --
 -- All numeric constants come exclusively from Config.Movement — zero hardcoding.
@@ -100,6 +103,16 @@ local skillTakeoffPos: Vector3? = nil -- takeoff position for measured distance
 local skillPeakY = 0.0 -- highest root Y seen during flight (measured height)
 local skillApprovedActive = false -- true from SkillApproved until SkillLanded sent
 local skillDebugTick = 0.0 -- throttles the debug label text update
+
+-- Tsinelas Throw (RS_03, T18 slice): TEMP cast path until T17 draft owns skill
+-- selection. G fires RequestSkill for RS_03; the server validates, simulates
+-- the projectile, and broadcasts SkillVFX cast/impact/miss phases. Cosmetics
+-- only: this client never decides hits. Removed when PickSkill owns unlocks.
+local tsinelasRequested = false -- buffered G press
+local tsinelasPending = false -- request sent, waiting for the server reply
+local tsinelasPendingLeft = 0.0 -- clears a lost reply so input cannot wedge
+local tsinelasCooldownLeft = 0.0 -- local mirror of the server cooldown ledger
+local activeSlippers: { [number]: { part: BasePart, conn: RBXScriptConnection? } } = {}
 local skillDebugLabel: BillboardGui? = nil -- airborne debug label (ShowSkillDebug)
 local skillStateConn: RBXScriptConnection? = nil -- Humanoid.StateChanged landing hook
 
@@ -302,6 +315,7 @@ local function pushAttributes(force: boolean?)
 	skillId = grantedSkillId()
 	LocalPlayer:SetAttribute("HRushSkillId", skillId)
 	LocalPlayer:SetAttribute("HRushSkillCD", skillCooldownLeft)
+	LocalPlayer:SetAttribute("HRushSkillCD_RS03", tsinelasCooldownLeft)
 end
 
 -- ── Dash VFX (client-side juice) ─────────────────────────────────────────────
@@ -814,6 +828,9 @@ local function playSkillCastFX(casterId: number, sid: string, dir: Vector3)
 	if sk == nil then
 		return
 	end
+	if sk.params.windup == nil then
+		return -- only RS_01 has a windup timeline; other skills route elsewhere
+	end
 	local caster = Players:GetPlayerByUserId(casterId)
 	local char = caster and caster.Character
 	if char == nil then
@@ -858,6 +875,212 @@ local function playSkillCastFX(casterId: number, sid: string, dir: Vector3)
 			skillPreviewRing = nil
 		end
 	end)
+end
+
+-- ── Tsinelas Throw cosmetics (RS_03, visuals only, never mechanics) ──────────
+-- Game-feel light tier: spinning slipper + trail puffs on cast, star burst +
+-- eased ring pop + impact sound hook on hit. Every channel is transient and
+-- self cleans, so the scene always returns to rest. All values from
+-- Config.Skills.RS_03. No camera shake: the stun itself is the punishment.
+local function tsinelasCleanup(casterId: number)
+	local s = activeSlippers[casterId]
+	if s == nil then
+		return
+	end
+	activeSlippers[casterId] = nil
+	if s.conn ~= nil then
+		s.conn:Disconnect()
+	end
+	if s.part.Parent ~= nil then
+		s.part:Destroy()
+	end
+end
+
+local function spawnSlipper(casterId: number, origin: Vector3, dir: Vector3)
+	tsinelasCleanup(casterId) -- one slipper per caster; a re-cast replaces it
+	local sk = Config.Skills.RS_03
+	if sk == nil then
+		return
+	end
+	local v = sk.vfx
+	local speed: number = sk.params.projectileSpeed
+	local flat = Vector3.new(dir.X, 0, dir.Z)
+	if flat.Magnitude < 0.01 then
+		flat = Vector3.new(0, 0, -1)
+	else
+		flat = flat.Unit
+	end
+	local part = Instance.new("Part")
+	part.Name = "TsinelasSlipper"
+	part.Size = v.slipperSize
+	part.Color = v.slipperColor
+	part.Material = Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	-- Lateral axis for the end-over-end spin (the tell reads at a glance).
+	local axis = flat:Cross(Vector3.new(0, 1, 0))
+	if axis.Magnitude < 0.01 then
+		axis = Vector3.new(1, 0, 0)
+	else
+		axis = axis.Unit
+	end
+	part.CFrame = CFrame.new(origin)
+	part.Parent = Workspace
+	-- Trail puffs mark the arc path. Rate spreads arcCount puffs over the
+	-- flight, so the total stays inside the mobile particle budget.
+	local att = Instance.new("Attachment")
+	att.Name = "TsinelasTrail"
+	att.Parent = part
+	local trail = Instance.new("ParticleEmitter")
+	trail.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	trail.Rate = v.arcCount / v.arcTime
+	trail.Lifetime = NumberRange.new(v.arcTime * 0.6)
+	trail.Speed = NumberRange.new(0) -- puffs hang where spawned, tracing the arc
+	trail.SpreadAngle = Vector2.new(20, 20)
+	trail.Color = ColorSequence.new(v.slipperColor)
+	trail.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, v.starSize),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.Parent = att
+	local entry: { part: BasePart, conn: RBXScriptConnection? } = { part = part, conn = nil }
+	local elapsed = 0
+	entry.conn = RunService.Heartbeat:Connect(function(dt: number)
+		elapsed += dt
+		if activeSlippers[casterId] == nil or elapsed >= v.arcTime then
+			tsinelasCleanup(casterId) -- flight over: fade out via particle lifetime
+			return
+		end
+		-- Cosmetic arc: straight server line plus a small style lift that
+		-- peaks mid flight and lands back on the line, so endpoints agree
+		-- with the server hit test.
+		local t = elapsed / v.arcTime
+		local lift = v.arcLift * 4 * t * (1 - t)
+		local pos = origin + flat * (speed * elapsed) + Vector3.new(0, lift, 0)
+		part.CFrame = CFrame.new(pos) * CFrame.fromAxisAngle(axis, math.rad(v.spinRate) * elapsed)
+	end)
+	activeSlippers[casterId] = entry
+end
+
+-- Impact star: one-shot burst plus an eased ground ring pop at the position
+-- the server reported. Fires for hits; misses get the burst without sound.
+local function spawnStarBurst(at: Vector3, withSound: boolean)
+	local sk = Config.Skills.RS_03
+	if sk == nil then
+		return
+	end
+	local v = sk.vfx
+	local anchor = Instance.new("Part")
+	anchor.Name = "TsinelasImpact"
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.CFrame = CFrame.new(at)
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.CastShadow = false
+	anchor.Transparency = 1
+	anchor.Parent = Workspace
+	local att = Instance.new("Attachment")
+	att.Parent = anchor
+	local stars = Instance.new("ParticleEmitter")
+	stars.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	stars.Rate = 0 -- burst only, never a stream (mobile particle budget)
+	stars.Lifetime = NumberRange.new(v.starLife)
+	stars.Speed = NumberRange.new(v.starSpeedMin, v.starSpeedMax)
+	stars.SpreadAngle = Vector2.new(180, 180)
+	stars.Acceleration = Vector3.new(0, -6, 0) -- sparks settle, they do not float
+	stars.Color = ColorSequence.new(v.starColor)
+	stars.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, v.starSize),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	stars.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	stars.Parent = att
+	stars:Emit(v.impactCount)
+	spawnGroundRing(at, v.starSize * 2, sk.params.projectileRadius * 2, v.impactRingTime)
+	if withSound then
+		playSkillSound(anchor, sk.sounds.impact)
+	end
+	Debris:AddItem(anchor, 2) -- cleanup margin only, not a gameplay number
+end
+
+-- Shared entry for every server SkillVFX with skillId RS_03. Cast spawns the
+-- slipper on all clients; impact/miss retires it early and pops the star.
+local function playTsinelasFX(payload: any)
+	local sk = Config.Skills.RS_03
+	if sk == nil then
+		return
+	end
+	if typeof(payload.caster) ~= "number" then
+		return
+	end
+	local casterId: number = payload.caster
+	local phase = if typeof(payload.phase) == "string" then payload.phase else "cast"
+	local dir = if typeof(payload.dir) == "Vector3" then payload.dir else Vector3.new(0, 0, -1)
+	if phase == "cast" then
+		local caster = Players:GetPlayerByUserId(casterId)
+		local char = caster and caster.Character
+		if char == nil then
+			return
+		end
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not (hrp and hrp:IsA("BasePart")) then
+			return
+		end
+		local origin = if typeof(payload.origin) == "Vector3"
+			then payload.origin
+			else (hrp :: BasePart).Position
+		spawnSlipper(casterId, origin, dir)
+		playSkillSound(hrp :: BasePart, sk.sounds.throw)
+		playSkillSound(hrp :: BasePart, sk.sounds.whoosh)
+		if casterId == LocalPlayer.UserId then
+			debugPrint("RS_03 cast rendered (slipper arc)") -- TODO: remove before submission
+		end
+		return
+	end
+	if phase == "impact" or phase == "miss" then
+		tsinelasCleanup(casterId)
+		if typeof(payload.hitPos) ~= "Vector3" then
+			return
+		end
+		spawnStarBurst(payload.hitPos, phase == "impact")
+		if casterId == LocalPlayer.UserId or phase == "impact" then
+			debugPrint("RS_03 " .. phase .. " rendered (star burst)") -- TODO: remove before submission
+		end
+	end
+end
+
+-- TEMP (T18): G key casts RS_03 until T17 draft owns skill selection.
+local function requestTsinelas()
+	if not roundLive or inputLocked then
+		return
+	end
+	if tsinelasPending or tsinelasCooldownLeft > 0 then
+		return
+	end
+	if not Humanoid or not HRP then
+		return
+	end
+	local look = HRP.CFrame.LookVector
+	local dir = Vector3.new(look.X, 0, look.Z)
+	if dir.Magnitude < 0.01 then
+		return
+	end
+	tsinelasPending = true
+	tsinelasPendingLeft = Config.Skills.RS_03.params.pendingTimeout
+	RequestSkill:FireServer("RS_03", dir.Unit)
+	debugPrint("RS_03 request sent") -- TODO: remove before submission
 end
 
 local function launchSkill()
@@ -954,6 +1177,11 @@ SkillEvent.OnClientEvent:Connect(function(payload: any)
 		return
 	end
 	if payload.type == "deny" then
+		if payload.skillId == "RS_03" then
+			tsinelasPending = false
+			debugPrint("RS_03 denied by server (pending cleared)") -- TODO: remove before submission
+			return
+		end
 		if payload.skillId == skillId then
 			skillPending = false
 			debugPrint("denied by server (pending cleared)") -- TODO: remove before submission
@@ -967,6 +1195,18 @@ end)
 -- same owning client; no other client runs mechanics from this event.
 SkillApproved.OnClientEvent:Connect(function(payload: any)
 	if typeof(payload) ~= "table" then
+		return
+	end
+	-- RS_03 approval: nothing to animate locally (the server simulates the
+	-- projectile). Start the local cooldown mirror and clear pending.
+	if payload.skillId == "RS_03" then
+		tsinelasPending = false
+		local sk = Config.Skills.RS_03
+		if sk then
+			tsinelasCooldownLeft = sk.cooldown
+		end
+		pushAttributes(true)
+		debugPrint("RS_03 approved; local CD started") -- TODO: remove before submission
 		return
 	end
 	if typeof(payload.skillId) ~= "string" or payload.skillId ~= skillId then
@@ -1002,6 +1242,10 @@ SkillVFX.OnClientEvent:Connect(function(payload: any)
 	if typeof(payload.skillId) ~= "string" or typeof(payload.caster) ~= "number" then
 		return
 	end
+	if payload.skillId == "RS_03" then
+		playTsinelasFX(payload)
+		return
+	end
 	local dir = if typeof(payload.dir) == "Vector3" then payload.dir else Vector3.new(0, 0, -1)
 	playSkillCastFX(payload.caster, payload.skillId, dir)
 end)
@@ -1019,6 +1263,15 @@ local function tickCooldowns(dt: number)
 	end
 	if skillCooldownLeft > 0 then
 		skillCooldownLeft = math.max(0, skillCooldownLeft - dt)
+	end
+	if tsinelasCooldownLeft > 0 then
+		tsinelasCooldownLeft = math.max(0, tsinelasCooldownLeft - dt)
+	end
+	if tsinelasPending then
+		tsinelasPendingLeft = math.max(0, tsinelasPendingLeft - dt)
+		if tsinelasPendingLeft <= 0 then
+			tsinelasPending = false -- a lost server reply must never wedge input
+		end
 	end
 	if skillWindupLeft > 0 then
 		-- Crouch countdown; the launch happens once it reaches zero.
@@ -1211,6 +1464,10 @@ local function startHeartbeat()
 			skillRequested = false
 			requestSkill()
 		end
+		if tsinelasRequested then
+			tsinelasRequested = false
+			requestTsinelas()
+		end
 	end)
 end
 
@@ -1262,6 +1519,10 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 			skillPendingVelocity = nil -- a queued takeoff must not fire after round end
 			reportLanded() -- windup cancelled mid-approval: still clear IsAirborne
 			skillPending = false -- round over: drop any request still in flight
+			tsinelasPending = false -- round over: drop any RS_03 request too
+			for id, _ in activeSlippers do
+				tsinelasCleanup(id) -- round over: retire cosmetic slippers
+			end
 		end
 		applySpeed()
 		pushAttributes(true)
@@ -1308,6 +1569,8 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 		slideRequested_KB = true
 	elseif kc == Enum.KeyCode.E then
 		skillRequested = true -- Skill cast (UI/UX Spec §4)
+	elseif kc == Enum.KeyCode.G then
+		tsinelasRequested = true -- TEMP (T18): RS_03 test key until T17 draft
 	end
 end
 
@@ -1481,6 +1744,19 @@ local function onCharacterAdded(char: Model)
 	skillFlightLeft = 0
 	skillRequested = false
 	skillPending = false
+	tsinelasRequested = false -- respawn drops any buffered RS_03 press
+	tsinelasPending = false
+	tsinelasPendingLeft = 0
+	tsinelasCooldownLeft = 0
+	do
+		local ids: { number } = {}
+		for id, _ in activeSlippers do
+			table.insert(ids, id)
+		end
+		for _, id in ids do
+			tsinelasCleanup(id) -- new character: retire stale cosmetic slippers
+		end
+	end
 	skillWindupLeft = 0
 	skillRecoveryLeft = 0
 	skillPendingVelocity = nil -- a queued takeoff belongs to the old character
