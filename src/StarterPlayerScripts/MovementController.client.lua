@@ -69,6 +69,7 @@ local SkillLanded = Remotes:WaitForChild("SkillLanded") :: RemoteEvent
 local stamina = Mv.StaminaMax
 local isDepletion = false -- true after stamina reaches 0; locked until >= StaminaDepletedMin
 local isSprinting = false -- whether sprint key is held AND conditions allow sprinting
+local lastSprintSent = false -- last sprint state fired on the SprintVFX bridge
 local regenTimer = 0.0 -- seconds since sprint stopped
 
 -- Dash
@@ -281,6 +282,16 @@ local function updateStamina(dt: number)
 		end
 	end
 
+	-- Sprint VFX bridge: fire only on transitions. SprintVFX owns the event;
+	-- this side only finds and fires it, never creates it.
+	if isSprinting ~= lastSprintSent then
+		lastSprintSent = isSprinting
+		local bridge = ReplicatedStorage:FindFirstChild("SprintVFXState")
+		if bridge and bridge:IsA("BindableEvent") then
+			bridge:Fire(isSprinting)
+		end
+	end
+
 	applySpeed()
 end
 
@@ -291,6 +302,7 @@ end
 --   HRushDashing (bool), HRushSliding (bool), HRushBoost (seconds left),
 --   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar),
 --   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left),
+--   plus the SprintVFXState bridge event (true/false on sprint transitions).
 --   HRushSkillId_RS03 ("RS_03" when granted, "" = none),
 --   HRushSkillCD_RS03 (RS_03 seconds left), HRushAiming ("RS_03" while aiming).
 -- Grant lookup (TEMP list until T17 draft owns unlocks). The role check stays

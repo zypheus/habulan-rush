@@ -66,6 +66,12 @@
         "MovementController": {
           "$path": "src/StarterPlayerScripts/MovementController.client.lua"
         },
+        "SprintVFX": {
+          "$path": "src/StarterPlayerScripts/SprintVFX.lua"
+        },
+        "SprintVFXBootstrap": {
+          "$path": "src/StarterPlayerScripts/SprintVFX.client.lua"
+        },
         "TargetLockController": {
           "$path": "src/StarterPlayerScripts/TargetLockController.lua"
         },

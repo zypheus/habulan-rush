@@ -58,6 +58,85 @@ Config.Movement = {
 }
 
 -- ============================================================
+-- SPRINT VFX (visuals only; sprint behavior lives in MovementController)
+-- ============================================================
+-- One smoothed intensity (0 to 1) from real horizontal speed drives every
+-- effect. Pooled instances, hard caps, zero per-frame work when idle.
+Config.SprintVFX = {
+	Enabled = true, -- [SD] master switch
+	ReducedEffects = false, -- [SD] no FOV change, halved counts (T33 setting drives later)
+	Quality = "Auto", -- [SD] Low/Medium/High; Auto picks Low on touch-only devices
+	TayaEffect = false, -- [SD] reserved chase variant; not built
+	RiseRate = 3.0, -- [SD] intensity units per second rising
+	FallRate = 4.5, -- [SD] intensity units per second falling
+	FovDelta = 5, -- [SD] FOV widen at full intensity (deg)
+	FovInTime = 0.25, -- [SD] FOV ease in (s)
+	FovOutTime = 0.3, -- [SD] FOV ease out (s)
+	MaxInstances = 48, -- [SD] hard Instance cap for this feature
+	Lines = {
+		Max = 20, -- [SD] pooled streak parts
+		SpawnMin = 6, -- [SD] streaks per second at intensity 0
+		SpawnMax = 24, -- [SD] streaks per second at intensity 1
+		LifeMin = 0.25, -- [SD] streak lifetime low (s)
+		LifeMax = 0.5, -- [SD] streak lifetime high (s)
+		LengthMin = 1.5, -- [SD] streak length low (studs)
+		LengthMax = 4.0, -- [SD] streak length high (studs)
+		ThickMin = 0.06, -- [SD] streak thickness low (studs)
+		ThickMax = 0.14, -- [SD] streak thickness high (studs)
+		TransMin = 0.25, -- [SD] birth transparency, most visible (0 opaque)
+		TransMax = 0.65, -- [SD] birth transparency, faintest
+		InnerRadius = 2.0, -- [SD] spawn ring inner edge (studs)
+		OuterRadius = 5.0, -- [SD] spawn ring outer edge (studs)
+		CenterConeDeg = 50, -- [SD] excluded forward cone (deg)
+		DriftMin = 6, -- [SD] backward drift low (studs/s)
+		DriftMax = 14, -- [SD] backward drift high (studs/s)
+	},
+	Trails = {
+		Color = Color3.fromRGB(200, 235, 255), -- [SD] pale cyan
+		IntensityOn = 0.35, -- [SD] intensity enabling the streaks
+		SideX = 1.15, -- [SD] side offset, just outside the R15 torso (half width 1.0)
+		HeightY = -1.8, -- [SD] height below root center, shin level (studs)
+	},
+	Streaks = { -- [SD] emitter wind streaks (Trail fallback, no streak texture needed)
+		RateMin = 15, -- [SD] particles per second per side at intensity 0
+		RateMax = 50, -- [SD] particles per second per side at intensity 1
+		Lifetime = 0.3, -- [SD] streak lifetime (s)
+		SpeedMin = 2, -- [SD] backward drift low (studs/s)
+		SpeedMax = 5, -- [SD] backward drift high (studs/s)
+		Size = 0.35, -- [SD] streak particle start size (studs)
+		TransparencyIn = 0.4, -- [SD] birth transparency (0 opaque)
+	},
+	Dust = {
+		StartBurst = 14, -- [SD] puff count at sprint start (under 30)
+		Life = 0.4, -- [SD] dust lifetime (s)
+		Size = 0.6, -- [SD] dust particle start size (studs)
+		SpeedMin = 3, -- [SD] dust kick speed low (studs/s)
+		SpeedMax = 7, -- [SD] dust kick speed high (studs/s)
+		PuffCount = 2, -- [SD] puffs per footstep
+		FootstepDistance = 3.5, -- [SD] studs between footstep puffs
+		FootstepRate = 8, -- [SD] max footstep puffs per second
+		Color = Color3.fromRGB(214, 200, 176), -- [SD] default dust
+		Tints = { -- [SD] FloorMaterial name keys
+			Default = Color3.fromRGB(214, 200, 176),
+			Grass = Color3.fromRGB(120, 170, 90),
+			Concrete = Color3.fromRGB(150, 150, 145),
+			Wood = Color3.fromRGB(170, 130, 80),
+			Sand = Color3.fromRGB(225, 205, 150),
+		},
+	},
+	Remote = {
+		Range = 40, -- [SD] max distance for remote effects (studs)
+		Cap = 3, -- [SD] max remote players with effects
+		SpeedThreshold = 19, -- [SD] min horizontal speed (studs/s)
+		ScanRate = 4, -- [SD] scans per second
+	},
+	Colors = {
+		LineStart = Color3.fromRGB(235, 245, 255), -- [SD] streak head white
+		LineEnd = Color3.fromRGB(140, 220, 255), -- [SD] streak tail cyan
+	},
+}
+
+-- ============================================================
 -- TAG SYSTEM
 -- ============================================================
 Config.Tag = {
@@ -206,6 +285,10 @@ Config.Debug = {
 	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
 	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
 	ShowSkillDebug = true, -- prints + airborne label for RS_01 testing
+	-- TODO: remove before submission (delete this flag and all ShowSprintVFX blocks)
+	ShowSprintVFX = true, -- sprint VFX state prints
+	-- TODO: remove before submission (testing only: forces leg trails fully visible)
+	ForceTrailsVisible = false, -- sprint trail test override
 }
 
 Config.Skills = {
