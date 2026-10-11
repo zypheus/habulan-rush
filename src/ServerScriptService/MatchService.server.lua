@@ -943,6 +943,7 @@ local function runMatch()
 			broadcastState(nil)
 			local roundDuration: number = MATCH.RoundDuration or 150
 			print(string.format("[MatchService] Round %d: MS_04 Round Live (%d s)!", currentRound, roundDuration))
+			ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", workspace:GetServerTimeNow() + roundDuration)
 
 			local startTime = os.clock()
 			local lastBotThink = 0.0
@@ -1018,7 +1019,7 @@ local function runMatch()
 			nextIn = recapWait,
 		})
 
-		task.wait(IS_STUDIO and 3 or roundEndDuration)
+		waitPhase(recapWait)
 		end
 
 		-- MS_06 MATCH END
@@ -1066,7 +1067,7 @@ local function runMatch()
 			nextIn = podiumWait,
 		})
 
-		task.wait(IS_STUDIO and 5 or matchEndDuration)
+		waitPhase(podiumWait)
 		end
 		print("[MatchService] Returning to lobby.")
 	end
