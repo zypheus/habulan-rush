@@ -145,6 +145,16 @@ local function suppressed(): boolean
 	return false
 end
 
+-- Forward declarations: tick runs above these five definitions, so they are
+-- declared here once and each later definition assigns (function X) instead
+-- of creating a second local. This keeps the main loop readable at the top
+-- without moving large blocks.
+local updateFov: (number) -> ()
+local updateLines: (number) -> ()
+local updateTrails: () -> ()
+local updateDust: (number) -> ()
+local dumpTrailState: (number) -> ()
+
 local function tick(dt: number)
 	local cfg = Config.SprintVFX
 	if not cfg.Enabled then
@@ -349,7 +359,7 @@ local function disconnectRemoteLoop()
 end
 
 -- TODO: remove before submission (temporary streak diagnosis dump)
-local function dumpTrailState(speed: number)
+function dumpTrailState(speed: number)
 	for _, streak in { streakL, streakR } do
 		if streak == nil then
 			print("[SprintVFX] streak MISSING (not built)") -- TODO: remove before submission
@@ -367,7 +377,7 @@ local function dumpTrailState(speed: number)
 	end
 end
 
-local function updateTrails()
+function updateTrails()
 	local cfg = Config.SprintVFX
 	local forced = Config.Debug.ForceTrailsVisible
 	local on = forced or intensity >= cfg.Trails.IntensityOn
@@ -395,7 +405,7 @@ local function dustTint(): Color3?
 	return tints[mat.Name] or Config.SprintVFX.Dust.Color
 end
 
-local function updateDust(dt: number)
+function updateDust(dt: number)
 	if dustEmit == nil or HRP == nil or intensity <= 0.5 then
 		return
 	end
@@ -429,7 +439,7 @@ end
 -- FOV widen driven only by intensity through our own delta. Adding and
 -- removing just the difference means concurrent RS_01 kicks and aim camera
 -- captures keep working; nothing is ever overwritten.
-local function updateFov(dt: number)
+function updateFov(dt: number)
 	local cfg = Config.SprintVFX
 	local want = 0.0
 	if not cfg.ReducedEffects then
@@ -532,7 +542,7 @@ local function spawnStreak()
 	end
 end
 
-local function updateLines(dt: number)
+function updateLines(dt: number)
 	local cfg = Config.SprintVFX
 	local qs = qualityScale()
 	if intensity > 0.02 and HRP ~= nil then
