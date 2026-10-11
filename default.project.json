@@ -35,6 +35,8 @@
         "SkillLanded":     { "$className": "RemoteEvent" },
         "DiskarteUpdate":  { "$className": "RemoteEvent" },
         "ClutchEvent":     { "$className": "RemoteEvent" },
+        "RoundRecap":      { "$className": "RemoteEvent" },
+        "MatchRecap":      { "$className": "RemoteEvent" },
         "QueueEvent":      { "$className": "RemoteEvent" },
         "PartyEvent":      { "$className": "RemoteEvent" },
         "MapVoteEvent":    { "$className": "RemoteEvent" }

@@ -58,6 +58,33 @@ do
 	end
 end
 
+-- RoundRecap + MatchRecap (T27 Round End recap modal, MVP podium).
+-- Mapped in default.project.json; created here if a setup script missed them.
+local RoundRecapEvent: RemoteEvent
+do
+	local existing = Remotes:FindFirstChild("RoundRecap")
+	if existing and existing:IsA("RemoteEvent") then
+		RoundRecapEvent = existing
+	else
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = "RoundRecap"
+		ev.Parent = Remotes
+		RoundRecapEvent = ev
+	end
+end
+local MatchRecapEvent: RemoteEvent
+do
+	local existing = Remotes:FindFirstChild("MatchRecap")
+	if existing and existing:IsA("RemoteEvent") then
+		MatchRecapEvent = existing
+	else
+		local ev = Instance.new("RemoteEvent")
+		ev.Name = "MatchRecap"
+		ev.Parent = Remotes
+		MatchRecapEvent = ev
+	end
+end
+
 local IS_STUDIO = RunService:IsStudio()
 local MATCH = Config.Match
 local MIN_PLAYERS = IS_STUDIO and 1 or MATCH.MinPlayers
@@ -963,14 +990,35 @@ local function runMatch()
 				return a.tayaTime < b.tayaTime
 			end)
 
-			local pointsTable: { number } = MATCH.RoundPoints or { 8, 6, 5, 4, 3, 2, 1, 0 }
-			for rankIdx, entry in ipairs(ranked) do
-				local pts = pointsTable[rankIdx] or 0
-				matchPoints[entry.player] = (matchPoints[entry.player] or 0) + pts
-				print(string.format("  Rank %d: %s (TayaTime: %.1fs, +%d pts, total: %d)", rankIdx, entry.player.Name, entry.tayaTime, pts, matchPoints[entry.player]))
-			end
+		local pointsTable: { number } = MATCH.RoundPoints or { 8, 6, 5, 4, 3, 2, 1, 0 }
+		for rankIdx, entry in ipairs(ranked) do
+			local pts = pointsTable[rankIdx] or 0
+			matchPoints[entry.player] = (matchPoints[entry.player] or 0) + pts
+			print(string.format("  Rank %d: %s (TayaTime: %.1fs, +%d pts, total: %d)", rankIdx, entry.player.Name, entry.tayaTime, pts, matchPoints[entry.player]))
+		end
 
-			task.wait(IS_STUDIO and 3 or roundEndDuration)
+		-- T27 recap: feed the client scoreboard modal (entries, round, totals, wait).
+		local recapEntries: { { rank: number, name: string, isBot: boolean, tayaTime: number, pointsAwarded: number, totalPoints: number } } = {}
+		for rankIdx, entry in ipairs(ranked) do
+			local pts = pointsTable[rankIdx] or 0
+			table.insert(recapEntries, {
+				rank = rankIdx,
+				name = entry.player.Name,
+				isBot = entry.player:GetAttribute("IsBot") == true,
+				tayaTime = entry.tayaTime,
+				pointsAwarded = pts,
+				totalPoints = matchPoints[entry.player] or 0,
+			})
+		end
+		local recapWait = if IS_STUDIO then 3 else roundEndDuration
+		RoundRecapEvent:FireAllClients({
+			entries = recapEntries,
+			round = currentRound,
+			totalRounds = MATCH.TotalRounds or 3,
+			nextIn = recapWait,
+		})
+
+		task.wait(IS_STUDIO and 3 or roundEndDuration)
 		end
 
 		-- MS_06 MATCH END
@@ -995,12 +1043,30 @@ local function runMatch()
 				return a.totalTaya < b.totalTaya
 			end)
 
-			if #finalRankings > 0 then
-				local winner = finalRankings[1]
-				print(string.format("[MatchService] MATCH WINNER: %s with %d points!", winner.player.Name, winner.points))
-			end
+		if #finalRankings > 0 then
+			local winner = finalRankings[1]
+			print(string.format("[MatchService] MATCH WINNER: %s with %d points!", winner.player.Name, winner.points))
+		end
 
-			task.wait(IS_STUDIO and 5 or matchEndDuration)
+		-- T27 podium: feed the client MVP modal (ranked rows, MVP flagged).
+		local podiumEntries: { { rank: number, isMVP: boolean, name: string, isBot: boolean, points: number, totalTayaTime: number } } = {}
+		for rankIdx, entry in ipairs(finalRankings) do
+			table.insert(podiumEntries, {
+				rank = rankIdx,
+				isMVP = rankIdx == 1,
+				name = entry.player.Name,
+				isBot = entry.player:GetAttribute("IsBot") == true,
+				points = entry.points,
+				totalTayaTime = entry.totalTaya,
+			})
+		end
+		local podiumWait = if IS_STUDIO then 5 else matchEndDuration
+		MatchRecapEvent:FireAllClients({
+			entries = podiumEntries,
+			nextIn = podiumWait,
+		})
+
+		task.wait(IS_STUDIO and 5 or matchEndDuration)
 		end
 		print("[MatchService] Returning to lobby.")
 	end
