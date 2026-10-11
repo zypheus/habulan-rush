@@ -9,7 +9,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
@@ -53,10 +52,26 @@ local lines: { Streak } = {}
 local spawnAcc = 0.0
 local debugAcc = 0.0 -- TODO: remove before submission (trail diagnosis timer)
 
--- Wind trails plus dust (Step 4): character-scoped, rebuilt per respawn
+-- Limb trails (legs plus hands): character-scoped, rebuilt per respawn
 -- like the dash trail. Trails toggle Enabled so segments linger and fade.
-local streakL: ParticleEmitter? = nil
-local streakR: ParticleEmitter? = nil
+-- One spec per limb; a hand part that is missing is skipped, so nothing
+-- ever lands on the torso.
+type LimbSpec = {
+	partName: string,
+	side: string,
+	group: string, -- "Leg" or "Arm"
+}
+local limbSpecs: { LimbSpec } = {
+	{ partName = "LeftLowerLeg", side = "L", group = "Leg" },
+	{ partName = "RightLowerLeg", side = "R", group = "Leg" },
+	{ partName = "LeftHand", side = "LH", group = "Arm" },
+	{ partName = "RightHand", side = "RH", group = "Arm" },
+}
+local limbTrailBySide: { [string]: Trail } = {}
+local lastTrailIntensity: number? = nil
+local lastTrailOn: boolean? = nil
+local lastFirstPerson: boolean? = nil
+local Head: BasePart? = nil
 local dustEmit: ParticleEmitter? = nil
 local lastFoot: Vector3? = nil
 local footTimer = 0.0
@@ -66,9 +81,10 @@ local footTimer = 0.0
 type RemoteRig = {
 	player: Player,
 	root: BasePart,
-	streak: ParticleEmitter,
+	trail: Trail,
 	emit: ParticleEmitter,
 	attA: Attachment,
+	attB: Attachment,
 	dustAtt: Attachment,
 	lastPos: Vector3,
 	timer: number,
@@ -145,6 +161,18 @@ local function suppressed(): boolean
 	return false
 end
 
+-- First person reads the camera to head distance against the same Config
+-- value the aim camera uses for first person. A missing camera or head
+-- reads as third person, so the trails stay on.
+local function isFirstPerson(): boolean
+	local cam = Workspace.CurrentCamera
+	if cam == nil or Head == nil then
+		return false
+	end
+	local dist = (cam.CFrame.Position - (Head :: BasePart).Position).Magnitude
+	return dist <= Config.UI.TsinelasCam.FirstPersonDistance
+end
+
 -- Forward declarations: tick runs above these five definitions, so they are
 -- declared here once and each later definition assigns (function X) instead
 -- of creating a second local. This keeps the main loop readable at the top
@@ -205,8 +233,12 @@ local function dropRemoteRig(player: Player)
 		return
 	end
 	remoteRigs[player] = nil
-	Debris:AddItem(rig.attA, 1.0) -- margin only; carries the streak emitter
-	Debris:AddItem(rig.dustAtt, 1.0) -- carries the dust emitter
+	-- Stop drawing immediately: disable first, then destroy the holders.
+	-- No Debris delay, so a dropped rig never lingers on screen.
+	rig.trail.Enabled = false
+	rig.attA:Destroy() -- carries the trail
+	rig.attB:Destroy()
+	rig.dustAtt:Destroy() -- carries the dust emitter
 end
 
 local function clearAllRemoteRigs()
@@ -217,30 +249,40 @@ end
 
 local function buildRemoteRig(player: Player, root: BasePart)
 	local cfg = Config.SprintVFX
+	local qs = qualityScale()
+	local spacing = cfg.Remote.AttachmentSpacing
 	local attA = Instance.new("Attachment")
 	attA.Name = "SprintRemoteA"
-	attA.Position = Vector3.new(-0.5, -1.5, 0)
+	attA.Position = Vector3.new(0, cfg.Remote.CenterY + spacing / 2, 0)
 	attA.Parent = root
-	local streak = Instance.new("ParticleEmitter")
-	streak.Name = "SprintRemoteStreak"
-	streak.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	streak.Rate = cfg.Streaks.RateMax
-	streak.Lifetime = NumberRange.new(cfg.Streaks.Lifetime)
-	streak.Speed = NumberRange.new(cfg.Streaks.SpeedMin, cfg.Streaks.SpeedMax)
-	streak.SpreadAngle = Vector2.new(15, 15)
-	streak.Orientation = Enum.ParticleOrientation.VelocityParallel
-	streak.EmissionDirection = Enum.NormalId.Back
-	streak.Acceleration = Vector3.new(0, -2, 0)
-	streak.Color = ColorSequence.new(cfg.Trails.Color)
-	streak.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, cfg.Streaks.Size),
-		NumberSequenceKeypoint.new(1, 0),
+	local attB = Instance.new("Attachment")
+	attB.Name = "SprintRemoteB"
+	attB.Position = Vector3.new(0, cfg.Remote.CenterY - spacing / 2, 0)
+	attB.Parent = root
+	-- One short trail per remote runner, same cyan to blue palette as the
+	-- local leg trails, width scaled by the quality scale.
+	local trail = Instance.new("Trail")
+	trail.Name = "SprintRemoteTrail"
+	trail.Attachment0 = attA
+	trail.Attachment1 = attB
+	trail.FaceCamera = true
+	trail.Lifetime = cfg.Remote.Lifetime
+	trail.LightEmission = cfg.Brightness.TrailLightEmission
+	trail.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, cfg.Colors.ElectricCyan),
+		ColorSequenceKeypoint.new(cfg.Trail.ColorMid, cfg.Colors.BrightBlue),
+		ColorSequenceKeypoint.new(1.0, cfg.Colors.BrightBlue),
 	})
-	streak.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, cfg.Streaks.TransparencyIn),
+	trail.WidthScale = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, cfg.Remote.WidthScaleStart * qs),
+		NumberSequenceKeypoint.new(1, cfg.Remote.WidthScaleEnd * qs),
+	})
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, cfg.Remote.Transparency),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	streak.Parent = attA
+	trail.Enabled = true
+	trail.Parent = attA
 	local dustAtt = Instance.new("Attachment")
 	dustAtt.Name = "SprintRemoteDust"
 	dustAtt.Position = Vector3.new(0, -2.5, 0)
@@ -267,9 +309,10 @@ local function buildRemoteRig(player: Player, root: BasePart)
 	remoteRigs[player] = {
 		player = player,
 		root = root,
-		streak = streak,
+		trail = trail,
 		emit = dust,
 		attA = attA,
+		attB = attB,
 		dustAtt = dustAtt,
 		lastPos = root.Position,
 		timer = 0,
@@ -290,7 +333,9 @@ local function updateRemoteScan()
 			local root = char and char:FindFirstChild("HumanoidRootPart")
 			if root and root:IsA("BasePart") then
 				local dist = (root.Position - (HRP :: BasePart).Position).Magnitude
-				if dist <= cfg.Remote.Range and remoteRootSpeed(root) >= cfg.Remote.SpeedThreshold then
+				local mv = Config.Movement
+				local gate = mv.RunnerWalkSpeed * mv.SpeedScale + cfg.Remote.ThresholdRatio * ((mv.RunnerSprintSpeed - mv.RunnerWalkSpeed) * mv.SpeedScale)
+				if dist <= cfg.Remote.Range and remoteRootSpeed(root) >= gate then
 					table.insert(found, { player = player, root = root, dist = dist })
 				end
 			end
@@ -360,18 +405,22 @@ end
 
 -- TODO: remove before submission (temporary streak diagnosis dump)
 function dumpTrailState(speed: number)
-	for _, streak in { streakL, streakR } do
-		if streak == nil then
-			print("[SprintVFX] streak MISSING (not built)") -- TODO: remove before submission
+	for _, spec in limbSpecs do
+		local tr = limbTrailBySide[spec.side]
+		if tr == nil then
+			print("[SprintVFX] " .. spec.side .. " trail MISSING (not built)") -- TODO: remove before submission
 		else
-			local anchor = streak.Parent
-			local pp = if anchor and anchor:IsA("Attachment") then anchor.WorldPosition else Vector3.zero
+			local a0 = tr.Attachment0
+			local a1 = tr.Attachment1
+			local p0 = if a0 and a0:IsA("Attachment") then a0.WorldPosition else Vector3.zero
+			local p1 = if a1 and a1:IsA("Attachment") then a1.WorldPosition else Vector3.zero
+			local dist = (p0 - p1).Magnitude
 			print(string.format(
-				"[SprintVFX] intensity=%.2f speed=%.1f suppressed=%s enabled=%s rate=%.0f lifetime=%.2f orient=%s anchor=(%.1f,%.1f,%.1f)",
-				intensity, speed, tostring(suppressed()),
-				tostring(streak.Enabled), streak.Rate, streak.Lifetime.Min,
-				tostring(streak.Orientation),
-				pp.X, pp.Y, pp.Z
+				"[SprintVFX] %s trail: intensity=%.2f speed=%.1f suppressed=%s enabled=%s lifetime=%.2f spacing=%.3f att0=(%.1f,%.1f,%.1f) parent=%s",
+				spec.side, intensity, speed, tostring(suppressed()),
+				tostring(tr.Enabled), tr.Lifetime, dist,
+				p0.X, p0.Y, p0.Z,
+				tostring(tr.Parent and tr.Parent.Name)
 			)) -- TODO: remove before submission
 		end
 	end
@@ -380,14 +429,31 @@ end
 function updateTrails()
 	local cfg = Config.SprintVFX
 	local forced = Config.Debug.ForceTrailsVisible
-	local on = forced or intensity >= cfg.Trails.IntensityOn
-	local rate = if forced
-		then cfg.Streaks.RateMax
-		else (cfg.Streaks.RateMin + (cfg.Streaks.RateMax - cfg.Streaks.RateMin) * intensity) * qualityScale()
-	for _, streak in { streakL, streakR } do
-		if streak ~= nil then
-			streak.Enabled = on
-			streak.Rate = rate
+	local on = forced or intensity >= cfg.Trail.IntensityThreshold
+	local firstPerson = isFirstPerson()
+	local step = cfg.Trail.IntensityStep
+	local lastApplied: number = if lastTrailIntensity == nil then -step * 2 else (lastTrailIntensity :: number)
+	local intensityChanged = lastTrailIntensity == nil or math.abs(intensity - lastApplied) >= step
+	local onChanged = lastTrailOn == nil or on ~= lastTrailOn
+	local viewChanged = lastFirstPerson == nil or firstPerson ~= lastFirstPerson
+	if not intensityChanged and not onChanged and not viewChanged then
+		return
+	end
+	lastTrailIntensity = intensity
+	lastTrailOn = on
+	lastFirstPerson = firstPerson
+	local tIn = math.clamp(cfg.Trail.FadeBase - intensity, cfg.Trail.FadeMin, cfg.Trail.FadeMax)
+	local transSeq = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, tIn),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	for _, spec in limbSpecs do
+		local tr = limbTrailBySide[spec.side]
+		if tr ~= nil then
+			-- Arm trails hide in first person so they never fill the screen.
+			local show = on and not (spec.group == "Arm" and firstPerson)
+			tr.Enabled = show
+			tr.Transparency = transSeq
 		end
 	end
 end
@@ -527,13 +593,19 @@ local function spawnStreak()
 			local pos = HRP.Position + off * radius + Vector3.new(0, yOff, 0)
 			local len = L.LengthMin + math.random() * (L.LengthMax - L.LengthMin)
 			local thick = L.ThickMin + math.random() * (L.ThickMax - L.ThickMin)
-			local drift = L.DriftMin + math.random() * (L.DriftMax - L.DriftMin)
+			local drift = (L.DriftMin + math.random() * (L.DriftMax - L.DriftMin)) * Config.Movement.SpeedScale
 			s.vel = -f * drift
 			s.maxLife = L.LifeMin + math.random() * (L.LifeMax - L.LifeMin)
 			s.life = s.maxLife
 			s.birth = math.clamp(L.TransMax - (L.TransMax - L.TransMin) * intensity, 0, 1)
 			s.part.Size = Vector3.new(thick, thick, len)
-			s.part.Color = cfg.Colors.LineStart:Lerp(cfg.Colors.LineEnd, math.random())
+			-- Cyan to blue like the leg trails, with icy white on a small
+			-- share of lines so the trail stays the focus.
+			if math.random() < L.IcyShare then
+				s.part.Color = cfg.Colors.IcyWhite
+			else
+				s.part.Color = cfg.Colors.ElectricCyan:Lerp(cfg.Colors.BrightBlue, math.random())
+			end
 			s.part.Transparency = s.birth
 			s.part.CFrame = CFrame.lookAt(pos, pos + s.vel)
 			s.on = true
@@ -585,51 +657,83 @@ local function onSprint(state: unknown)
 	debugPrint("sprint " .. (if state then "start" else "stop")) -- TODO: remove before submission
 end
 
--- Character-scoped effects, rebuilt per respawn. Anchors sit on the root
--- part because it exists on every rig at torso height. The parts die with
--- the character, so respawn cannot leak them; refs are re-taken here.
+-- Character-scoped effects, rebuilt per respawn. Leg trail anchors sit on
+-- the lower legs (R15 LeftLowerLeg and RightLowerLeg, HRP fallback); arm
+-- trail anchors sit on the hands (R15 LeftHand and RightHand, skipped when
+-- missing so nothing lands on the torso). The parts die with the
+-- character, so respawn cannot leak them; refs are re-taken here.
 local function buildCharacterFx()
-	streakL = nil
-	streakR = nil
+	table.clear(limbTrailBySide)
 	dustEmit = nil
-	if HRP == nil then
+	if HRP == nil or Character == nil then
 		return
 	end
 	local cfg = Config.SprintVFX
 	local forced = Config.Debug.ForceTrailsVisible
-	for _, side in { -cfg.Trails.SideX, cfg.Trails.SideX } do
-		local attA = Instance.new("Attachment")
-		attA.Name = "SprintTrailA"
-		attA.Position = Vector3.new(side, cfg.Trails.HeightY, 0)
-		attA.Parent = HRP
-		-- Wind streak (Trail fallback): rate-scaled emitter, particles
-		-- oriented along their backward drift, world-locked so the running
-		-- character streams through them.
-		local streak = Instance.new("ParticleEmitter")
-		streak.Name = "SprintWindStreak"
-		streak.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		streak.Rate = 0
-		streak.Lifetime = NumberRange.new(cfg.Streaks.Lifetime)
-		streak.Speed = NumberRange.new(cfg.Streaks.SpeedMin, cfg.Streaks.SpeedMax)
-		streak.SpreadAngle = Vector2.new(15, 15)
-		streak.Orientation = Enum.ParticleOrientation.VelocityParallel
-		streak.EmissionDirection = Enum.NormalId.Back
-		streak.Acceleration = Vector3.new(0, -2, 0)
-		streak.Color = ColorSequence.new(cfg.Trails.Color)
-		streak.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, cfg.Streaks.Size),
-			NumberSequenceKeypoint.new(1, 0),
-		})
-		streak.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, cfg.Streaks.TransparencyIn),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		streak.Parent = attA
-		if side < 0 then
-			streakL = streak
+	local colorSeq = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, cfg.Colors.ElectricCyan),
+		ColorSequenceKeypoint.new(cfg.Trail.ColorMid, cfg.Colors.BrightBlue),
+		ColorSequenceKeypoint.new(1.0, cfg.Colors.BrightBlue),
+	})
+	local tIn = math.clamp(cfg.Trail.FadeBase - intensity, cfg.Trail.FadeMin, cfg.Trail.FadeMax)
+	local transSeq = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, tIn),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+
+	for _, spec in limbSpecs do
+		local isArm = spec.group == "Arm"
+		local set = if isArm then cfg.Trail.Arm else cfg.Trail
+		local parentPart: BasePart? = nil
+		if isArm then
+			local hand = Character:FindFirstChild(spec.partName)
+			if hand ~= nil and hand:IsA("BasePart") then
+				parentPart = hand
+			end
+		elseif spec.side == "L" then
+			parentPart = (Character:FindFirstChild(spec.partName) or Character:WaitForChild(spec.partName, 1) or Character:FindFirstChild("Left Leg") or HRP) :: BasePart
 		else
-			streakR = streak
+			parentPart = (Character:FindFirstChild(spec.partName) or Character:WaitForChild(spec.partName, 1) or Character:FindFirstChild("Right Leg") or HRP) :: BasePart
 		end
+		if parentPart == nil then
+			continue -- hand missing: skip, never fall back to the torso
+		end
+		local widthSeq = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, set.WidthScaleStart),
+			NumberSequenceKeypoint.new(1, set.WidthScaleEnd),
+		})
+		-- Positive SideX means outward from the centerline on every limb.
+		-- The sign is derived from the part position relative to HRP, so no
+		-- assumption about left or right local axes is needed.
+		local rootPart = HRP :: BasePart
+		local relX = rootPart.CFrame:PointToObjectSpace(parentPart.Position).X
+		local dir = if relX > 0.001 then 1 else (if relX < -0.001 then -1 else 0)
+		local xOff = dir * set.SideX
+		local att0 = Instance.new("Attachment")
+		att0.Name = "SprintTrailAtt0_" .. spec.side
+		att0.Position = Vector3.new(xOff, set.HeightY + set.AttachmentSpacing / 2, set.DepthZ)
+		att0.Parent = parentPart
+
+		local att1 = Instance.new("Attachment")
+		att1.Name = "SprintTrailAtt1_" .. spec.side
+		att1.Position = Vector3.new(xOff, set.HeightY - set.AttachmentSpacing / 2, set.DepthZ)
+		att1.Parent = parentPart
+
+		local trail = Instance.new("Trail")
+		trail.Name = "NeonSpeedTrail_" .. spec.side
+		trail.Attachment0 = att0
+		trail.Attachment1 = att1
+		trail.FaceCamera = true
+		trail.Lifetime = set.Lifetime
+		trail.MaxLength = set.MaxLength * Config.Movement.SpeedScale
+		trail.LightEmission = cfg.Brightness.TrailLightEmission
+		trail.Color = colorSeq
+		trail.WidthScale = widthSeq
+		trail.Transparency = transSeq
+		trail.Enabled = forced or (intensity >= cfg.Trail.IntensityThreshold)
+		trail.Parent = parentPart
+
+		limbTrailBySide[spec.side] = trail
 	end
 	local dustAtt = Instance.new("Attachment")
 	dustAtt.Name = "SprintDust"
@@ -661,8 +765,9 @@ local function trackCharacter(char: Model)
 	Character = char
 	Humanoid = char:WaitForChild("Humanoid") :: Humanoid
 	HRP = char:WaitForChild("HumanoidRootPart") :: BasePart
-	buildCharacterFx()
-	-- Reset per spawn: park the pool, drop our FOV delta, drain silently.
+	local head = char:FindFirstChild("Head")
+	Head = if head ~= nil and head:IsA("BasePart") then head else nil
+	-- Reset per spawn first, then build, so a new character never starts with old intensity.
 	for _, s in lines do
 		parkStreak(s)
 	end
@@ -672,7 +777,11 @@ local function trackCharacter(char: Model)
 	removeFov()
 	active = false
 	intensity = 0
+	lastTrailIntensity = nil
+	lastTrailOn = nil
+	lastFirstPerson = nil
 	disconnectLoop()
+	buildCharacterFx()
 end
 
 local function buildPool()
@@ -688,7 +797,7 @@ local function buildPool()
 		part.Name = "SprintLine"
 		part.Shape = Enum.PartType.Block
 		part.Size = Vector3.new(0.1, 0.1, 2)
-		part.Color = Config.SprintVFX.Colors.LineStart
+		part.Color = Config.SprintVFX.Colors.ElectricCyan
 		part.Material = Enum.Material.Neon
 		part.Transparency = 1
 		part.Anchored = true
@@ -756,6 +865,9 @@ function SprintVFX:Destroy()
 	disconnectRemoteLoop()
 	active = false
 	intensity = 0
+	lastTrailIntensity = nil
+	lastTrailOn = nil
+	lastFirstPerson = nil
 	spawnAcc = 0
 	removeFov()
 	if vfxFolder ~= nil then
@@ -763,9 +875,12 @@ function SprintVFX:Destroy()
 		vfxFolder = nil
 	end
 	table.clear(lines)
+	table.clear(limbTrailBySide)
+	dustEmit = nil
 	Character = nil
 	Humanoid = nil
 	HRP = nil
+	Head = nil
 	debugPrint("destroy") -- TODO: remove before submission
 end
 

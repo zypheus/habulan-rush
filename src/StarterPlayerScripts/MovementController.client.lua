@@ -212,7 +212,7 @@ local function applySpeed()
 		return
 	end
 	if role == "Taya" then
-		Humanoid.WalkSpeed = Mv.TayaSpeed
+		Humanoid.WalkSpeed = Mv.TayaSpeed * Mv.SpeedScale
 		return
 	end
 
@@ -228,9 +228,9 @@ local function applySpeed()
 
 	local targetSpeed: number
 	if isSprinting then
-		targetSpeed = Mv.RunnerSprintSpeed * mult
+		targetSpeed = Mv.RunnerSprintSpeed * Mv.SpeedScale * mult
 	else
-		targetSpeed = Mv.RunnerWalkSpeed * mult
+		targetSpeed = Mv.RunnerWalkSpeed * Mv.SpeedScale * mult
 	end
 
 	Humanoid.WalkSpeed = targetSpeed
@@ -524,7 +524,7 @@ local function performDash()
 	startDashFX()
 
 	-- Clamp travel so we stop at walls instead of phasing through them.
-	local travel = Mv.DashDistance
+	local travel = Mv.DashDistance * Mv.SpeedScale
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 	rayParams.FilterDescendantsInstances = { Character }
@@ -612,7 +612,7 @@ local function performSlide()
 	-- Hold entry momentum: lock WalkSpeed at max(walk, current horizontal speed)
 	-- and add a small forward burst via AssemblyLinearVelocity (physics-safe).
 	local flatVel = Vector3.new(HRP.AssemblyLinearVelocity.X, 0, HRP.AssemblyLinearVelocity.Z)
-	local entrySpeed = math.max(Mv.RunnerWalkSpeed, flatVel.Magnitude)
+	local entrySpeed = math.max(Mv.RunnerWalkSpeed * Mv.SpeedScale, flatVel.Magnitude)
 	Humanoid.WalkSpeed = entrySpeed
 	local burstDir = Vector3.new(Humanoid.MoveDirection.X, 0, Humanoid.MoveDirection.Z)
 	if burstDir.Magnitude > 0.01 then
@@ -919,7 +919,7 @@ local function playSkillCastFX(casterId: number, sid: string, dir: Vector3)
 		startAirTrail(hrp, sk.vfx.trailLifetime)
 		playSkillSound(hrp, sk.sounds.takeoff)
 		if isOwner then
-			skillPreviewRing = spawnLandingPreview(hrp.Position, sk.vfx.previewSize, dir, sk.params.distance)
+			skillPreviewRing = spawnLandingPreview(hrp.Position, sk.vfx.previewSize, dir, sk.params.distance * Mv.SpeedScale)
 		end
 	end)
 
@@ -1660,7 +1660,7 @@ local function launchSkill()
 	-- apex ~14.1 (spec 14), range 18.0 (spec 18): all within 10 percent.
 	local g = Workspace.Gravity
 	local vy = g * sk.params.airtime / 2
-	local vh = sk.params.distance / sk.params.airtime
+	local vh = (sk.params.distance * Mv.SpeedScale) / sk.params.airtime
 
 	-- Heading: frozen from the approved direction when lockDirection.
 	local dir = skillCastDir

@@ -329,7 +329,7 @@ end
 local function ensureCharacterDefaults()
 	-- T09 tuning relies on WalkSpeed set at runtime, but sane defaults help
 	-- before MovementController attaches (avoids 16-vs-default pop).
-	StarterPlayer.CharacterWalkSpeed = Config.Movement.RunnerWalkSpeed
+	StarterPlayer.CharacterWalkSpeed = Config.Movement.RunnerWalkSpeed * Config.Movement.SpeedScale
 	StarterPlayer.CharacterJumpPower = 50 -- RM_05: vaults obstacles <= 4 studs
 end
 

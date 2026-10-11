@@ -12,8 +12,12 @@ local Config = {}
 -- ============================================================
 Config.Movement = {
 	-- Runner speeds (studs/s)
-	RunnerWalkSpeed   = 16,   -- [LOCKED via TDD §3]
-	RunnerSprintSpeed = 21,   -- [LOCKED via TDD §3]
+	RunnerWalkSpeed   = 16,   -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
+	RunnerSprintSpeed = 21,   -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
+
+	-- Global speed scale [SD]: multiplies every movement speed and every
+	-- speed-derived distance at its use site. 1 keeps the locked base values.
+	SpeedScale = 1.5, -- [SD] 1 = locked bases (walk 16, sprint 21, Taya 18)
 
 	-- Stamina
 	StaminaMax         = 100,
@@ -34,7 +38,7 @@ Config.Movement = {
 	SlideHitboxScale  = 0.5,  -- [SD] 50% height
 
 	-- Taya
-	TayaSpeed         = 18,   -- studs/s constant, no stamina
+	TayaSpeed         = 18,   -- [LOCKED GDD TM_01] studs/s constant, no stamina
 
 	-- Post-tag speed boost for ex-Taya [SD F08]
 	PostTagSpeedBoostMult     = 1.20, -- multiplies base walk and sprint
@@ -72,40 +76,74 @@ Config.SprintVFX = {
 	FovDelta = 5, -- [SD] FOV widen at full intensity (deg)
 	FovInTime = 0.25, -- [SD] FOV ease in (s)
 	FovOutTime = 0.3, -- [SD] FOV ease out (s)
-	MaxInstances = 48, -- [SD] hard Instance cap for this feature
+	MaxInstances = 52, -- [SD] hard Instance cap for this feature (14 local + 21 pool + 15 remote = 50, plus 2 spare)
+	-- Color palette [SD]
+	Colors = {
+		ElectricCyan = Color3.fromRGB(0, 220, 255), -- [SD] Primary
+		BrightBlue = Color3.fromRGB(50, 130, 255), -- [SD] Secondary
+		IcyWhite = Color3.fromRGB(225, 250, 255), -- [SD] Highlight (used sparingly)
+	},
+
+	-- Brightness ranking [SD]: Trail is rank 1 (foreground focus)
+	Brightness = {
+		TrailLightEmission = 0.9, -- [SD] intense energy glow
+	},
+
+	-- Neon Speed Trail (Option A) [SD]
+	-- Real world width = AttachmentSpacing * WidthScale
+	Trail = {
+		Lifetime = 1.0, -- [SD] trail segment lifetime in seconds (about 21 studs at sprint speed 21)
+		MaxLength = 21, -- [SD] maximum leg trail ribbon length (studs)
+		AttachmentSpacing = 0.35, -- [SD] studs distance between Attachment0 and Attachment1
+		WidthScaleStart = 4.0, -- [SD] multiplier at start (1.4 studs real world width)
+		WidthScaleEnd = 0.05, -- [SD] multiplier at tip (0.0175 studs real world needle tip)
+		IntensityThreshold = 0.2, -- [SD] intensity at which trail starts fading in
+		IntensityStep = 0.05, -- [SD] minimum intensity delta before updating trail properties
+		SideX = 0, -- [SD] lateral offset from lower leg center, positive means outward from the centerline (studs)
+		HeightY = -0.5, -- [SD] vertical center of the trail segment within the lower leg (studs)
+		DepthZ = -0.2, -- [SD] posterior offset behind the lower leg center (studs)
+		ColorMid = 0.6, -- [SD] position of the middle color keypoint (0 to 1)
+		FadeBase = 1.0, -- [SD] transparency mapping base: birth transparency before clamp is FadeBase minus intensity
+		FadeMin = 0.0, -- [SD] minimum birth transparency (0 is opaque)
+		FadeMax = 0.95, -- [SD] maximum birth transparency (1 is invisible)
+
+		-- Arm Trails (hands) [SD]
+		-- Same palette and fade as the leg trails, about half the width and
+		-- lifetime. Real world width = AttachmentSpacing * WidthScale.
+		Arm = {
+			AttachmentSpacing = 0.35, -- [SD] studs distance between Attachment0 and Attachment1
+			WidthScaleStart = 2.0, -- [SD] multiplier at start (0.7 studs real world width)
+			WidthScaleEnd = 0.025, -- [SD] multiplier at tip (0.00875 studs real world needle tip)
+			Lifetime = 0.5, -- [SD] trail segment lifetime in seconds (about 10 studs at sprint speed)
+			MaxLength = 10, -- [SD] maximum arm trail ribbon length (studs)
+			SideX = 0, -- [SD] lateral offset from hand center, positive means outward from the centerline (studs)
+			HeightY = 0, -- [SD] vertical center of the trail segment within the hand (studs)
+			DepthZ = -0.15, -- [SD] posterior offset behind the hand center (studs)
+		},
+	},
+
+	-- Speed Lines (improved pooled system) [SD]
 	Lines = {
 		Max = 20, -- [SD] pooled streak parts
 		SpawnMin = 6, -- [SD] streaks per second at intensity 0
 		SpawnMax = 24, -- [SD] streaks per second at intensity 1
-		LifeMin = 0.25, -- [SD] streak lifetime low (s)
-		LifeMax = 0.5, -- [SD] streak lifetime high (s)
-		LengthMin = 1.5, -- [SD] streak length low (studs)
-		LengthMax = 4.0, -- [SD] streak length high (studs)
-		ThickMin = 0.06, -- [SD] streak thickness low (studs)
-		ThickMax = 0.14, -- [SD] streak thickness high (studs)
-		TransMin = 0.25, -- [SD] birth transparency, most visible (0 opaque)
-		TransMax = 0.65, -- [SD] birth transparency, faintest
-		InnerRadius = 2.0, -- [SD] spawn ring inner edge (studs)
-		OuterRadius = 5.0, -- [SD] spawn ring outer edge (studs)
-		CenterConeDeg = 50, -- [SD] excluded forward cone (deg)
-		DriftMin = 6, -- [SD] backward drift low (studs/s)
-		DriftMax = 14, -- [SD] backward drift high (studs/s)
+		LifeMin = 0.2, -- [SD] streak lifetime low (s)
+		LifeMax = 0.4, -- [SD] streak lifetime high (s)
+		LengthMin = 2.0, -- [SD] streak length low (studs)
+		LengthMax = 4.5, -- [SD] streak length high (studs)
+		ThickMin = 0.05, -- [SD] streak thickness low (studs)
+		ThickMax = 0.10, -- [SD] streak thickness high (studs)
+		TransMin = 0.50, -- [SD] birth transparency at full intensity (dimmer than the leg trail so the trail stays the focus)
+		TransMax = 0.80, -- [SD] birth transparency at min intensity
+		IcyShare = 0.12, -- [SD] share of speed lines drawn icy white, the rest blend cyan to blue (0 to 1)
+		InnerRadius = 2.5, -- [SD] spawn ring inner edge, safely clears character (studs)
+		OuterRadius = 5.5, -- [SD] spawn ring outer edge (studs)
+		CenterConeDeg = 50, -- [SD] excluded forward cone, preserves screen center and reticle (deg)
+		DriftMin = 10, -- [SD] backward drift speed low (studs/s)
+		DriftMax = 20, -- [SD] backward drift speed high (studs/s)
 	},
-	Trails = {
-		Color = Color3.fromRGB(200, 235, 255), -- [SD] pale cyan
-		IntensityOn = 0.35, -- [SD] intensity enabling the streaks
-		SideX = 1.15, -- [SD] side offset, just outside the R15 torso (half width 1.0)
-		HeightY = -1.8, -- [SD] height below root center, shin level (studs)
-	},
-	Streaks = { -- [SD] emitter wind streaks (Trail fallback, no streak texture needed)
-		RateMin = 15, -- [SD] particles per second per side at intensity 0
-		RateMax = 50, -- [SD] particles per second per side at intensity 1
-		Lifetime = 0.3, -- [SD] streak lifetime (s)
-		SpeedMin = 2, -- [SD] backward drift low (studs/s)
-		SpeedMax = 5, -- [SD] backward drift high (studs/s)
-		Size = 0.35, -- [SD] streak particle start size (studs)
-		TransparencyIn = 0.4, -- [SD] birth transparency (0 opaque)
-	},
+
+	-- Dust (preserved exactly from current balance)
 	Dust = {
 		StartBurst = 14, -- [SD] puff count at sprint start (under 30)
 		Life = 0.4, -- [SD] dust lifetime (s)
@@ -124,15 +162,19 @@ Config.SprintVFX = {
 			Sand = Color3.fromRGB(225, 205, 150),
 		},
 	},
+
+	-- Remote runner light rigs [SD]
 	Remote = {
 		Range = 40, -- [SD] max distance for remote effects (studs)
 		Cap = 3, -- [SD] max remote players with effects
-		SpeedThreshold = 19, -- [SD] min horizontal speed (studs/s)
 		ScanRate = 4, -- [SD] scans per second
-	},
-	Colors = {
-		LineStart = Color3.fromRGB(235, 245, 255), -- [SD] streak head white
-		LineEnd = Color3.fromRGB(140, 220, 255), -- [SD] streak tail cyan
+		ThresholdRatio = 0.6, -- [SD] remote effect speed gate as a share from walk to sprint: walk + ratio * (sprint - walk), using scaled speeds (19 at scale 1)
+		AttachmentSpacing = 0.25, -- [SD] studs distance between remote attachments
+		WidthScaleStart = 0.8, -- [SD] 0.20 studs real world width
+		WidthScaleEnd = 0.05, -- [SD] 0.0125 studs real world needle tip
+		Lifetime = 0.2, -- [SD] shorter remote trail lifetime
+		CenterY = -1.5, -- [SD] vertical center of the remote trail segment relative to the root (studs)
+		Transparency = 0.3, -- [SD] remote trail birth transparency (dimmer than the local trail)
 	},
 }
 

@@ -52,6 +52,7 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [x] Implement Dash (12 studs in 0.2s, 6s cooldown, sends `RequestDash`).
   - [x] Implement Slide (0.6s, 3s cooldown, 50% hitbox height).
   - [x] Implement control bindings for PC, Touch/Mobile, and Gamepad.
+  - [ ] (2026-10-11) SpeedScale experiment: Config.Movement.SpeedScale routes every speed (walk/sprint/Taya/slide-entry/dash/RS_01/remote-gate/trail-caps/line-drift); locked bases 16/21/18 untouched; currently 1.5 (walk 24, sprint 31.5, Taya 27); team sign-off + 2-player playtest pending.
 - [ ] (2026-10-10) **T10 [Code/P0] Taya Timer & Scoreboard Replication**
   - [ ] Implement server-authoritative tenths-of-a-second Taya Time accumulator.
   - [ ] Replicate round timer and player rankings via `StateChanged`.

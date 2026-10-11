@@ -345,7 +345,7 @@ local function updateBots(now: number)
 				end
 				if best then
 					local br = getRoot(best)
-					hum.WalkSpeed = Config.Movement.TayaSpeed
+					hum.WalkSpeed = Config.Movement.TayaSpeed * Config.Movement.SpeedScale
 					if br then
 						hum:MoveTo(br.Position)
 					end
@@ -354,7 +354,7 @@ local function updateBots(now: number)
 					end
 				end
 			else
-				hum.WalkSpeed = Config.Movement.RunnerWalkSpeed
+				hum.WalkSpeed = Config.Movement.RunnerWalkSpeed * Config.Movement.SpeedScale
 				local tayaRoot = currentTaya and getRoot(currentTaya)
 				if tayaRoot and (tayaRoot.Position - root.Position).Magnitude < 28 then
 					-- flee from Taya, clamped to the arena
