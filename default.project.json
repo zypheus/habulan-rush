@@ -14,6 +14,12 @@
       "TsinelasArc": {
         "$path": "src/ReplicatedStorage/TsinelasArc.lua"
       },
+      "VFX": {
+        "$path": "src/ReplicatedStorage/VFX"
+      },
+      "Cosmetics": {
+        "$path": "src/ReplicatedStorage/Cosmetics"
+      },
       "Remotes": {
         "$className": "Folder",
         "RequestPounce":   { "$className": "RemoteEvent" },
@@ -29,7 +35,9 @@
         "SkillLanded":     { "$className": "RemoteEvent" },
         "DiskarteUpdate":  { "$className": "RemoteEvent" },
         "ClutchEvent":     { "$className": "RemoteEvent" },
-        "QueueEvent":      { "$className": "RemoteEvent" }
+        "QueueEvent":      { "$className": "RemoteEvent" },
+        "PartyEvent":      { "$className": "RemoteEvent" },
+        "MapVoteEvent":    { "$className": "RemoteEvent" }
       }
     },
 
@@ -42,6 +50,9 @@
 
     "ServerScriptService": {
       "$className": "ServerScriptService",
+      "PartyService": {
+        "$path": "src/ServerScriptService/PartyService.lua"
+      },
       "MatchService": {
         "$path": "src/ServerScriptService/MatchService.server.lua"
       },
@@ -53,6 +64,9 @@
       },
       "EventService": {
         "$path": "src/ServerScriptService/EventService.server.lua"
+      },
+      "RunStyleService": {
+        "$path": "src/ServerScriptService/RunStyleService.server.lua"
       },
       "Bootstrap": {
         "$path": "src/ServerScriptService/Bootstrap.server.lua"
@@ -83,6 +97,9 @@
         },
         "LobbyUI": {
           "$path": "src/StarterPlayerScripts/LobbyUI.client.lua"
+        },
+        "MapVoteUI": {
+          "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"
         }
       }
     }

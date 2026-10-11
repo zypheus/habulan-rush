@@ -1573,8 +1573,17 @@ local function onCharacterAdded(char: Model)
 		if not hit.Anchored then
 			return -- other players and debris are not walls
 		end
-		if math.abs(hit.Normal.Y) > 0.5 then
+		-- Check if contact is vertical (floor or ceiling) rather than a wall
+		local deltaY = hit.Position.Y - HRP.Position.Y
+		if math.abs(deltaY) > (hit.Size.Y * 0.5 + 1.0) then
 			return -- floor and ceiling contacts are normal landings
+		end
+		local castDir = (hit.Position - HRP.Position)
+		if castDir.Magnitude > 0.1 then
+			local ray = Workspace:Raycast(HRP.Position, castDir.Unit * (castDir.Magnitude + 2))
+			if ray and math.abs(ray.Normal.Y) > 0.5 then
+				return -- floor and ceiling contacts are normal landings
+			end
 		end
 		local vel = HRP.AssemblyLinearVelocity
 		HRP.AssemblyLinearVelocity = Vector3.new(0, vel.Y, 0) -- kill horizontal push

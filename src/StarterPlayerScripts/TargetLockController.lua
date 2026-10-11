@@ -1,13 +1,15 @@
 --!strict
 -- Client-only aim helper. Server tag and pounce checks must never trust it.
--- Integration attributes, set by the server on Player:
--- IsTaya: true for Taya; false or absent for a Runner.
+-- TAYA-ONLY: the lock is a Taya tool. Runners cannot acquire or cycle, and a
+-- lock breaks the moment a tag transfer turns the local Taya into a Runner.
+-- Integration attributes, set by the server on Player or Bot:
+-- HRushRole: "Taya" for Taya; "Runner" for Runner.
+-- IsTaya: true for Taya; false or absent for a Runner (legacy / fallback).
 -- LockDelayUntil: server timestamp; T12 blocks acquisition until it expires.
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
 -- IsDashing / IsHidden: target flags that break locks (Stage E).
 -- RS_02 client effects can require this module and call :BreakLock("DecoySwap").
--- Implemented: acquisition, manual toggle, cycle, reticle, camera assist.
--- Pending: break rules (E), attribute hooks (E).
+-- Supports targeting both human Players and Bot Models in Workspace.Bots.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,35 +25,59 @@ local LocalPlayer = Players.LocalPlayer
 local TargetLockController = {}
 local initialized = false
 local connections: { RBXScriptConnection } = {}
-local target: Player? = nil
+local target: Instance? = nil
+local targetCharacter: Model? = nil
 local roundLive = false
 local cooldownUntil = 0
 local scanElapsed = 0
 local acquireRequested = false
-local toggleFireCount = 0 -- diagnostic: counts toggle Begin events (Stage A)
--- Camera assist state: a persistent angular offset owned by the lock.
+local toggleFireCount = 0
+local lastSteerAt = 0 -- os.clock() of the last real camera input (dampen hold)
+local lockAge = 0     -- seconds since the current lock began; eases retarget whips
+
+-- Camera assist state.
+-- Non-accumulating: each frame we lerp the camera toward looking at the
+-- target. The Roblox PlayerModule ClassicCamera rewrites camera.CFrame every
+-- frame from its own internal state at RenderPriority.Camera, so any
+-- persistent offset we accumulate gets discarded. Lerping from the fresh
+-- ClassicCamera output toward the desired look direction avoids that fight.
 local ASSIST_BIND = "TargetLockAssist"
 local assistBound = false
-local yawOffset = 0   -- radians, persists across frames
-local pitchOffset = 0 -- radians, persists across frames
 local steerFlag = false -- set true on any camera input this frame
 local stickMag = 0      -- right-stick magnitude, kept while held
+local camOffset: Vector3? = nil  -- world-space camera-to-HRP offset, captured at lock
+local smoothedAim: Vector3? = nil  -- EMA-smoothed aim point for jitter-free tracking
 local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
 local CYCLE_ACTION = "HRUSH_TargetLockCycle"
 
-type Candidate = { player: Player, character: Model, root: BasePart, aimPart: BasePart }
+type Candidate = {
+	target: Instance,       -- Player or Model
+	name: string,
+	character: Model,
+	root: BasePart,
+	aimPart: BasePart,
+}
+
 local candidates: { Candidate } = {}
 local reticleGui: BillboardGui? = nil
 local targetConnections: { RBXScriptConnection } = {}
+local noticeGui: ScreenGui? = nil
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
--- Respect CanQuery rather than treating non-collidable cover as invisible.
 rayParams.RespectCanCollide = false
 
 local function debugPrint(message: string)
 	if Settings.DebugPrint then
 		print("[TargetLockController] " .. message)
 	end
+end
+
+local function isLocalTaya(): boolean
+	local myRole = LocalPlayer:GetAttribute("HRushRole")
+	if not myRole then
+		myRole = (LocalPlayer:GetAttribute("IsTaya") == true) and "Taya" or "Runner"
+	end
+	return myRole == "Taya"
 end
 
 local function livingRoot(character: Model?): BasePart?
@@ -67,8 +93,8 @@ local function livingRoot(character: Model?): BasePart?
 end
 
 local function aimPart(character: Model): BasePart?
-	-- Support R15 and R6 without ever aiming at feet.
-	local part = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local part = character:FindFirstChild("UpperTorso")
+		or character:FindFirstChild("Torso")
 		or character:FindFirstChild("Head")
 	if part and part:IsA("BasePart") then
 		return part
@@ -76,10 +102,49 @@ local function aimPart(character: Model): BasePart?
 	return nil
 end
 
--- Reticle lifecycle helpers. The GUI lives in this client's PlayerGui, so only
--- this player ever sees it.
+-- "TAYA ONLY" toast so a Runner pressing R understands why nothing happened.
+local function showTayaOnlyNotice()
+	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if not playerGui then
+		return
+	end
+	if noticeGui then
+		noticeGui:Destroy()
+	end
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "HRUSH_TargetLockNotice"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 50
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5, 1)
+	label.Position = UDim2.new(0.5, 0, 0.78, 0)
+	label.Size = UDim2.fromOffset(320, 34)
+	label.BackgroundColor3 = Color3.fromRGB(24, 34, 42)
+	label.BackgroundTransparency = 0.15
+	label.BorderSizePixel = 0
+	label.Text = "TARGET LOCK — TAYA ONLY"
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 14
+	label.TextColor3 = Color3.fromRGB(235, 64, 64)
+	local labelCorner = Instance.new("UICorner")
+	labelCorner.CornerRadius = UDim.new(0, 8)
+	labelCorner.Parent = label
+	label.Parent = gui
+	gui.Parent = playerGui
+	noticeGui = gui
+	task.delay(1.2, function()
+		if gui.Parent then
+			gui:Destroy()
+		end
+		if noticeGui == gui then
+			noticeGui = nil
+		end
+	end)
+end
+
 local function unbindTargetConnections()
-	for _, connection in targetConnections do
+	for _, connection in ipairs(targetConnections) do
 		connection:Disconnect()
 	end
 	table.clear(targetConnections)
@@ -92,8 +157,6 @@ local function destroyReticleNow()
 	end
 end
 
--- Draw the ring with UI instances only (Frame + UICorner + UIStroke + notches)
--- so it needs no image asset and still reads without colour.
 local function createReticle(aim: BasePart?)
 	destroyReticleNow()
 	if not aim then
@@ -105,14 +168,25 @@ local function createReticle(aim: BasePart?)
 	end
 	local rc = Settings.Reticle
 
+	-- Adorn the HumanoidRootPart (never animated) at chest height instead of
+	-- the UpperTorso, which bobs every animation frame and shook the ring.
+	local adornPart = aim
+	local aimParent = aim.Parent
+	if aimParent and aimParent:IsA("Model") then
+		local hrp = aimParent:FindFirstChild("HumanoidRootPart")
+		if hrp and hrp:IsA("BasePart") then
+			adornPart = hrp
+		end
+	end
+
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "HRUSH_TargetLockReticle"
 	gui.ResetOnSpawn = false
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Size = UDim2.fromOffset(rc.SizePx, rc.SizePx)
-	gui.StudsOffset = rc.StudsOffset
-	gui.Adornee = aim
+	gui.StudsOffset = Vector3.new(0, Settings.CameraAssist.AimAnchorHeight, 0)
+	gui.Adornee = adornPart
 
 	local ring = Instance.new("Frame")
 	ring.Name = "Ring"
@@ -121,17 +195,16 @@ local function createReticle(aim: BasePart?)
 	ring.Size = UDim2.fromScale(1, 1)
 	ring.BackgroundTransparency = 1
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(1, 0) -- full radius turns the square frame into a circle
-	corner.Parent = ring
+	local ringCorner = Instance.new("UICorner")
+	ringCorner.CornerRadius = UDim.new(1, 0)
+	ringCorner.Parent = ring
 
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = rc.RingColor
-	stroke.Thickness = rc.RingThickness
-	stroke.Transparency = rc.RingTransparency
-	stroke.Parent = ring
+	local ringStroke = Instance.new("UIStroke")
+	ringStroke.Color = rc.RingColor
+	ringStroke.Thickness = rc.RingThickness
+	ringStroke.Transparency = rc.RingTransparency
+	ringStroke.Parent = ring
 
-	-- Four notch marks keep the ring readable in grayscale.
 	local function makeNotch(name: string, x: number, y: number, ax: number, ay: number)
 		local mark = Instance.new("Frame")
 		mark.Name = name
@@ -170,8 +243,6 @@ local function createReticle(aim: BasePart?)
 	end
 end
 
--- Remove the reticle, fading it first when animated. The reference is cleared
--- immediately so a fresh lock can build a new one while the old fades out.
 local function destroyReticle(animated: boolean?)
 	local gui = reticleGui
 	reticleGui = nil
@@ -184,16 +255,16 @@ local function destroyReticle(animated: boolean?)
 	end
 	local rc = Settings.Reticle
 	local ring = gui:FindFirstChild("Ring")
-	local stroke = ring and ring:FindFirstChildOfClass("UIStroke")
+	local ringStroke = ring and ring:FindFirstChildOfClass("UIStroke")
 	local scale = ring and ring:FindFirstChildOfClass("UIScale")
 	if scale then
 		TweenService:Create(scale, TweenInfo.new(rc.FadeOutTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = rc.EndScale }):Play()
 	end
-	if stroke then
-		TweenService:Create(stroke, TweenInfo.new(rc.FadeOutTime), { Transparency = 1 }):Play()
+	if ringStroke then
+		TweenService:Create(ringStroke, TweenInfo.new(rc.FadeOutTime), { Transparency = 1 }):Play()
 	end
 	if ring then
-		for _, child in ring:GetChildren() do
+		for _, child in ipairs(ring:GetChildren()) do
 			if child:IsA("Frame") then
 				TweenService:Create(child, TweenInfo.new(rc.FadeOutTime), { BackgroundTransparency = 1 }):Play()
 			end
@@ -206,35 +277,27 @@ local function destroyReticle(animated: boolean?)
 	end)
 end
 
--- Break the lock when the target dies, leaves, or its character is removed.
-local function bindTargetLifecycle(targetPlayer: Player)
-	local character = targetPlayer.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+local function bindTargetLifecycle(targetInst: Instance, targetChar: Model)
+	local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		table.insert(targetConnections, humanoid.Died:Once(function()
 			TargetLockController:BreakLock("TargetDied")
 		end))
 	end
-	if character then
-		table.insert(targetConnections, character.AncestryChanged:Connect(function(_child, parent)
-			if parent == nil then
-				TargetLockController:BreakLock("TargetCharacterRemoved")
+	table.insert(targetConnections, targetChar.AncestryChanged:Connect(function(_child, parent)
+		if parent == nil then
+			TargetLockController:BreakLock("TargetCharacterRemoved")
+		end
+	end))
+	if targetInst:IsA("Player") then
+		table.insert(targetConnections, Players.PlayerRemoving:Connect(function(leaver)
+			if leaver == targetInst then
+				TargetLockController:BreakLock("TargetLeft")
 			end
 		end))
 	end
-	table.insert(targetConnections, Players.PlayerRemoving:Connect(function(leaver)
-		if leaver == targetPlayer then
-			TargetLockController:BreakLock("TargetLeft")
-		end
-	end))
 end
 
--- ===== Camera soft assist (Stage C) =====
--- A persistent yaw/pitch offset owned by the lock. The default camera runs first
--- at Camera priority and resets camera.CFrame each frame, so we read its fresh
--- output at Camera + 1, rotate it by our stored offsets, and write it back.
--- We never persist camera.CFrame itself (the default would overwrite it); we
--- persist yawOffset/pitchOffset and re-apply them to the fresh default every frame.
 local assistPrintAcc = 0
 
 local function unbindAssist()
@@ -243,10 +306,15 @@ local function unbindAssist()
 	end
 	RunService:UnbindFromRenderStep(ASSIST_BIND)
 	assistBound = false
-	yawOffset = 0
-	pitchOffset = 0
+	-- Restore ClassicCamera control.
+	local camera = Workspace.CurrentCamera
+	if camera and camera.CameraType == Enum.CameraType.Scriptable then
+		camera.CameraType = Enum.CameraType.Custom
+	end
+	smoothedAim = nil
+	camOffset = nil
 	if Config.Debug.ShowLockDebug then
-		print("[TargetLock] assist render step unbound")
+		print("[TargetLock] assist unbound, CameraType restored to Custom")
 	end
 end
 
@@ -260,89 +328,71 @@ local function onAssistRender(dt: number)
 	if not camera then
 		return
 	end
-	-- Only assist while the DEFAULT camera is driving (CameraType == Custom). In
-	-- that state the default camera rewrites camera.CFrame at Camera priority every
-	-- frame, so the base we read here is clean and rotating it cannot compound.
-	-- In Scriptable (or any other) mode nothing resets camera.CFrame, so rotating
-	-- what we read would compound our own previous write into a shake. LobbyUI's
-	-- lobby camera forces Scriptable, so back out cleanly if it is still active.
-	if camera.CameraType ~= Enum.CameraType.Custom then
-		if Config.Debug.ShowLockDebug then
-			print("[TargetLock] assist off, CameraType=" .. tostring(camera.CameraType))
-		end
+
+	-- If the lock was broken, stop assisting immediately.
+	if not target or not targetCharacter then
 		unbindAssist()
 		return
 	end
 
-	-- Where the locked target's aim point is this frame, if any.
+	lockAge += dt
+
+	-- Get local player's root for camera positioning.
+	local playerChar = LocalPlayer.Character
+	local playerRoot = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
+	if not playerRoot or not playerRoot:IsA("BasePart") then
+		return
+	end
+
+	-- Compute the aim point from the target's root part.
 	local aimPoint: Vector3? = nil
-	local tp = target
-	if tp then
-		local char = tp.Character
-		local part = char and aimPart(char)
-		if part then
-			aimPoint = part.Position + Settings.AimPointOffset
+	if targetCharacter.Parent then
+		local rootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+		if rootPart and rootPart:IsA("BasePart") then
+			aimPoint = rootPart.Position + Vector3.new(0, ca.AimAnchorHeight, 0)
 		end
 	end
 
-	local base = camera.CFrame -- the default camera's fresh output this frame
+	if not aimPoint then
+		return
+	end
 
-	if aimPoint then
-		local toTarget = aimPoint - base.Position
-		if toTarget.Magnitude > 1e-3 then
-			-- Aim point in the camera's local space. Local yaw = atan2(-X, -Z),
-			-- local pitch = asin(Y); these are the offsets that point look at target.
-			local localDir = base:VectorToObjectSpace(toTarget.Unit)
-			local errYaw = math.atan2(-localDir.X, -localDir.Z)
-			local errPitch = math.asin(math.clamp(localDir.Y, -1, 1)) * ca.PitchWeight
-
-			-- Frame-rate independent blend; weaken it while the player steers so
-			-- they can always look away.
-			local alpha = 1 - math.exp(-ca.AssistStrength * dt)
-			local steering = steerFlag or stickMag > ca.InputDampenThreshold
-			steerFlag = false
-			if steering then
-				alpha = alpha * ca.InputDampenFactor
-			end
-
-			local maxStep = math.rad(ca.MaxTurnRateDegPerSec) * dt
-			local dYaw = math.clamp((errYaw - yawOffset) * alpha, -maxStep, maxStep)
-			local dPitch = math.clamp((errPitch - pitchOffset) * alpha, -maxStep, maxStep)
-			yawOffset = yawOffset + dYaw
-			pitchOffset = math.clamp(
-				pitchOffset + dPitch,
-				-math.rad(ca.MaxPitchDeg),
-				math.rad(ca.MaxPitchDeg)
-			)
-
-			-- TODO: remove before submission (prove the render step runs and show
-			-- the angle to the target before and after assist, once per second).
-			if Config.Debug.ShowLockDebug then
-				assistPrintAcc += dt
-				if assistPrintAcc >= 1.0 then
-					assistPrintAcc = 0
-					local afterLook = (base * CFrame.Angles(pitchOffset, yawOffset, 0)).LookVector
-					local residual = math.deg(math.acos(math.clamp(afterLook:Dot(toTarget.Unit), -1, 1)))
-					print(("[TargetLock] assist yawBefore=%.1fdeg residual=%.1fdeg off=(%.2f,%.2f)")
-						:format(math.deg(errYaw), residual, yawOffset, pitchOffset))
-				end
-			end
-		end
+	-- EMA-smooth the aim point to eliminate per-frame physics jitter.
+	-- With Scriptable mode there's no ClassicCamera fight, so the EMA can
+	-- be fast (tight tracking) without causing oscillation.
+	if not smoothedAim then
+		smoothedAim = aimPoint
 	else
-		-- No target (unlocking): ease offsets back to zero so there is no snap.
-		local alpha = 1 - math.exp(-ca.AssistStrength * dt)
-		yawOffset = yawOffset * (1 - alpha)
-		pitchOffset = pitchOffset * (1 - alpha)
-		steerFlag = false
+		local smoothRate = 1 - math.exp(-ca.AimPointSmoothing * dt)
+		smoothedAim = smoothedAim:Lerp(aimPoint :: Vector3, smoothRate)
 	end
 
-	-- Rotate the default camera's fresh CFrame by the persistent offsets. Keeping
-	-- base.Position means zoom and wall collision from the default camera still work.
-	camera.CFrame = base * CFrame.Angles(pitchOffset, yawOffset, 0)
+	-- Position the camera at the captured world-space offset from the player.
+	-- This keeps the camera following the player naturally (same distance
+	-- and height as when the lock started) while we rotate it to look at
+	-- the target.
+	local camPos = playerRoot.Position + (camOffset or Vector3.new(0, 5, -12))
 
-	-- Once fully decayed with no target, release the render step (no leak).
-	if not target and math.abs(yawOffset) < 1e-4 and math.abs(pitchOffset) < 1e-4 then
-		unbindAssist()
+	-- Simple exponential lerp toward the target look direction.
+	-- No deadzone, no rateRamp, no maxTurn cap — those were all needed to
+	-- manage the ClassicCamera fight.  With Scriptable mode the camera
+	-- converges cleanly every frame.
+	local alpha = 1 - math.exp(-ca.AssistStrength * dt)
+	local desiredCFrame = CFrame.new(camPos, smoothedAim :: Vector3)
+	camera.CFrame = camera.CFrame:Lerp(desiredCFrame, alpha)
+
+	if Config.Debug.ShowLockDebug then
+		assistPrintAcc += dt
+		if assistPrintAcc >= 1.0 then
+			assistPrintAcc = 0
+			local currentLook = camera.CFrame.LookVector
+			local toTarget = (smoothedAim :: Vector3) - camPos
+			if toTarget.Magnitude > 1e-3 then
+				local residual = math.deg(math.acos(math.clamp(currentLook:Dot(toTarget.Unit), -1, 1)))
+				print(("[TargetLock] Scriptable residual=%.2fdeg alpha=%.3f")
+					:format(residual, alpha))
+			end
+		end
 	end
 end
 
@@ -351,37 +401,61 @@ local function bindAssist()
 	if not ca.Enabled or assistBound then
 		return
 	end
+	local camera = Workspace.CurrentCamera
+	if not camera then
+		return
+	end
+
+	-- Capture the camera's world-space offset from the player's HRP so we
+	-- can maintain the same follow distance/height in Scriptable mode.
+	local playerChar = LocalPlayer.Character
+	local playerRoot = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
+	if playerRoot and playerRoot:IsA("BasePart") then
+		camOffset = camera.CFrame.Position - playerRoot.Position
+	else
+		camOffset = Vector3.new(0, 5, -12)
+	end
+
+	-- Take full control of the camera.  ClassicCamera runs at
+	-- RenderPriority.Camera and overwrites camera.CFrame every frame from
+	-- its internal yaw/pitch state — any correction we write after it gets
+	-- discarded next frame, creating a permanent fight that reads as jitter.
+	-- Scriptable mode stops ClassicCamera entirely, giving us a clean
+	-- canvas to paint on.
+	camera.CameraType = Enum.CameraType.Scriptable
+	smoothedAim = nil  -- initialised on first render frame
+	lockAge = 0
+
 	RunService:BindToRenderStep(ASSIST_BIND, Enum.RenderPriority.Camera.Value + 1, onAssistRender)
 	assistBound = true
 	if Config.Debug.ShowLockDebug then
-		local cam = Workspace.CurrentCamera
-		print("[TargetLock] assist render step bound, CameraType=" .. tostring(cam and cam.CameraType))
+		print(("[TargetLock] assist bound (Scriptable mode), offset=%s")
+			:format(tostring(camOffset)))
 	end
 end
 
--- Clear the active target and tear down its reticle and connections.
--- Returns true if a target was actually cleared.
 local function clearTarget(_reason: string, animated: boolean?): boolean
 	acquireRequested = false
 	local wasLocked = target ~= nil
 	target = nil
+	targetCharacter = nil
 	unbindTargetConnections()
 	destroyReticle(animated)
+	unbindAssist()
 	return wasLocked
 end
 
-local function lockOn(best: Player)
+local function lockOn(bestCandidate: Candidate)
 	unbindTargetConnections()
-	target = best
-	local character = best.Character
-	local part = character and aimPart(character)
-	createReticle(part)
-	bindTargetLifecycle(best)
+	target = bestCandidate.target
+	targetCharacter = bestCandidate.character
+	lockAge = 0
+	createReticle(bestCandidate.aimPart)
+	bindTargetLifecycle(bestCandidate.target, bestCandidate.character)
 	bindAssist()
-	debugPrint("Locked " .. best.Name)
+	debugPrint("Locked " .. bestCandidate.name)
 end
 
--- Move the lock to the next nearest candidate; lockOn re-adorns the reticle.
 local function cycleTarget()
 	if not target then
 		return
@@ -391,37 +465,42 @@ local function cycleTarget()
 		debugPrint("Cycle: only one target")
 		return
 	end
-	-- Sort by distance; candidates is at most the player count, so this is cheap.
 	local order: { Candidate } = {}
-	for _, candidate in candidates do
+	for _, candidate in ipairs(candidates) do
 		table.insert(order, candidate)
 	end
 	table.sort(order, function(a, b)
 		return (a.root.Position - root.Position).Magnitude < (b.root.Position - root.Position).Magnitude
 	end)
 	local index = 0
-	for i, candidate in order do
-		if candidate.player == target then
+	for i, candidate in ipairs(order) do
+		if candidate.target == target then
 			index = i
 			break
 		end
 	end
 	if index == 0 then
-		lockOn(order[1].player)
+		lockOn(order[1])
 		return
 	end
 	local nextCandidate = order[(index % #order) + 1]
-	if nextCandidate.player ~= target then
-		lockOn(nextCandidate.player)
-		debugPrint("Cycle -> " .. nextCandidate.player.Name)
+	if nextCandidate.target ~= target then
+		lockOn(nextCandidate)
+		debugPrint("Cycle -> " .. nextCandidate.name)
 	end
 end
 
-local function passesRole(player: Player): boolean
-	if Config.Debug.AllowAnyRoleTargetLock then
-		return true
+-- Target lock is a Taya tool: the Taya locks Runners, and only while the
+-- round is live. Runners never produce candidates.
+local function passesRole(targetInst: Instance): boolean
+	if not isLocalTaya() then
+		return false
 	end
-	return LocalPlayer:GetAttribute("IsTaya") == true and player:GetAttribute("IsTaya") ~= true
+	local targetRole = targetInst:GetAttribute("HRushRole")
+	if not targetRole then
+		targetRole = (targetInst:GetAttribute("IsTaya") == true) and "Taya" or "Runner"
+	end
+	return targetRole ~= "Taya"
 end
 
 local function refreshCandidates()
@@ -435,7 +514,9 @@ local function refreshCandidates()
 	if not head or not head:IsA("BasePart") then
 		return
 	end
-	for _, player in Players:GetPlayers() do
+
+	-- 1. Scan other human Players
+	for _, player in ipairs(Players:GetPlayers()) do
 		if player == LocalPlayer or not passesRole(player) then
 			continue
 		end
@@ -448,11 +529,44 @@ local function refreshCandidates()
 		if not part or (otherRoot.Position - root.Position).Magnitude > Settings.AcquireRange then
 			continue
 		end
-		-- Exclude both avatars so accessories do not count as walls.
 		rayParams.FilterDescendantsInstances = { character, otherCharacter }
 		local direction = part.Position + Settings.AimPointOffset - head.Position
 		if Workspace:Raycast(head.Position, direction, rayParams) == nil then
-			table.insert(candidates, { player = player, character = otherCharacter, root = otherRoot, aimPart = part })
+			table.insert(candidates, {
+				target = player,
+				name = player.DisplayName or player.Name,
+				character = otherCharacter,
+				root = otherRoot,
+				aimPart = part,
+			})
+		end
+	end
+
+	-- 2. Scan Bots in Workspace.Bots (testing / solo / match fill)
+	local botsFolder = Workspace:FindFirstChild("Bots")
+	if botsFolder then
+		for _, bot in ipairs(botsFolder:GetChildren()) do
+			if bot:IsA("Model") and passesRole(bot) then
+				local botRoot = livingRoot(bot)
+				if not botRoot then
+					continue
+				end
+				local part = aimPart(bot)
+				if not part or (botRoot.Position - root.Position).Magnitude > Settings.AcquireRange then
+					continue
+				end
+				rayParams.FilterDescendantsInstances = { character, bot }
+				local direction = part.Position + Settings.AimPointOffset - head.Position
+				if Workspace:Raycast(head.Position, direction, rayParams) == nil then
+					table.insert(candidates, {
+						target = bot,
+						name = bot.Name,
+						character = bot,
+						root = botRoot,
+						aimPart = part,
+					})
+				end
+			end
 		end
 	end
 end
@@ -461,17 +575,20 @@ local function acquire()
 	local camera = Workspace.CurrentCamera
 	local root = livingRoot(LocalPlayer.Character)
 	if not camera or not root or not roundLive or Workspace:GetServerTimeNow() < cooldownUntil then
-		-- TODO: remove before submission (explains a silent R press: round state / cooldown).
 		if Config.Debug.ShowLockDebug then
 			print(("[TargetLock] acquire BLOCKED  roundLive=%s  onCooldown=%s  hasRoot=%s")
 				:format(tostring(roundLive), tostring(Workspace:GetServerTimeNow() < cooldownUntil), tostring(root ~= nil)))
 		end
 		return
 	end
-	local best: Player? = nil
+	if not isLocalTaya() then
+		showTayaOnlyNotice()
+		return
+	end
+	local best: Candidate? = nil
 	local bestDot = -math.huge
 	local bestDistance = math.huge
-	for _, candidate in candidates do
+	for _, candidate in ipairs(candidates) do
 		local direction = candidate.aimPart.Position + Settings.AimPointOffset - camera.CFrame.Position
 		if direction.Magnitude == 0 then
 			continue
@@ -480,19 +597,19 @@ local function acquire()
 		local dot = camera.CFrame.LookVector:Dot(direction.Unit)
 		local distance = (candidate.root.Position - root.Position).Magnitude
 		if dot > bestDot or (dot == bestDot and distance < bestDistance) then
-			best = candidate.player
+			best = candidate
 			bestDot = dot
 			bestDistance = distance
 		end
 	end
 	if best then
-		lockOn(best)
+		lockOn(best :: Candidate)
 	else
-		debugPrint("No target")
+		debugPrint("No target (candidates in view: " .. #candidates .. ")")
 	end
 end
 
-function TargetLockController:GetTarget(): Player?
+function TargetLockController:GetTarget(): Instance?
 	return target
 end
 
@@ -526,27 +643,48 @@ function TargetLockController:Init()
 			debugPrint("Broken: LocalRespawn")
 		end
 	end))
+	-- Tag transfer turned me into the Runner: drop the lock immediately.
+	table.insert(connections, LocalPlayer:GetAttributeChangedSignal("HRushRole"):Connect(function()
+		if not isLocalTaya() then
+			acquireRequested = false
+			if target then
+				TargetLockController:BreakLock("NoLongerTaya")
+			end
+		end
+	end))
 	-- Track when the player steers the camera so the assist can step aside.
 	table.insert(connections, UserInputService.InputChanged:Connect(function(input: InputObject)
 		local ut = input.UserInputType
 		if ut == Enum.UserInputType.MouseMovement or ut == Enum.UserInputType.Touch then
-			if input.Delta.Magnitude > Settings.CameraAssist.InputDampenThreshold then
+			-- Pixel deltas jitter 1-3 px even on a still mouse; the old 0.1
+			-- threshold flagged that noise as steering every other frame and
+			-- the strength flicker read as camera shake.
+			if input.Delta.Magnitude > 2.5 then
 				steerFlag = true
+				lastSteerAt = os.clock()
 			end
 		elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
 			stickMag = input.Position.Magnitude
+			if stickMag > Settings.CameraAssist.InputDampenThreshold then
+				lastSteerAt = os.clock()
+			end
 		end
 	end))
 	ContextActionService:BindAction(TOGGLE_ACTION, function(_name, state, _input)
 		if state == Enum.UserInputState.Begin then
 			toggleFireCount += 1
-			-- TODO: remove before submission (proves one press fires Begin exactly once)
 			if Config.Debug.ShowLockDebug then
 				print(("[TargetLock] toggle Begin #%d  t=%.3f  key=%s")
 					:format(toggleFireCount, tick(), tostring(_input.KeyCode)))
 			end
 		end
 		if state == Enum.UserInputState.Begin and not UserInputService:GetFocusedTextBox() then
+			-- Role gate: only the Taya may use target lock (R toggle / T cycle).
+			if not isLocalTaya() then
+				acquireRequested = false
+				showTayaOnlyNotice()
+				return Enum.ContextActionResult.Sink
+			end
 			if target then
 				clearTarget("ManualUnlock", true)
 				debugPrint("Unlocked manually (no cooldown)")
@@ -557,7 +695,7 @@ function TargetLockController:Init()
 		return Enum.ContextActionResult.Sink
 	end, false, Settings.Keybinds.Toggle, Settings.Keybinds.GamepadToggle)
 	ContextActionService:BindAction(CYCLE_ACTION, function(_name, state, _input)
-		if state == Enum.UserInputState.Begin and target then
+		if state == Enum.UserInputState.Begin and target and isLocalTaya() then
 			cycleTarget()
 		end
 		return Enum.ContextActionResult.Sink
@@ -577,11 +715,11 @@ function TargetLockController:Init()
 			acquire()
 		end
 	end))
-	debugPrint("Stage B ready: " .. Settings.Keybinds.Toggle.Name .. " toggle, " .. Settings.Keybinds.Cycle.Name .. " cycle reserved")
+	debugPrint("Stage B ready: " .. Settings.Keybinds.Toggle.Name .. " toggle, " .. Settings.Keybinds.Cycle.Name .. " cycle reserved (Taya only)")
 end
 
 function TargetLockController:Destroy()
-	for _, connection in connections do
+	for _, connection in ipairs(connections) do
 		connection:Disconnect()
 	end
 	table.clear(connections)
@@ -589,9 +727,14 @@ function TargetLockController:Destroy()
 	unbindTargetConnections()
 	destroyReticleNow()
 	unbindAssist()
+	if noticeGui then
+		noticeGui:Destroy()
+		noticeGui = nil
+	end
 	ContextActionService:UnbindAction(TOGGLE_ACTION)
 	ContextActionService:UnbindAction(CYCLE_ACTION)
 	target = nil
+	targetCharacter = nil
 	acquireRequested = false
 	cooldownUntil = 0
 	roundLive = false

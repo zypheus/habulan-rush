@@ -1,640 +1,293 @@
 --!strict
 -- ReplicatedStorage/Config.lua
 -- Single source of truth for ALL tunable values in Habulan Rush.
--- Zero hardcoding anywhere else in the codebase. All numbers come from here.
--- Locked values from DESIGN_LOCK.md (2026-10-07) are marked [LOCKED].
--- Values marked [SD] are Spec Defaults pending team confirmation.
 
 local Config = {}
 
--- ============================================================
--- MOVEMENT
--- ============================================================
 Config.Movement = {
-	-- Runner speeds (studs/s)
-	RunnerWalkSpeed   = 16,   -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
-	RunnerSprintSpeed = 21,   -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
-
-	-- Global speed scale [SD]: multiplies every movement speed and every
-	-- speed-derived distance at its use site. 1 keeps the locked base values.
-	SpeedScale = 1.5, -- [SD] 1 = locked bases (walk 16, sprint 21, Taya 18)
-
-	-- Stamina
+	RunnerWalkSpeed   = 16,
+	RunnerSprintSpeed = 21,
 	StaminaMax         = 100,
-	StaminaDrainRate   = 20,  -- per second while sprinting
-	StaminaRegenRate   = 12,  -- per second after RegenDelay
-	StaminaRegenDelay  = 1.0, -- seconds without sprinting before regen starts
-	StaminaDepletedMin = 10,  -- must reach this before sprint re-enables after depletion [SD]
-
-	-- Dash
-	DashDistance           = 12,   -- studs
-	DashDuration           = 0.2,  -- seconds
-	DashCooldown           = 6.0,  -- seconds
-	DashPounceInvulnTime   = 0.15, -- [LOCKED F07] seconds of pounce invulnerability (not touch/Tsinelas)
-
-	-- Slide
-	SlideDuration     = 0.6,  -- seconds
-	SlideCooldown     = 3.0,  -- seconds
-	SlideHitboxScale  = 0.5,  -- [SD] 50% height
-
-	-- Taya
-	TayaSpeed         = 18,   -- [LOCKED GDD TM_01] studs/s constant, no stamina
-
-	-- Post-tag speed boost for ex-Taya [SD F08]
-	PostTagSpeedBoostMult     = 1.20, -- multiplies base walk and sprint
-	PostTagSpeedBoostDuration = 2.0,  -- seconds
-
-	-- Dash VFX (client-predicted juice; transient — must decay to rest).
-	-- Ribbon afterimage + one-shot burst on dash start. All values from here.
+	StaminaDrainRate   = 20,
+	StaminaRegenRate   = 12,
+	StaminaRegenDelay  = 1.0,
+	StaminaDepletedMin = 10,
+	DashDistance           = 12,
+	DashDuration           = 0.2,
+	DashCooldown           = 6.0,
+	DashPounceInvulnTime   = 0.15,
+	SlideDuration     = 0.6,
+	SlideCooldown     = 3.0,
+	SlideHitboxScale  = 0.5,
+	TayaSpeed         = 18,
+	PostTagSpeedBoostMult     = 1.20,
+	PostTagSpeedBoostDuration = 2.0,
 	DashVFX = {
 		Enabled          = true,
-		TrailLifetime    = 0.35,  -- s the ribbon lingers AFTER the dash ends
-		BurstCount       = 16,    -- particles spawned at dash start
-		ParticleLifetime = 0.30,  -- s each burst particle lives
-		ParticleSpeedMin = 8,     -- studs/s backward spread (min)
-		ParticleSpeedMax = 18,    -- studs/s backward spread (max)
-		ColorStart       = Color3.fromRGB(130, 225, 255), -- cyan flash
-		ColorEnd         = Color3.fromRGB(150, 130, 255), -- violet fade
-		SizeStart        = 0.7,   -- studs at birth, shrinks to 0
-		TransparencyIn   = 0.2,   -- birth transparency (0 = opaque, 1 = invisible)
-		LightEmission    = 0.7,   -- glow strength
+		TrailLifetime    = 0.35,
+		BurstCount       = 16,
+		ParticleLifetime = 0.30,
+		ParticleSpeedMin = 8,
+		ParticleSpeedMax = 18,
+		ColorStart       = Color3.fromRGB(130, 225, 255),
+		ColorEnd         = Color3.fromRGB(150, 130, 255),
+		SizeStart        = 0.7,
+		TransparencyIn   = 0.2,
+		LightEmission    = 0.7,
 	},
 }
 
--- ============================================================
--- SPRINT VFX (visuals only; sprint behavior lives in MovementController)
--- ============================================================
--- One smoothed intensity (0 to 1) from real horizontal speed drives every
--- effect. Pooled instances, hard caps, zero per-frame work when idle.
-Config.SprintVFX = {
-	Enabled = true, -- [SD] master switch
-	ReducedEffects = false, -- [SD] no FOV change, halved counts (T33 setting drives later)
-	Quality = "Auto", -- [SD] Low/Medium/High; Auto picks Low on touch-only devices
-	TayaEffect = false, -- [SD] reserved chase variant; not built
-	RiseRate = 3.0, -- [SD] intensity units per second rising
-	FallRate = 4.5, -- [SD] intensity units per second falling
-	FovDelta = 5, -- [SD] FOV widen at full intensity (deg)
-	FovInTime = 0.25, -- [SD] FOV ease in (s)
-	FovOutTime = 0.3, -- [SD] FOV ease out (s)
-	MaxInstances = 52, -- [SD] hard Instance cap for this feature (14 local + 21 pool + 15 remote = 50, plus 2 spare)
-	-- Color palette [SD]
-	Colors = {
-		ElectricCyan = Color3.fromRGB(0, 220, 255), -- [SD] Primary
-		BrightBlue = Color3.fromRGB(50, 130, 255), -- [SD] Secondary
-		IcyWhite = Color3.fromRGB(225, 250, 255), -- [SD] Highlight (used sparingly)
-	},
-
-	-- Brightness ranking [SD]: Trail is rank 1 (foreground focus)
-	Brightness = {
-		TrailLightEmission = 0.9, -- [SD] intense energy glow
-	},
-
-	-- Neon Speed Trail (Option A) [SD]
-	-- Real world width = AttachmentSpacing * WidthScale
-	Trail = {
-		Lifetime = 1.0, -- [SD] trail segment lifetime in seconds (about 21 studs at sprint speed 21)
-		MaxLength = 21, -- [SD] maximum leg trail ribbon length (studs)
-		AttachmentSpacing = 0.35, -- [SD] studs distance between Attachment0 and Attachment1
-		WidthScaleStart = 4.0, -- [SD] multiplier at start (1.4 studs real world width)
-		WidthScaleEnd = 0.05, -- [SD] multiplier at tip (0.0175 studs real world needle tip)
-		IntensityThreshold = 0.2, -- [SD] intensity at which trail starts fading in
-		IntensityStep = 0.05, -- [SD] minimum intensity delta before updating trail properties
-		SideX = 0, -- [SD] lateral offset from lower leg center, positive means outward from the centerline (studs)
-		HeightY = -0.5, -- [SD] vertical center of the trail segment within the lower leg (studs)
-		DepthZ = -0.2, -- [SD] posterior offset behind the lower leg center (studs)
-		ColorMid = 0.6, -- [SD] position of the middle color keypoint (0 to 1)
-		FadeBase = 1.0, -- [SD] transparency mapping base: birth transparency before clamp is FadeBase minus intensity
-		FadeMin = 0.0, -- [SD] minimum birth transparency (0 is opaque)
-		FadeMax = 0.95, -- [SD] maximum birth transparency (1 is invisible)
-
-		-- Arm Trails (hands) [SD]
-		-- Same palette and fade as the leg trails, about half the width and
-		-- lifetime. Real world width = AttachmentSpacing * WidthScale.
-		Arm = {
-			AttachmentSpacing = 0.35, -- [SD] studs distance between Attachment0 and Attachment1
-			WidthScaleStart = 2.0, -- [SD] multiplier at start (0.7 studs real world width)
-			WidthScaleEnd = 0.025, -- [SD] multiplier at tip (0.00875 studs real world needle tip)
-			Lifetime = 0.5, -- [SD] trail segment lifetime in seconds (about 10 studs at sprint speed)
-			MaxLength = 10, -- [SD] maximum arm trail ribbon length (studs)
-			SideX = 0, -- [SD] lateral offset from hand center, positive means outward from the centerline (studs)
-			HeightY = 0, -- [SD] vertical center of the trail segment within the hand (studs)
-			DepthZ = -0.15, -- [SD] posterior offset behind the hand center (studs)
-		},
-	},
-
-	-- Speed Lines (improved pooled system) [SD]
-	Lines = {
-		Max = 20, -- [SD] pooled streak parts
-		SpawnMin = 6, -- [SD] streaks per second at intensity 0
-		SpawnMax = 24, -- [SD] streaks per second at intensity 1
-		LifeMin = 0.2, -- [SD] streak lifetime low (s)
-		LifeMax = 0.4, -- [SD] streak lifetime high (s)
-		LengthMin = 2.0, -- [SD] streak length low (studs)
-		LengthMax = 4.5, -- [SD] streak length high (studs)
-		ThickMin = 0.05, -- [SD] streak thickness low (studs)
-		ThickMax = 0.10, -- [SD] streak thickness high (studs)
-		TransMin = 0.50, -- [SD] birth transparency at full intensity (dimmer than the leg trail so the trail stays the focus)
-		TransMax = 0.80, -- [SD] birth transparency at min intensity
-		IcyShare = 0.12, -- [SD] share of speed lines drawn icy white, the rest blend cyan to blue (0 to 1)
-		InnerRadius = 2.5, -- [SD] spawn ring inner edge, safely clears character (studs)
-		OuterRadius = 5.5, -- [SD] spawn ring outer edge (studs)
-		CenterConeDeg = 50, -- [SD] excluded forward cone, preserves screen center and reticle (deg)
-		DriftMin = 10, -- [SD] backward drift speed low (studs/s)
-		DriftMax = 20, -- [SD] backward drift speed high (studs/s)
-	},
-
-	-- Dust (preserved exactly from current balance)
-	Dust = {
-		StartBurst = 14, -- [SD] puff count at sprint start (under 30)
-		Life = 0.4, -- [SD] dust lifetime (s)
-		Size = 0.6, -- [SD] dust particle start size (studs)
-		SpeedMin = 3, -- [SD] dust kick speed low (studs/s)
-		SpeedMax = 7, -- [SD] dust kick speed high (studs/s)
-		PuffCount = 2, -- [SD] puffs per footstep
-		FootstepDistance = 3.5, -- [SD] studs between footstep puffs
-		FootstepRate = 8, -- [SD] max footstep puffs per second
-		Color = Color3.fromRGB(214, 200, 176), -- [SD] default dust
-		Tints = { -- [SD] FloorMaterial name keys
-			Default = Color3.fromRGB(214, 200, 176),
-			Grass = Color3.fromRGB(120, 170, 90),
-			Concrete = Color3.fromRGB(150, 150, 145),
-			Wood = Color3.fromRGB(170, 130, 80),
-			Sand = Color3.fromRGB(225, 205, 150),
-		},
-	},
-
-	-- Remote runner light rigs [SD]
-	Remote = {
-		Range = 40, -- [SD] max distance for remote effects (studs)
-		Cap = 3, -- [SD] max remote players with effects
-		ScanRate = 4, -- [SD] scans per second
-		ThresholdRatio = 0.6, -- [SD] remote effect speed gate as a share from walk to sprint: walk + ratio * (sprint - walk), using scaled speeds (19 at scale 1)
-		AttachmentSpacing = 0.25, -- [SD] studs distance between remote attachments
-		WidthScaleStart = 0.8, -- [SD] 0.20 studs real world width
-		WidthScaleEnd = 0.05, -- [SD] 0.0125 studs real world needle tip
-		Lifetime = 0.2, -- [SD] shorter remote trail lifetime
-		CenterY = -1.5, -- [SD] vertical center of the remote trail segment relative to the root (studs)
-		Transparency = 0.3, -- [SD] remote trail birth transparency (dimmer than the local trail)
-	},
-}
-
--- ============================================================
--- TAG SYSTEM
--- ============================================================
 Config.Tag = {
-	TouchTagRange       = 3,    -- studs
-	SafeWindowDuration  = 2.0,  -- seconds [LOCKED F06: longest applies, no stack]
-	LockDelayDuration   = 1.0,  -- seconds (gates target lock only, not touch/pounce)
-
-	-- Pounce
-	PounceWindupTime    = 0.35, -- seconds telegraph on client
-	PounceLungeDistance = 14,   -- studs
-	PounceLungeSpeed    = 45,   -- studs/s
-	PounceHitRadius     = 4,    -- studs
-	PounceMissStunTime  = 1.0,  -- seconds self-stun on miss
-	PounceCooldown      = 3.0,  -- seconds after miss
-
-	-- Ring buffer for lag rewind
-	RewindBufferDuration = 0.5,  -- seconds of Runner position history kept
-	RewindDefault        = 0.12, -- [LOCKED F17] default rewind window (seconds)
-	RewindMax            = 0.20, -- [LOCKED F17] hard cap (seconds)
-
-	-- Tag validation
-	CloseChaseDistance  = 10,   -- [LOCKED F11] studs for Diskarte close-chase-escape reward
+	TouchTagRange       = 3,
+	SafeWindowDuration  = 2.0,
+	LockDelayDuration   = 1.0,
+	PounceWindupTime    = 0.35,
+	PounceLungeDistance = 14,
+	PounceLungeSpeed    = 45,
+	PounceHitRadius     = 4,
+	PounceMissStunTime  = 1.0,
+	PounceCooldown      = 3.0,
+	RewindBufferDuration = 0.5,
+	RewindDefault        = 0.12,
+	RewindMax            = 0.20,
+	CloseChaseDistance  = 10,
 }
 
--- ============================================================
--- TAYA (role)
--- ============================================================
 Config.Taya = {
-	TargetLockAcquireRange = 40, -- studs
-	TargetLockBreakRange   = 55, -- studs
-	TargetLockCoverTimeout = 1.0, -- seconds behind cover before lock breaks
-	TargetLockCooldown     = 4.0, -- seconds after lock break
+	TargetLockAcquireRange = 40,
+	TargetLockBreakRange   = 55,
+	TargetLockCoverTimeout = 1.0,
+	TargetLockCooldown     = 4.0,
 }
 
--- ============================================================
--- TARGET LOCK
--- ============================================================
--- T16 uses this table, not the legacy Config.Taya lock fields.
+-- T16: TargetLockController reads this table
 Config.TargetLock = {
 	AcquireRange = 40,
 	BreakRange = 55,
 	LosBreakTime = 1.0,
 	BreakCooldown = 4.0,
-	CandidateRefreshRate = 10, -- scans per second
-	AimPointOffset = Vector3.new(0, 0.5, 0), -- above torso centre
+	CandidateRefreshRate = 10,
+	AimPointOffset = Vector3.new(0, 0.5, 0),
 	CameraAssist = {
-		-- AssistStrength is the exponential response rate k (per second) in
-		-- 1 - exp(-k * dt). I raised the suggested 0.6 to 4.0 because 0.6/s is a
-		-- ~1.67s time constant, far too slow to visibly turn; 4.0/s eases in ~0.25s.
-		AssistStrength = 4.0,
-		MaxTurnRateDegPerSec = 180, -- cap how fast the offset may rotate
-		PitchWeight = 0.35,         -- weaker vertical pull than horizontal
-		InputDampenFactor = 0.25,   -- keep 25% strength while the player steers
-		InputDampenThreshold = 0.1, -- stick magnitude (0-1) or mouse pixel delta
-		MaxPitchDeg = 80,           -- clamp so the camera never flips over
-		Enabled = true,             -- set false to disable the camera assist
+		AssistStrength = 8.0,
+		MaxTurnRateDegPerSec = 720, -- unused in Scriptable mode (no ClassicCamera fight)
+		AimAnchorHeight = 1.2,      -- studs above the HumanoidRootPart (stable, unlike the animated torso)
+		AimPointSmoothing = 25,     -- EMA rate for aim point (fast, no ClassicCamera to fight)
+		AssistDeadzoneDeg = 1.0,   -- unused in Scriptable mode (kept for reference)
+		PitchWeight = 0.35,
+		InputDampenFactor = 0.25,
+		InputDampenThreshold = 0.1,
+		MaxPitchDeg = 80,
+		Enabled = true,
 	},
-	-- Reticle is drawn with UI instances only (no image assets).
 	Reticle = {
-		SizePx = 64,                          -- fixed pixel size of the billboard
-		StudsOffset = Vector3.new(0, 0.5, 0), -- lift slightly above the torso centre
+		SizePx = 64,
+		StudsOffset = Vector3.new(0, 0.5, 0),
 		RingColor = Color3.fromRGB(235, 64, 64),
 		RingThickness = 2,
 		RingTransparency = 0,
 		NotchColor = Color3.fromRGB(255, 255, 255),
-		NotchSizePx = 6,                      -- corner marks so the shape reads without colour
-		StartScale = 0.2,                     -- scale-in begins small
-		EndScale = 0.2,                       -- fade-out shrinks back down
-		ScaleInTime = 0.15,                   -- seconds, ease-out pop on lock
-		FadeOutTime = 0.12,                   -- seconds, ease-in on unlock
-		Animate = true,                       -- set false to skip tweens for testing
+		NotchSizePx = 6,
+		StartScale = 0.2,
+		EndScale = 0.2,
+		ScaleInTime = 0.15,
+		FadeOutTime = 0.12,
+		Animate = true,
 	},
 	Keybinds = {
-		-- User-approved change: Q is dash and E is skill.
 		Toggle = Enum.KeyCode.R,
 		Cycle = Enum.KeyCode.T,
 		GamepadToggle = Enum.KeyCode.ButtonR3,
 		GamepadCycle = Enum.KeyCode.DPadRight,
 	},
-	DebugPrint = true, -- Stage B feedback in client Output
+	DebugPrint = true,
 	DependencyTimeout = 10,
 }
 
--- ============================================================
--- MATCH
--- ============================================================
 Config.Match = {
-	MinPlayers        = 4,  -- [LOCKED F18]
+	MinPlayers        = 4,
 	MaxPlayers        = 8,
-
-	-- State durations (seconds)
-	LobbyReadyTimeout = 0,    -- 0 = host-start; set > 0 for auto-start countdown
-	DraftDuration     = 12,   -- MS_02
-	CountdownDuration = 5,    -- MS_03
-	RoundDuration     = 150,  -- MS_04 Round Live
-	RoundEndDuration  = 8,    -- MS_05
-	MatchEndDuration  = 15,   -- MS_06
-
+	LobbyReadyTimeout = 0,
+	DraftDuration     = 12,
+	CountdownDuration = 5,
+	RoundDuration     = 150,
+	RoundEndDuration  = 8,
+	MatchEndDuration  = 15,
 	TotalRounds       = 3,
-
-	-- Draft runs before EVERY round [LOCKED F01]
 	DraftEveryRound   = true,
-
-	-- Scoring: points by rank (1st = index 1). Covers up to 8 players.
 	RoundPoints       = { 8, 6, 5, 4, 3, 2, 1, 0 },
-
-	-- Disconnect rules [LOCKED F18]
-	OnTayaDisconnect  = "NearestRunner", -- nearest Runner becomes Taya
-	OnRunnerDisconnect = "RankLast",     -- ranked last for the round
-	BelowMinPlayersAction = "PauseEndRound", -- pause 10 s then end round without points [SD]
+	OnTayaDisconnect  = "NearestRunner",
+	OnRunnerDisconnect = "RankLast",
+	BelowMinPlayersAction = "PauseEndRound",
 	BelowMinPauseDuration = 10,
-
-	-- Event phases (time remaining in Round Live)
-	SimulaEnd       = 100, -- seconds left when SIMULA ends
-	BarangayRushEnd = 50,  -- seconds left when BARANGAY RUSH ends / HULING HABOL starts
-
-	-- Barangay Rush event warning
-	EventWarningTime = 2.5, -- seconds before phase change
-
-	-- Queue / bot fill (testing)
+	SimulaEnd       = 100,
+	BarangayRushEnd = 50,
+	EventWarningTime = 2.5,
 	SearchTimeout = 10,
-	BotFillTarget = 4,     -- total participants after bots fill
-	AllowBots     = true,  -- set false before release
+	BotFillTarget = 8,
+	TeamSize      = 4,
+	AllowBots     = true,
 }
 
--- ============================================================
--- EVENTS (Huling Habol escalation thresholds)
--- ============================================================
 Config.Events = {
-	HulingHabolEscalation = { 50, 30, 15, 10, 5 }, -- seconds remaining triggers
+	HulingHabolEscalation = { 50, 30, 15, 10, 5 },
 }
 
--- ============================================================
--- SKILLS
--- ============================================================
--- Schema per skill entry (see TDD §3.1):
---   id, role, type, cooldown, duration, range, params, tell, weakness
-
--- Debug switches for playtesting only.
 Config.Debug = {
-	-- TODO: set to false before submission
-	AllowAnyRoleTargetLock = true,
-	-- TODO: remove before submission (delete this flag and all ShowLockDebug blocks)
-	ShowLockDebug = true, -- T16: prove toggle fire count, reticle, acquire blocking
-	-- TODO: set to false before submission
-	AllowAnyRoleForSkills = true, -- while true the skill role gate is skipped
-	-- TODO: remove before submission (delete this flag and all ShowSkillDebug blocks)
-	ShowSkillDebug = true, -- prints + airborne label for RS_01 testing
-	-- TODO: remove before submission (delete this flag and all ShowSprintVFX blocks)
-	ShowSprintVFX = true, -- sprint VFX state prints
-	-- TODO: remove before submission (testing only: forces leg trails fully visible)
-	ForceTrailsVisible = false, -- sprint trail test override
+	AllowAnyRoleTargetLock = false, -- target lock is Taya-only (F-feature role gate)
+	ShowLockDebug = true,
+	AllowAnyRoleForSkills = true,
+	ShowSkillDebug = true,
 }
 
 Config.Skills = {
 	RS_01 = {
-		id       = "RS_01",
-		name     = "Luksong Baka",
-		role     = "Runner",
-		type     = "Escape",
-		cooldown = 12,
-		duration = 0,
-		range    = 18,
-		params   = {
-			height = 14,            -- impulse: apex height in studs
-			distance = 18,          -- impulse: horizontal reach in studs
-			windup = 0.1,           -- crouch time before takeoff (s)
-			airtime = 0.76,         -- flight time (s); matches height/distance at g=196.2
-			untouchableHeight = 6,  -- root higher than this cannot be tagged (TM_05/TM_08)
-			landingRecovery = 0.2,  -- sprint disabled after touchdown (s)
-			lockDirection = true,   -- heading frozen at takeoff: no air steering
-			fovBoost = 8,           -- owner camera FOV kick at takeoff
-			shakeDuration = 0.2,    -- owner landing camera shake (s)
-			fovBackTime = 0.25,     -- FOV ease-back time on landing (s)
-			crouchScale = 0.6,      -- HipHeight multiplier during windup crouch
-			pendingTimeout = 1.0,   -- drop a lost server reply after this (s)
-			flightSlack = 0.25,     -- landing-poll safety margin over airtime (s)
-			minAirtime = 0.2,       -- ignore landings shorter than this after takeoff (s)
-			wallSpeedPct = 0.2,     -- jump ends if horizontal speed < pct of launch speed
-			wallSlowTime = 0.1,     -- ...and stays that slow for this long (s)
+		id = "RS_01", name = "Luksong Baka", role = "Runner", type = "Escape",
+		cooldown = 12, duration = 0, range = 18,
+		params = {
+			height = 14, distance = 18, windup = 0.1, airtime = 0.76,
+			untouchableHeight = 6, landingRecovery = 0.2, lockDirection = true,
+			fovBoost = 8, shakeDuration = 0.2, fovBackTime = 0.25, crouchScale = 0.6,
+			pendingTimeout = 1.0, flightSlack = 0.25, minAirtime = 0.2,
+			wallSpeedPct = 0.2, wallSlowTime = 0.1,
 		},
-		vfx = { -- every burst stays under 30 particles (mobile budget)
-			windupCount = 10,
-			landingCount = 16,
-			ringStart = 3,          -- takeoff ring start diameter (studs)
-			ringEnd = 11,           -- takeoff ring end diameter (studs)
-			ringTime = 0.35,        -- ring grow duration (s)
-			trailLifetime = 0.5,    -- air trail segment fade (s)
-			previewSize = 4,        -- owner-only landing preview ring (studs)
-			shakeAmp = 0.15,        -- landing shake offset (studs)
-			fovTime = 0.15,         -- FOV tween-in time (s)
-			landingRingTime = 0.25, -- landing ring grow/fade (s)
-			dustLifeMin = 0.35,     -- dust particle lifetime low (s)
-			dustLifeMax = 0.5,      -- dust particle lifetime high (s)
-			dustSpeedMin = 4,       -- dust kick speed low (studs/s)
-			dustSpeedMax = 9,       -- dust kick speed high (studs/s)
-			dustSize = 0.7,         -- dust particle start size (studs)
+		vfx = {
+			windupCount = 10, landingCount = 16,
+			ringStart = 3, ringEnd = 11, ringTime = 0.35,
+			trailLifetime = 0.5, previewSize = 4, shakeAmp = 0.15,
+			fovTime = 0.15, landingRingTime = 0.25,
+			dustLifeMin = 0.35, dustLifeMax = 0.5,
+			dustSpeedMin = 4, dustSpeedMax = 9, dustSize = 0.7,
 		},
-		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
-			windup = "",            -- "Hup!" voice
-			takeoff = "",           -- launch whoosh
-			landing = "",           -- soft thud
-		},
-		tell     = { vfx = "DustRing",   sfx = "Hup" },
+		sounds = { windup = "", takeoff = "", landing = "" },
+		tell = { vfx = "DustRing", sfx = "Hup" },
 		weakness = "No air steering",
 		counterCondition = "Escapes a pounce or Lambat while airborne",
 	},
-	RS_02 = {
-		id       = "RS_02",
-		name     = "Pekeng Takbo",
-		role     = "Runner",
-		type     = "Decoy",
-		cooldown = 18,
-		duration = 4, -- decoy active seconds
-		range    = 0,
-		params   = { breakLock = true },
-		tell     = { vfx = "SmokePuff",  sfx = "Psssh" },
-		weakness = "Decoy has no stamina and runs in a straight line",
-		counterCondition = "Taya locks onto or pounces the decoy",
-	},
+	RS_02 = { id="RS_02", name="Pekeng Takbo", role="Runner", type="Decoy", cooldown=18, duration=4, range=0, params={breakLock=true}, tell={vfx="SmokePuff",sfx="Psssh"}, weakness="Decoy has no stamina and runs in a straight line", counterCondition="Taya locks onto or pounces the decoy" },
 	RS_03 = {
 		id       = "RS_03",
 		name     = "Tsinelas Throw",
 		role     = "Runner",
 		type     = "Stun",
-		cooldown = 25, -- [LOCKED] spec
-		duration = 1.0, -- [LOCKED] stun duration on hit (s)
-		range    = 40,  -- [SD] raised from locked 25 with team sign-off 2026-10-10
+		cooldown = 25,
+		duration = 1.0,
+		range    = 40,
 		params   = {
-			projectileRadius = 3, -- [SD] hit radius around the arc segment (studs)
-			launchHeight = 0, -- [SD] spawn height above caster root center (studs)
-			stepDt = 1 / 60, -- [SD] arc sim time step (s)
-			arcGravity = 80, -- [SD] slipper gravity (studs/s^2); 45 degree lob, 1.0 s at max range
-			minDistance = 3, -- [SD] closest landing point (studs); closer aims throw here
-			maxHeightDiff = 6, -- [SD] target height clamp above or below launch (studs)
-			pendingTimeout = 1.5, -- [SD] drop a lost server reply after this (s)
-			maxHoldTime = 3.0, -- [SD] max G hold before aim auto cancels without firing (s)
+			projectileRadius = 3,
+			launchHeight = 0,
+			stepDt = 1 / 60,
+			arcGravity = 80,
+			minDistance = 3,
+			maxHeightDiff = 6,
+			pendingTimeout = 1.5,
+			maxHoldTime = 3.0,
 		},
-		vfx = { -- every burst stays under 30 particles (mobile budget)
-			impactCount = 16, -- [SD] star burst particles on hit
-			spinRate = 720, -- [SD] cosmetic slipper spin (deg/s)
-			slipperColor = Color3.fromRGB(70, 140, 255), -- [SD] placeholder blue
-			slipperSize = Vector3.new(0.8, 0.35, 1.6), -- [SD] cosmetic slipper part (studs)
-			trailLifetime = 0.4, -- [SD] ribbon segment fade (s)
-			trailColorStart = Color3.fromRGB(150, 220, 255), -- [SD] ribbon head color
-			trailColorEnd = Color3.fromRGB(60, 120, 230), -- [SD] ribbon tail color
-			trailWidth = 1.6, -- [SD] spacing between the slipper ribbon attachments (studs)
-			trailTransparencyIn = 0.2, -- [SD] ribbon birth transparency (0 = opaque, 1 = invisible)
-			aimDotCount = 12, -- [SD] dots drawing the aim parabola
-			aimDotSize = 0.4, -- [SD] aim dot diameter (studs)
-			aimMarkerSize = 2.0, -- [SD] landing marker diameter (studs)
-			aimColor = Color3.fromRGB(255, 230, 150), -- [SD] aim dots and marker color
-			aimBlockedColor = Color3.fromRGB(226, 61, 61), -- [SD] aim color when a wall cuts the arc
-			aimTransparency = 0.5, -- [SD] aim dots and marker transparency (0 = opaque, 1 = invisible)
-			aimRayLength = 100, -- [SD] camera ray length for the target point (studs)
-			starColor = Color3.fromRGB(255, 220, 80), -- [SD] impact star color
-			starSize = 0.6, -- [SD] impact star particle start size (studs)
-			starLife = 0.5, -- [SD] impact star particle lifetime (s)
-			starSpeedMin = 6, -- [SD] impact star speed low (studs/s)
-			starSpeedMax = 14, -- [SD] impact star speed high (studs/s)
-			impactRingTime = 0.25, -- [SD] impact ring grow/fade (s)
+		vfx = {
+			impactCount = 16,
+			spinRate = 720,
+			slipperColor = Color3.fromRGB(70, 140, 255),
+			slipperSize = Vector3.new(0.8, 0.35, 1.6),
+			trailLifetime = 0.4,
+			trailColorStart = Color3.fromRGB(150, 220, 255),
+			trailColorEnd = Color3.fromRGB(60, 120, 230),
+			trailWidth = 1.6,
+			trailTransparencyIn = 0.2,
+			aimDotCount = 12,
+			aimDotSize = 0.4,
+			aimMarkerSize = 2.0,
+			aimColor = Color3.fromRGB(255, 230, 150),
+			aimBlockedColor = Color3.fromRGB(226, 61, 61),
+			aimTransparency = 0.5,
+			aimRayLength = 100,
+			starColor = Color3.fromRGB(255, 220, 80),
+			starSize = 0.6,
+			starLife = 0.5,
+			starSpeedMin = 6,
+			starSpeedMax = 14,
+			impactRingTime = 0.25,
 		},
-		sounds = { -- placeholder ids: swap licensed audio here (ASSET_LOG rule)
-			throw = "", -- arm swing whoosh
-			whoosh = "", -- flight loop whoosh
-			impact = "", -- star impact hit
+		sounds = {
+			throw = "",
+			whoosh = "",
+			impact = "",
 		},
 		tell     = { vfx = "SlipperArc", sfx = "Whoosh" },
 		weakness = "Linear projectile; short stun only",
 		counterCondition = "Hit on Taya mid-wind-up or mid-skill cast",
 	},
-	TS_01 = {
-		id       = "TS_01",
-		name     = "Sigaw",
-		role     = "Taya",
-		type     = "Detection",
-		cooldown = 20,
-		duration = 2.0, -- reveal duration
-		range    = 40,  -- radial reveal range (studs)
-		params   = {},
-		tell     = { vfx = "ShoutWave",  sfx = "Sigaw" },
-		weakness = "Only reveals; does not slow or stun",
-		counterCondition = "Tag a Runner who used Pekeng Takbo within the reveal window",
-	},
-	TS_02 = {
-		id       = "TS_02",
-		name     = "Lambat",
-		role     = "Taya",
-		type     = "Area",
-		cooldown = 22,
-		duration = 5.0, -- slow duration on hit Runner
-		range    = 8,   -- net zone radius (studs)
-		params   = { slowMult = 0.60 }, -- Runner moves at 60% speed
-		tell     = { vfx = "NetGrid",   sfx = "Whomp" },
-		weakness = "Runners can dash or jump out of the net",
-		counterCondition = "Tag a Runner slowed by the net",
-	},
-	TS_03 = {
-		id       = "TS_03",
-		name     = "Hatak",
-		role     = "Taya",
-		type     = "Speed",
-		cooldown = 15,
-		duration = 1.5, -- speed boost duration
-		range    = 0,
-		params   = { speedMult = 1.35, lockDisabled = true }, -- +35%, disables target lock
-		tell     = { vfx = "SpeedLines", sfx = "Dash" },
-		weakness = "Lock disabled; small window; commits Taya forward",
-		counterCondition = "Tag a Runner within 2 s of using Hatak",
-	},
-	-- TEMP (T17 Skill Draft absent): skills granted for immediate playtesting.
-	-- Single source of truth — read by MovementController (client gates + HUD)
-	-- and SkillService (server validation). Remove when PickSkill owns unlocks.
-	-- TEMP (T18): RS_03 added so 2 player manual tests can cast Tsinelas Throw.
+	TS_01 = { id="TS_01", name="Sigaw", role="Taya", type="Detection", cooldown=20, duration=2.0, range=40, params={}, tell={vfx="ShoutWave",sfx="Sigaw"}, weakness="Only reveals; does not slow or stun", counterCondition="Tag a Runner who used Pekeng Takbo within the reveal window" },
+	TS_02 = { id="TS_02", name="Lambat", role="Taya", type="Area", cooldown=22, duration=5.0, range=8, params={slowMult=0.60}, tell={vfx="NetGrid",sfx="Whomp"}, weakness="Runners can dash or jump out of the net", counterCondition="Tag a Runner slowed by the net" },
+	TS_03 = { id="TS_03", name="Hatak", role="Taya", type="Speed", cooldown=15, duration=1.5, range=0, params={speedMult=1.35,lockDisabled=true}, tell={vfx="SpeedLines",sfx="Dash"}, weakness="Lock disabled; small window; commits Taya forward", counterCondition="Tag a Runner within 2 s of using Hatak" },
 	testGrant = { "RS_01", "RS_03" },
 }
 
--- ============================================================
--- DISKARTE
--- ============================================================
 Config.Diskarte = {
 	MeterMax = 100,
-
-	-- Gain values (per trigger)
 	Gain = {
-		-- Runner gains
-		LockBreak          = 15,
-		PounceDouge        = 25,
-		Counter            = 20,
-		CloseChaseEscape   = 15, -- within CloseChaseDistance studs
-
-		-- Taya gains
-		PounceTag          = 25,
-		Tag                = 15,  -- regular touch tag
-		CatchAfterEscape   = 20,  -- catch after Runner used escape skill
-		TayaCounter        = 20,  -- Taya counter
+		LockBreak=15, PounceDouge=25, Counter=20, CloseChaseEscape=15,
+		PounceTag=25, Tag=15, CatchAfterEscape=20, TayaCounter=20,
 	},
-
-	-- Anti-snowball guards [SD F13]
-	SamePairCooldown      = 6.0, -- seconds before the same pair can grant each other gains again
-	RepeatedTagCooldown   = 3.0, -- seconds before same tag grants gain again
-
-	-- Moves
+	SamePairCooldown = 6.0,
+	RepeatedTagCooldown = 3.0,
 	Moves = {
-		LIKSI = {
-			role   = "Runner",
-			effect = "NextSkillCooldownReduction",
-			params = { reduction = 0.50, window = 8.0 }, -- 50% CD reduction within 8 s
-		},
-		BANTAY = {
-			role   = "Taya",
-			effect = "DirectionalRunnerClue",
-			params = { duration = 2.0, wallReveal = false },
-		},
-		PUSO = {
-			role   = "Both",
-			effect = "SafeWindowOnNextTagInteraction",
-			params = { safeWindow = 0.75, expiry = 10.0 }, -- does not stack with other windows
-		},
+		LIKSI = { role="Runner", effect="NextSkillCooldownReduction", params={reduction=0.50,window=8.0} },
+		BANTAY = { role="Taya", effect="DirectionalRunnerClue", params={duration=2.0,wallReveal=false} },
+		PUSO = { role="Both", effect="SafeWindowOnNextTagInteraction", params={safeWindow=0.75,expiry=10.0} },
 	},
-
-	-- Input bindings [SD F14]
-	ActivateKey     = Enum.KeyCode.F,       -- PC
-	ActivateMobile  = "DiskarteButton",     -- near skill bar
-	ActivateGamepad = Enum.KeyCode.ButtonX, -- console face button
+	ActivateKey = Enum.KeyCode.F,
+	ActivateMobile = "DiskarteButton",
+	ActivateGamepad = Enum.KeyCode.ButtonX,
 }
 
--- ============================================================
--- NETWORK / PERFORMANCE
--- ============================================================
-Config.Network = {
-	RateLimit = 10, -- max requests per second per player per remote
-}
+Config.Network = { RateLimit = 10 }
+Config.Performance = { MaxPartsPerMap=6000, MaxActiveEmitters=30, ServerFrameBudgetMs=4, MemoryBudgetMB=1024, NetworkBudgetKBs=20 }
 
-Config.Performance = {
-	MaxPartsPerMap     = 6000,
-	MaxActiveEmitters  = 30,
-	ServerFrameBudgetMs = 4,
-	MemoryBudgetMB     = 1024, -- 1 GB
-	NetworkBudgetKBs   = 20,  -- KB/s per client
-}
-
--- ============================================================
--- MAPS (placeholder; map data will expand here)
--- ============================================================
 Config.Maps = {
 	Kalsada = {
-		id         = "Kalsada",
-		name       = "Barangay Kalsada",
-		size       = Vector2.new(150, 150),
-		spawnCount = 8,
-		rushEvent  = "CourtRush",
-		-- T08 greybox blockout metrics. Level-design derived from
-		-- Config.Movement: JumpPower 50 ~ 7.2 studs -> vaults <= 4 (RM_05);
-		-- slide 50% hitbox -> 3.5-stud gap clears a sliding but not a
-		-- standing character (RM_06). Centre stays open for CourtRush.
-		greybox = {
-			wallHeight     = 14,  -- jump (JP50 ~7.2) cannot clear
-			sidewalkWidth  = 8,
-			spawnRadius    = 55,  -- equidistant ring (Bootstrap)
-			spawnPadSize   = 8,
-			courtLength    = 56,  -- court X (long axis)
-			courtWidth     = 32,  -- court Z
-			buildingX      = 20,  -- sari-sari block footprint X
-			buildingZ      = 12,  -- sari-sari block footprint Z
-			buildingHeight = 10,  -- LOS cover (not vaultable)
-			jeepneyLength  = 12,  -- RM_05: roof <= 4 studs => vaultable
-			jeepneyWidth   = 5,
-			jeepneyHeight  = 4,
-			crateSize      = 4,   -- extra vault obstacle (GDD: >= 3)
-			crateHeight    = 3.5,
-			lowGapHeight   = 3.5, -- RM_06 slide clearance
-			lowGapSpan     = 12,  -- lintel length across the gap
-		},
+		id="Kalsada", name="Barangay Kalsada", size=Vector2.new(150,150), spawnCount=8, rushEvent="CourtRush",
+		greybox = { wallHeight=14, sidewalkWidth=8, spawnRadius=55, spawnPadSize=8, courtLength=56, courtWidth=32, buildingX=20, buildingZ=12, buildingHeight=10, jeepneyLength=12, jeepneyWidth=5, jeepneyHeight=4, crateSize=4, crateHeight=3.5, lowGapHeight=3.5, lowGapSpan=12 },
 	},
-	Binaha = {
-		id         = "Binaha",
-		name       = "Binaha na Baryo",
-		size       = Vector2.new(150, 150),
-		spawnCount = 8,
-		rushEvent  = "TubigTumataas",
-		floodSpeedMult       = 0.80, -- -20% in submerged low areas
-		evacSafeWindowDuration = 1.5, -- [SD] one-time per visit
+	Binaha = { id="Binaha", name="Binaha na Baryo", size=Vector2.new(150,150), spawnCount=8, rushEvent="TubigTumataas", floodSpeedMult=0.80, evacSafeWindowDuration=1.5 },
+}
+
+Config.Party = { MaxSize=4, SlotSpacing=3.2 }
+
+Config.MapVote = {
+	Pool = { "Kalsada", "Binaha" },
+	Duration = 10, RevealTime = 1.5,
+	Info = {
+		Kalsada = { tagline="Own the court. Outrun the neighborhood.", event="EVENT · COURT RUSH" },
+		Binaha  = { tagline="Find high ground. Stay ahead of the flood.", event="EVENT · TUBIG TUMATAAS" },
 	},
 }
 
 -- ============================================================
 -- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
 -- ============================================================
--- RS_03 Tsinelas Throw slot: second chip in the MoveCluster beside the RS_01
--- chip, same wipe/countdown/pulse patterns. KeyLabel moves to E at T17.
 Config.UI = {
 	Tsinelas = {
-		SlotSize = 44, -- [SD] chip diameter (px, matches dash + RS_01 chips)
-		SlotOffsetX = 356, -- [SD] chip X in the cluster (dash 236, RS_01 296)
-		KeyLabel = "G", -- [SD] TEMP keycap text until T17 draft
-		CaptionText = "TSINELAS", -- [SD] caption under the chip
-		ReadyPulseTime = 0.16, -- [SD] ready pulse half cycle (s)
-		ReadyPulseGrow = 52, -- [SD] chip size at pulse peak (px)
-		AimStrokeColor = Color3.fromRGB(255, 210, 90), -- [SD] aiming border
-		AimStrokeThickness = 3, -- [SD] aiming border thickness (px)
-		UnavailableTransparency = 0.6, -- [SD] dim level when unavailable
-		CountdownTextSize = 18, -- [SD] cooldown seconds text (spec mobile min)
-		TouchSizePx = 76, -- [SD] touch button size (spec min 64)
-		TouchPosition = UDim2.new(0.88, 0, 0.68, 0), -- [SD] scale spot, thumb zone
+		SlotSize = 44,
+		SlotOffsetX = 356,
+		KeyLabel = "G",
+		CaptionText = "TSINELAS",
+		ReadyPulseTime = 0.16,
+		ReadyPulseGrow = 52,
+		AimStrokeColor = Color3.fromRGB(255, 210, 90),
+		AimStrokeThickness = 3,
+		UnavailableTransparency = 0.6,
+		CountdownTextSize = 18,
+		TouchSizePx = 76,
+		TouchPosition = UDim2.new(0.88, 0, 0.68, 0),
 	},
-	-- RS_03 first person aim camera: eases in on aim, back out on exit.
-	-- Disabled whole by Enabled (accessibility; aiming stays third person).
 	TsinelasCam = {
-		Enabled = true, -- [SD] false keeps third person aiming (reduced camera effects)
-		InTime = 0.25, -- [SD] ease into first person (s)
-		OutTime = 0.2, -- [SD] ease back to third person (s)
-		FirstPersonDistance = 0.5, -- [SD] zoom distance held in first person (studs)
-		MouseSensitivity = 0.7, -- [SD] mouse look scale while aiming (1 = unchanged)
-		FovDelta = 0, -- [SD] FOV shift while aiming (0 = off)
-		ReticleSizePx = 12, -- [SD] center reticle diameter while aiming
+		Enabled = true,
+		InTime = 0.25,
+		OutTime = 0.2,
+		FirstPersonDistance = 0.5,
+		MouseSensitivity = 0.7,
+		FovDelta = 0,
+		ReticleSizePx = 12,
 	},
 }
 
