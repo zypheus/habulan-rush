@@ -50,7 +50,7 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [x] Implement Runner walk (16 studs/s) and sprint (21 studs/s).
   - [x] Implement stamina depletion (20/s) and regen (12/s after 1s delay; walk enforced until >=10 if fully depleted).
   - [x] Implement Dash (12 studs in 0.2s, 6s cooldown, sends `RequestDash`).
-  - [x] Implement Slide (0.6s, 3s cooldown, 50% hitbox height).
+  - [x] Implement Slide (1.0s, 3s cooldown, 50% hitbox height; HRush_Slide v4 authored, Studio preview + publish pending).
   - [x] Implement control bindings for PC, Touch/Mobile, and Gamepad.
   - [ ] (2026-10-11) SpeedScale experiment: Config.Movement.SpeedScale routes every speed (walk/sprint/Taya/slide-entry/dash/RS_01/remote-gate/trail-caps/line-drift); locked bases 16/21/18 untouched; currently 1.5 (walk 24, sprint 31.5, Taya 27); team sign-off + 2-player playtest pending.
 - [ ] (2026-10-10) **T10 [Code/P0] Taya Timer & Scoreboard Replication**

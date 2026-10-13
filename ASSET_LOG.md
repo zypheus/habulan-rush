@@ -19,6 +19,7 @@ _All models, textures, audio, and assets used in the game must be logged here._
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
 |------------|-----------|------|--------|---------|-----------|--------|-------|
 | _(none yet)_ | — | — | — | — | — | — | No assets imported yet. All current code is original. |
+| 2026-10-14 | dash whoosh (`assets/sfx/dash.mp3`, `rbxassetid://139674215369268`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Dash SFX (`Config.Movement.DashSoundId`) | Pending Review | 1.92 s; longer than the 0.2 s dash, tail rings out via 3 s Debris cleanup. Must confirm license before submission (Rule B.6). |
 
 ---
 

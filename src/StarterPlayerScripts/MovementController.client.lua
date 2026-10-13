@@ -477,6 +477,27 @@ local function stopDashFX()
 	end
 end
 
+-- Dash sound hook (declared here, above performDash: Luau single-pass would
+-- bind the later playSkillSound as a nil global and wedge the dash). An empty
+-- id in Config is skipped, so the dash stays silent until licensed audio lands
+-- (ASSET_LOG rule). Fire-and-forget one-shot, like the skill sounds.
+local function playDashSound()
+	if not HRP then
+		return
+	end
+	local id = Mv.DashSoundId
+	if typeof(id) ~= "string" or id == "" then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = Mv.DashSoundVolume
+	sound.RollOffMaxDistance = 60
+	sound.Parent = HRP
+	sound:Play()
+	Debris:AddItem(sound, 3)
+end
+
 -- ── Animation one-shot helpers (declared before use) ─────────────────────────
 -- Luau compiles locals single-pass: calling a function declared later in this
 -- file binds a nil global and throws ("attempt to call a nil value"). A throw
@@ -574,6 +595,7 @@ local function performDash()
 
 	-- VFX: ribbon on during the glide + one-shot particle burst at the heels.
 	startDashFX()
+	playDashSound()
 
 	-- Animation: sprint yields for exactly the dash window, then resumes.
 	stopSprintAnim()

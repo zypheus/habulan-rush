@@ -5,7 +5,7 @@
 -- Responsibility:
 --   * Builds three ORIGINAL animation KeyframeSequences for the project R15 rig:
 --       HRush_Sprint (looping athletic run cycle)
---       HRush_Slide  (sprint-to-slide, 4 phases, non-looping)
+--       HRush_Slide  (sprint-to-slide tactical slide, 3 phases, non-looping)
 --       HRush_Dash   (burst-forward dash, non-looping, hands off to sprint)
 --   * Preview evaluators for MCP screenshot validation:
 --       setJointsEnabled + hardPose/hardReset (Edit mode): Transform writes do
@@ -88,57 +88,57 @@ local SprintParams = {
 	Ankle = { -6, -8, -10, -8, -2, 8, 18, 26, 18, 8, 0, -4, -6, -8, -8, -6, -4, -2, 0, 0, -2, -4, -5, -6 },
 }
 
--- ── Slide design (v3, AAA pass) ─────────────────────────────────────────────
--- Slide keyframes as phase fractions of the total duration; the live total
--- comes from Config.Movement.SlideDuration (fallback 0.6 documented below).
+-- ── Slide design (v4, tactical slide) ─────────────────────────────────────────
+-- Sprint-to-slide in three phases: entry drop (0-0.12), glide hold (0.12-0.70),
+-- tuck/drive exit (0.70-1.00). Keyframes are phase fractions of the total
+-- duration; the live total comes from Config.Movement.SlideDuration (target
+-- 1.0, so the phase times above read literally once Config is set to 1.0).
+-- Tunables live in SlideParams (one place, top of section): Duration documents
+-- the target clip length, LeanPeak the peak torso lean back, HipDrop the
+-- LowerTorso drop at full glide, HoldEnd the glide/exit split. SlideKeys
+-- references them, so editing SlideParams then rebuilding is enough; touch the
+-- keys only to restyle phases.
 -- rp/wp/np = root/waist/neck pitch (+ = lean back), ry/rr = root yaw/roll,
--- hip + = thigh forward, knee = flexion, sh + = arm forward, elbow = flexion.
--- Lead leg is RIGHT (extended, knee ~straight); trailing leg is LEFT (tucked).
--- ee = per-key Pose easing: "L" Linear for decisive snaps and the steady
--- glide, "C" Cubic for anticipation, recovery, and the sprint handoff.
--- Phases: blend-in 0, anticipation 0.08, entry snap 0.16, extension 0.24,
--- glide 0.40-0.55, tuck 0.68, drive 0.80, exit pop 0.90, handoff 1.00.
+-- hip + = thigh forward, knee = flexion, sh + = arm forward, elbow = flexion,
+-- drop = LowerTorso Y offset in studs (visual hip drop; HumanoidRootPart is
+-- untouched, slide speed stays 100% script-driven).
+-- Lead leg is RIGHT (extended, knee ~straight, heel dug); trailing leg is LEFT
+-- (folded under the body, knee bent sharply). Right arm braces back, left arm
+-- balances forward; the neck counter-pitches the torso lean so the head stays
+-- level. ed = Pose direction ("O" = ease-out on the entry key, "I" =
+-- ease-in-out elsewhere). The glide keys drift only 1-3 deg per joint so the
+-- hold feels alive without jitter. Blend-in and handoff are NOT tabled:
+-- buildSlide emits them from live sprintJoints(0) so both ends always match
+-- the sprint loop exactly (same trick as buildDash).
 local SlideParams = {
+	Duration = 1.0, -- target clip length in s; actual length comes from Config.Movement.SlideDuration (set it to 1.0)
+	LeanPeak = 26, -- peak torso lean back in deg (root pitch on the glide keys); range 22-30
+	HipDrop = 0.85, -- LowerTorso drop at full glide in studs; range 0.6-1.0 (lower it if feet clip the floor)
+	HoldEnd = 0.70, -- fraction where the glide ends and the exit begins; range 0.60-0.75
 	LeanDir = 0, -- lateral style lean, -1..1 (adds roll/yaw bias; 0 = centered)
-	ExitPop = 4, -- extra forward overshoot applied on the 0.90 pop key (deg)
 }
 
 local SlideKeys = {
-	{ f = 0.000, ee = "C", rp = -12, ry = 0, rr = 0, wp = -3, wy = 0, np = 9, ny = 0,
-		lhip = 40, lknee = 24, lankle = -6, rhip = -28, rknee = 70, rankle = -6,
-		lsh = -40, lelb = 80, rsh = 35, relb = 98 }, -- blend-in: stride snapshot = sprint phi 0
-	{ f = 0.080, ee = "C", rp = -9, ry = -1, rr = 1, wp = -4, wy = 2, np = 10, ny = -1,
-		lhip = 44, lknee = 55, lankle = 0, rhip = -10, rknee = 80, rankle = 2,
-		lsh = -34, lelb = 74, rsh = 28, relb = 86 }, -- anticipation: quick dip, weight drops
-	{ f = 0.160, ee = "L", rp = 8, ry = 3, rr = 4, wp = 5, wy = 5, np = -8, ny = 2,
-		lhip = 30, lknee = 90, lankle = 8, rhip = 50, rknee = 50, rankle = -4,
-		lsh = -44, lelb = 66, rsh = 40, relb = 80 }, -- entry snap: fast throw into the slide
-	{ f = 0.240, ee = "L", rp = 28, ry = 5, rr = 6, wp = 9, wy = 7, np = -16, ny = 2,
-		lhip = 30, lknee = 115, lankle = 13, rhip = 70, rknee = 12, rankle = -8,
-		lsh = -54, lelb = 62, rsh = 48, relb = 84 }, -- full extension: lead straight, trail tucked
-	{ f = 0.400, ee = "L", rp = 26, ry = 5, rr = 6, wp = 8, wy = 7, np = -16, ny = 2,
-		lhip = 31, lknee = 114, lankle = 14, rhip = 69, rknee = 14, rankle = -8,
-		lsh = -50, lelb = 64, rsh = 44, relb = 82 }, -- glide: sustained silhouette, slight drift
-	{ f = 0.550, ee = "L", rp = 25, ry = 5, rr = 7, wp = 7, wy = 6, np = -15, ny = 2,
-		lhip = 31, lknee = 113, lankle = 13, rhip = 68, rknee = 15, rankle = -8,
-		lsh = -48, lelb = 65, rsh = 42, relb = 82 }, -- glide end: settle, still alive
-	{ f = 0.680, ee = "C", rp = 14, ry = 3, rr = 4, wp = 3, wy = 4, np = -6, ny = 1,
-		lhip = 34, lknee = 95, lankle = 10, rhip = 55, rknee = 32, rankle = -6,
-		lsh = -34, lelb = 70, rsh = 30, relb = 78 }, -- tuck: legs gather under the body
-	{ f = 0.800, ee = "C", rp = 0, ry = 1, rr = 2, wp = -1, wy = 1, np = 2, ny = 0,
-		lhip = 10, lknee = 55, lankle = 2, rhip = 20, rknee = 60, rankle = -2,
-		lsh = -10, lelb = 80, rsh = 12, relb = 82 }, -- drive up: momentum lifts the torso
-	{ f = 0.900, ee = "L", rp = -10, ry = 0, rr = 1, wp = -2, wy = 0, np = 6, ny = 0,
-		lhip = 42, lknee = 30, lankle = -4, rhip = -26, rknee = 65, rankle = -6,
-		lsh = -42, lelb = 82, rsh = 38, relb = 96 }, -- exit pop: explosive pump into sprint (+ExitPop lean)
-	{ f = 1.000, ee = "C", rp = -12, ry = 0, rr = 0, wp = -3, wy = 0, np = 9, ny = 0,
-		lhip = 40, lknee = 24, lankle = -6, rhip = -28, rknee = 70, rankle = -6,
-		lsh = -40, lelb = 80, rsh = 35, relb = 98 }, -- handoff: identical to blend-in
+	{ f = 0.12, ed = "O", rp = 22, ry = 4, rr = 5, drop = 0.55, wp = 8, wy = 5, np = -20, ny = 1,
+		lhip = 25, lknee = 110, lankle = 14, rhip = 75, rknee = 15, rankle = -10,
+		lsh = 35, lelb = 55, rsh = -45, relb = 40 }, -- entry drop: fast sink, torso back, lead leg throws forward, right arm braces back
+	{ f = 0.24, ed = "I", rp = SlideParams.LeanPeak, ry = 5, rr = 6, drop = SlideParams.HipDrop, wp = 9, wy = 6, np = -22, ny = 1,
+		lhip = 28, lknee = 115, lankle = 14, rhip = 78, rknee = 12, rankle = -10,
+		lsh = 40, lelb = 60, rsh = -50, relb = 38 }, -- glide start: full extension, lowest hips, widest silhouette
+	{ f = 0.45, ed = "I", rp = 25, ry = 5, rr = 6, drop = SlideParams.HipDrop, wp = 8, wy = 6, np = -21, ny = 2,
+		lhip = 29, lknee = 114, lankle = 13, rhip = 77, rknee = 13, rankle = -10,
+		lsh = 37, lelb = 58, rsh = -47, relb = 40 }, -- glide mid: alive drift, 1-3 deg off the start key
+	{ f = SlideParams.HoldEnd, ed = "I", rp = 24, ry = 5, rr = 6, drop = SlideParams.HipDrop, wp = 7, wy = 6, np = -20, ny = 2,
+		lhip = 29, lknee = 113, lankle = 13, rhip = 76, rknee = 14, rankle = -10,
+		lsh = 36, lelb = 58, rsh = -46, relb = 40 }, -- glide end: settle, still low and readable
+	{ f = 0.85, ed = "I", rp = 10, ry = 2, rr = 3, drop = 0.35, wp = 2, wy = 3, np = -8, ny = 1,
+		lhip = 35, lknee = 85, lankle = 8, rhip = 45, rknee = 45, rankle = -4,
+		lsh = -10, lelb = 75, rsh = -20, relb = 65 }, -- tuck/drive: legs gather under the body, torso rises toward the run
 }
 
 -- Documented default from Config.Movement.SlideDuration, used only when the
 -- live Config module is unavailable (e.g. the module runs in a foreign place).
-local SLIDE_DURATION_FALLBACK = 0.6
+local SLIDE_DURATION_FALLBACK = 1.0
 
 -- ── Dash design (v1) ─────────────────────────────────────────────────────────
 -- ORIGINAL burst-forward dash. Total length DashParams.Duration (0.42s default,
@@ -319,13 +319,13 @@ local function sprintJoints(phi: number, K: typeof(SprintParams)): JointCFs
 end
 
 -- ── Slide pose tables ────────────────────────────────────────────────────────
--- LeanDir adds a lateral style lean without re-authoring keys; ExitPop adds
--- an extra forward overshoot only on the 0.90 pop key (exact-fraction match).
+-- LeanDir adds a lateral style lean without re-authoring keys. drop lowers the
+-- LowerTorso pose in place (same pattern as the sprint bounce dip), so the
+-- hips read close to the ground while HumanoidRootPart stays untouched.
 local function slideJoints(k: typeof(SlideKeys[1])): JointCFs
 	local D = SlideParams.LeanDir
-	local pop = if k.f == 0.90 then SlideParams.ExitPop else 0
 	return {
-		root = rx(k.rp - pop) * ry(k.ry + D * 2) * rz(k.rr + D * 4),
+		root = CFrame.new(0, -(k.drop or 0), 0) * rx(k.rp) * ry(k.ry + D * 2) * rz(k.rr + D * 4),
 		waist = rx(k.wp) * ry(k.wy + D * 2),
 		neck = rx(k.np) * ry(k.ny),
 		lsh = rx(k.lsh), lelb = rx(k.lelb), rsh = rx(k.rsh), relb = rx(k.relb),
@@ -373,36 +373,23 @@ local SprintEase: { [string]: Enum.PoseEasingStyle } = {
 	RightFoot = Enum.PoseEasingStyle.Cubic,
 }
 
-local SlideEaseSmooth: { [string]: Enum.PoseEasingStyle } = {
-	LowerTorso = Enum.PoseEasingStyle.Cubic,
-	UpperTorso = Enum.PoseEasingStyle.Cubic,
-	Head = Enum.PoseEasingStyle.Cubic,
-	LeftUpperArm = Enum.PoseEasingStyle.Cubic,
-	LeftLowerArm = Enum.PoseEasingStyle.Cubic,
-	RightUpperArm = Enum.PoseEasingStyle.Cubic,
-	RightLowerArm = Enum.PoseEasingStyle.Cubic,
-	LeftUpperLeg = Enum.PoseEasingStyle.Cubic,
-	LeftLowerLeg = Enum.PoseEasingStyle.Cubic,
-	LeftFoot = Enum.PoseEasingStyle.Cubic,
-	RightUpperLeg = Enum.PoseEasingStyle.Cubic,
-	RightLowerLeg = Enum.PoseEasingStyle.Cubic,
-	RightFoot = Enum.PoseEasingStyle.Cubic,
-}
-
-local SlideEaseSnap: { [string]: Enum.PoseEasingStyle } = {
-	LowerTorso = Enum.PoseEasingStyle.Linear,
-	UpperTorso = Enum.PoseEasingStyle.Linear,
-	Head = Enum.PoseEasingStyle.Linear,
-	LeftUpperArm = Enum.PoseEasingStyle.Linear,
-	LeftLowerArm = Enum.PoseEasingStyle.Linear,
-	RightUpperArm = Enum.PoseEasingStyle.Linear,
-	RightLowerArm = Enum.PoseEasingStyle.Linear,
-	LeftUpperLeg = Enum.PoseEasingStyle.Linear,
-	LeftLowerLeg = Enum.PoseEasingStyle.Linear,
-	LeftFoot = Enum.PoseEasingStyle.Linear,
-	RightUpperLeg = Enum.PoseEasingStyle.Linear,
-	RightLowerLeg = Enum.PoseEasingStyle.Linear,
-	RightFoot = Enum.PoseEasingStyle.Linear,
+-- Slide uses CubicV2 like the dash, not Cubic: Cubic is a legacy alias with a
+-- known direction-reversal bug between the Animation Editor and runtime, and
+-- the slide spec depends on direction (Out on entry, InOut elsewhere).
+local SlideEase: { [string]: Enum.PoseEasingStyle } = {
+	LowerTorso = Enum.PoseEasingStyle.CubicV2,
+	UpperTorso = Enum.PoseEasingStyle.CubicV2,
+	Head = Enum.PoseEasingStyle.CubicV2,
+	LeftUpperArm = Enum.PoseEasingStyle.CubicV2,
+	LeftLowerArm = Enum.PoseEasingStyle.CubicV2,
+	RightUpperArm = Enum.PoseEasingStyle.CubicV2,
+	RightLowerArm = Enum.PoseEasingStyle.CubicV2,
+	LeftUpperLeg = Enum.PoseEasingStyle.CubicV2,
+	LeftLowerLeg = Enum.PoseEasingStyle.CubicV2,
+	LeftFoot = Enum.PoseEasingStyle.CubicV2,
+	RightUpperLeg = Enum.PoseEasingStyle.CubicV2,
+	RightLowerLeg = Enum.PoseEasingStyle.CubicV2,
+	RightFoot = Enum.PoseEasingStyle.CubicV2,
 }
 
 -- Dash uses CubicV2, not Cubic: Cubic is a legacy alias with a known
@@ -453,9 +440,9 @@ local function slideDuration(): (number, string?)
 			and typeof((cfg :: any).Movement.SlideDuration) == "number" then
 			return (cfg :: any).Movement.SlideDuration, nil
 		end
-		return SLIDE_DURATION_FALLBACK, "Config present but Movement.SlideDuration unreadable; used fallback 0.6"
+		return SLIDE_DURATION_FALLBACK, "Config present but Movement.SlideDuration unreadable; used fallback 1.0"
 	end
-	return SLIDE_DURATION_FALLBACK, "ReplicatedStorage.Config not found; used fallback slide duration 0.6"
+	return SLIDE_DURATION_FALLBACK, "ReplicatedStorage.Config not found; used fallback slide duration 1.0"
 end
 
 -- ── Builders ─────────────────────────────────────────────────────────────────
@@ -493,11 +480,23 @@ function AnimDev.buildSlide(rig: Model?): (KeyframeSequence?, string?, string?)
 	kfs.Loop = false
 	kfs.Priority = Enum.AnimationPriority.Action
 	kfs.AuthoredHipHeight = hum.HipHeight
+	-- Blend-in: computed from the live sprint first frame so edits to
+	-- SprintParams can never desync the handoff.
+	local blend = keyframeAt(0, makeTree(sprintJoints(0, SprintParams)))
+	setPoseEasing(blend, SlideEase)
+	setPoseEasingDirection(blend, Enum.PoseEasingDirection.InOut)
+	blend.Parent = kfs
 	for _, k in SlideKeys do
 		local kf = keyframeAt(k.f * dur, makeTree(slideJoints(k)))
-		setPoseEasing(kf, if k.ee == "L" then SlideEaseSnap else SlideEaseSmooth)
+		setPoseEasing(kf, SlideEase) -- all CubicV2: no linear snapping
+		setPoseEasingDirection(kf, if k.ed == "O" then Enum.PoseEasingDirection.Out else Enum.PoseEasingDirection.InOut)
 		kf.Parent = kfs
 	end
+	-- Handoff: same computed frame at the end for a seamless return to sprint.
+	local hand = keyframeAt(dur, makeTree(sprintJoints(0, SprintParams)))
+	setPoseEasing(hand, SlideEase)
+	setPoseEasingDirection(hand, Enum.PoseEasingDirection.InOut)
+	hand.Parent = kfs
 	return kfs, warn, nil
 end
 
