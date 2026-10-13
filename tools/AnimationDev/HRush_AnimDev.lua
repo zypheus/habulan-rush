@@ -3,9 +3,10 @@
 -- Studio copy: Workspace/AnimationDevelopment/HRush_AnimDev (ModuleScript)
 -- Owner: temporary dev tool (no module owner; NOT production gameplay code)
 -- Responsibility:
---   * Builds two ORIGINAL animation KeyframeSequences for the project R15 rig:
+--   * Builds three ORIGINAL animation KeyframeSequences for the project R15 rig:
 --       HRush_Sprint (looping athletic run cycle)
 --       HRush_Slide  (sprint-to-slide, 4 phases, non-looping)
+--       HRush_Dash   (burst-forward dash, non-looping, hands off to sprint)
 --   * Preview evaluators for MCP screenshot validation:
 --       setJointsEnabled + hardPose/hardReset (Edit mode): Transform writes do
 --         NOT render in Edit mode, and with joints active the physics layer
@@ -38,6 +39,7 @@ local AnimDev = {}
 local FOLDER_NAME = "AnimationDevelopment"
 local SPRINT_NAME = "HRush_Sprint"
 local SLIDE_NAME = "HRush_Slide"
+local DASH_NAME = "HRush_Dash"
 
 -- ── Sprint design (v3, AAA pass) ────────────────────────────────────────────
 -- Built around Contact / Down / Passing / Up poses per leg at 24 samples
@@ -137,6 +139,53 @@ local SlideKeys = {
 -- Documented default from Config.Movement.SlideDuration, used only when the
 -- live Config module is unavailable (e.g. the module runs in a foreign place).
 local SLIDE_DURATION_FALLBACK = 0.6
+
+-- ── Dash design (v1) ─────────────────────────────────────────────────────────
+-- ORIGINAL burst-forward dash. Total length DashParams.Duration (0.42s default,
+-- in the 0.35-0.50 spec band). This is the ANIMATION length, not the gameplay
+-- dash: Config.Movement.DashDuration (0.2s) owns travel time, the clip overruns
+-- it and blends into the sprint loop.
+-- Tunables live in DashParams (one place, top of section). DashKeys references
+-- them, so editing DashParams then rebuilding is enough; touch the keys only
+-- to restyle phases. Sign conventions match sprint/slide: pitch +X = limbs
+-- forward, torso +X = lean back (forward lean is negative rp), knee flexion is
+-- stored positive and negated in dashJoints, elbow flexion positive.
+-- ee = style (always "C" Cubic here: no linear snapping per spec); ed = Pose
+-- direction ("O" = ease-out on the burst keys, "I" = ease-in-out elsewhere).
+-- Key 4 overshoots Key 3 by TorsoOvershoot/ArmOvershoot for punch; Key 5 lets
+-- the right arm swing forward early (follow-through) while the torso is still
+-- settling. Final handoff is NOT tabled: buildDash appends sprintJoints(phi 0)
+-- so the dash always matches the live sprint first frame exactly.
+-- No HumanoidRootPart content anywhere: LowerTorso carries rotation only, so
+-- dash speed stays 100% script-driven. Elbows stay open (58+) on burst keys
+-- so swept-back hands clear the torso.
+local DashParams = {
+	Duration = 0.42, -- total clip length in s; range 0.35-0.50
+	LeanPeak = 30, -- burst torso lean in deg forward; range 25-35
+	ArmSweep = 50, -- burst shoulder sweep back in deg; range 40-60
+	ArmOvershoot = 6, -- extra back-sweep on the overshoot key; range 0-10 (0 = no arm punch)
+	TorsoOvershoot = 4, -- extra lean on the overshoot key; range 0-8
+	StrideFront = 55, -- front hip drive in deg; range 45-65
+	StrideBack = 48, -- rear hip extension in deg (applied negative); range 40-55
+}
+
+local DashKeys = {
+	{ f = 0.000, ee = "C", ed = "I", rp = -16, ry = 0, rr = 1, wp = -4, wy = 2, np = 10, ny = 0,
+		lhip = 42, lknee = 30, lankle = -4, rhip = -30, rknee = 72, rankle = -4,
+		lsh = -42, lelb = 78, rsh = 32, relb = 95 }, -- anticipation start: light crouch off the run
+	{ f = 0.190, ee = "C", ed = "I", rp = -(DashParams.LeanPeak - 12), ry = -1, rr = 1, wp = -5, wy = 2, np = 11, ny = 0,
+		lhip = 46, lknee = 55, lankle = 0, rhip = -12, rknee = 85, rankle = 2,
+		lsh = -38, lelb = 72, rsh = 28, relb = 88 }, -- anticipation dip (~0.08s): weight drops, arms gather
+	{ f = 0.405, ee = "C", ed = "O", rp = -DashParams.LeanPeak, ry = 2, rr = 2, wp = -7, wy = 4, np = 15, ny = 0,
+		lhip = DashParams.StrideFront, lknee = 75, lankle = 10, rhip = -DashParams.StrideBack, rknee = 18, rankle = -10,
+		lsh = -(DashParams.ArmSweep + 2), lelb = 60, rsh = -(DashParams.ArmSweep - 5), relb = 65 }, -- burst peak (~0.17s): full lean, long stride, arms swept
+	{ f = 0.524, ee = "C", ed = "O", rp = -(DashParams.LeanPeak + DashParams.TorsoOvershoot), ry = 2, rr = 2, wp = -8, wy = 4, np = 16, ny = 0,
+		lhip = DashParams.StrideFront + 3, lknee = 78, lankle = 11, rhip = -(DashParams.StrideBack + 3), rknee = 16, rankle = -11,
+		lsh = -(DashParams.ArmSweep + 2 + DashParams.ArmOvershoot), lelb = 58, rsh = -(DashParams.ArmSweep - 5 + DashParams.ArmOvershoot), relb = 62 }, -- overshoot (~0.22s): punch past the peak
+	{ f = 0.714, ee = "C", ed = "I", rp = -20, ry = 0, rr = 1, wp = -4, wy = 2, np = 11, ny = 0,
+		lhip = 46, lknee = 40, lankle = -2, rhip = -32, rknee = 70, rankle = -5,
+		lsh = -46, lelb = 75, rsh = 30, relb = 92 }, -- recovery (~0.30s): torso rises, right arm swings forward first
+}
 
 local REQUIRED_PARTS = {
 	"LowerTorso", "UpperTorso", "Head",
@@ -285,6 +334,21 @@ local function slideJoints(k: typeof(SlideKeys[1])): JointCFs
 	}
 end
 
+-- ── Dash pose tables ─────────────────────────────────────────────────────────
+-- Pass-through like slideJoints: base numbers live in DashKeys (which already
+-- references DashParams), so no extra math here. Rotation only, no position
+-- offset: HumanoidRootPart motion stays script-driven.
+local function dashJoints(k: typeof(DashKeys[1])): JointCFs
+	return {
+		root = rx(k.rp) * ry(k.ry) * rz(k.rr),
+		waist = rx(k.wp) * ry(k.wy),
+		neck = rx(k.np) * ry(k.ny),
+		lsh = rx(k.lsh), lelb = rx(k.lelb), rsh = rx(k.rsh), relb = rx(k.relb),
+		lhip = rx(k.lhip), lknee = rx(-k.lknee), lankle = rx(-k.lankle),
+		rhip = rx(k.rhip), rknee = rx(-k.rknee), rankle = rx(-k.rankle),
+	}
+end
+
 -- ── Pose easing ──────────────────────────────────────────────────────────────
 -- Pose objects interpolate per joint. Limbs use Cubic (limb swings accelerate
 -- and decelerate, so Cubic reads as weight); the core stays Linear (a Cubic-
@@ -341,6 +405,25 @@ local SlideEaseSnap: { [string]: Enum.PoseEasingStyle } = {
 	RightFoot = Enum.PoseEasingStyle.Linear,
 }
 
+-- Dash uses CubicV2, not Cubic: Cubic is a legacy alias with a known
+-- direction-reversal bug between the Animation Editor and runtime, and the
+-- dash spec depends on direction (Out on burst, InOut on recovery).
+local DashEase: { [string]: Enum.PoseEasingStyle } = {
+	LowerTorso = Enum.PoseEasingStyle.CubicV2,
+	UpperTorso = Enum.PoseEasingStyle.CubicV2,
+	Head = Enum.PoseEasingStyle.CubicV2,
+	LeftUpperArm = Enum.PoseEasingStyle.CubicV2,
+	LeftLowerArm = Enum.PoseEasingStyle.CubicV2,
+	RightUpperArm = Enum.PoseEasingStyle.CubicV2,
+	RightLowerArm = Enum.PoseEasingStyle.CubicV2,
+	LeftUpperLeg = Enum.PoseEasingStyle.CubicV2,
+	LeftLowerLeg = Enum.PoseEasingStyle.CubicV2,
+	LeftFoot = Enum.PoseEasingStyle.CubicV2,
+	RightUpperLeg = Enum.PoseEasingStyle.CubicV2,
+	RightLowerLeg = Enum.PoseEasingStyle.CubicV2,
+	RightFoot = Enum.PoseEasingStyle.CubicV2,
+}
+
 local function setPoseEasing(kf: Keyframe, map: { [string]: Enum.PoseEasingStyle })
 	for _, d in kf:GetDescendants() do
 		if d:IsA("Pose") then
@@ -348,6 +431,16 @@ local function setPoseEasing(kf: Keyframe, map: { [string]: Enum.PoseEasingStyle
 			if e then
 				d.EasingStyle = e
 			end
+		end
+	end
+end
+
+-- Dash needs EasingDirection too (ease-out burst, ease-in-out recovery); the
+-- older sprint/slide path never touched it and keeps its Studio defaults.
+local function setPoseEasingDirection(kf: Keyframe, dir: Enum.PoseEasingDirection)
+	for _, d in kf:GetDescendants() do
+		if d:IsA("Pose") then
+			d.EasingDirection = dir
 		end
 	end
 end
@@ -408,7 +501,33 @@ function AnimDev.buildSlide(rig: Model?): (KeyframeSequence?, string?, string?)
 	return kfs, warn, nil
 end
 
--- Creates/replaces both sequences inside Workspace/AnimationDevelopment.
+function AnimDev.buildDash(rig: Model?): (KeyframeSequence?, string?)
+	local target, hum, err = validateRig(rig)
+	if target == nil or hum == nil or err ~= nil then
+		return nil, err
+	end
+	local dur = DashParams.Duration
+	local kfs = Instance.new("KeyframeSequence")
+	kfs.Name = DASH_NAME
+	kfs.Loop = false
+	kfs.Priority = Enum.AnimationPriority.Action
+	kfs.AuthoredHipHeight = hum.HipHeight
+	for _, k in DashKeys do
+		local kf = keyframeAt(k.f * dur, makeTree(dashJoints(k)))
+		setPoseEasing(kf, DashEase) -- all CubicV2: no linear snapping
+		setPoseEasingDirection(kf, if k.ed == "O" then Enum.PoseEasingDirection.Out else Enum.PoseEasingDirection.InOut)
+		kf.Parent = kfs
+	end
+	-- Handoff: computed from the live sprint first frame so edits to
+	-- SprintParams can never desync the blend.
+	local hand = keyframeAt(dur, makeTree(sprintJoints(0, SprintParams)))
+	setPoseEasing(hand, DashEase)
+	setPoseEasingDirection(hand, Enum.PoseEasingDirection.InOut)
+	hand.Parent = kfs
+	return kfs, nil
+end
+
+-- Creates/replaces all three sequences inside Workspace/AnimationDevelopment.
 -- Replaces only same-named KeyframeSequences in that folder; returns a report.
 function AnimDev.buildAll(): { ok: boolean, created: { string }, replaced: { string }, warnings: { string } }
 	local report = { ok = false, created = {}, replaced = {}, warnings = {} }
@@ -450,7 +569,13 @@ function AnimDev.buildAll(): { ok: boolean, created: { string }, replaced: { str
 	else
 		table.insert(report.warnings, "slide: " .. tostring(slerr))
 	end
-	report.ok = (sprint ~= nil) and (slide ~= nil)
+	local dash, derr = AnimDev.buildDash(rig)
+	if dash then
+		place(dash)
+	else
+		table.insert(report.warnings, "dash: " .. tostring(derr))
+	end
+	report.ok = (sprint ~= nil) and (slide ~= nil) and (dash ~= nil)
 	print("[AnimDev] buildAll: " .. table.concat(report.created, " | "))
 	return report
 end
@@ -670,6 +795,9 @@ end
 AnimDev.SprintParams = SprintParams
 AnimDev.SlideKeys = SlideKeys
 AnimDev.SlideParams = SlideParams
+AnimDev.DashParams = DashParams
+AnimDev.DashKeys = DashKeys
+AnimDev.DASH_NAME = DASH_NAME
 AnimDev.FOLDER_NAME = FOLDER_NAME
 
 return AnimDev

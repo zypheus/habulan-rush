@@ -10,6 +10,11 @@
 --   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s pounce invuln (F07),
 --     wall-clamped raycast, RequestDash → server (server validates + records)
 --   • Slide: 0.6s, 3s cooldown, 50% hitbox (HipHeight), momentum entry (F09)
+--   • Published anims (Config IDs): HRush_Sprint loops while sprinting
+--     (playback scaled with WalkSpeed), HRush_Slide one-shots per slide,
+--     HRush_Dash one-shots strictly inside the 0.2s dash window (sprint
+--     stops at dash start and resumes at move end via tickSprintAnim).
+--     Cosmetic only; a failed load silently keeps the default animations.
 --   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide gated to MS_04.
 --     NOTE (playtest): Bootstrap TEMP auto-fires MS_04/Runner 1.5s after spawn
 --     until MatchService T07 owns the state machine — without it you stay locked.
@@ -83,6 +88,14 @@ local isSliding = false
 local slideCooldownLeft = 0.0
 local slideTimer = 0.0
 local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
+
+-- Published animation tracks (HRush_Sprint / HRush_Slide / HRush_Dash): cosmetic only.
+-- Played on the owned character, so other clients see them too (the Animator
+-- replicates owner-played tracks). A failed load (e.g. wrong Creator
+-- ownership) leaves the track nil and the game keeps default animations.
+local sprintTrack: AnimationTrack? = nil
+local slideTrack: AnimationTrack? = nil
+local dashTrack: AnimationTrack? = nil
 
 -- Skill (RS_01; server validates, SkillApproved moves the owning client only)
 local skillId = "" -- skill granted to the current role ("" = none)
@@ -464,6 +477,44 @@ local function stopDashFX()
 	end
 end
 
+-- ── Animation one-shot helpers (declared before use) ─────────────────────────
+-- Luau compiles locals single-pass: calling a function declared later in this
+-- file binds a nil global and throws ("attempt to call a nil value"). A throw
+-- inside performDash/cancelDash wedges isDashing and locks sprint plus skills,
+-- so these helpers MUST stay above their first caller. Play/Stop are
+-- additionally pcall'd so a torn-down Animator can never wedge movement state.
+local function stopSprintAnim()
+	if sprintTrack and sprintTrack.IsPlaying then
+		sprintTrack:Stop(0.15)
+	end
+end
+
+local function stopSlideAnim()
+	if slideTrack and slideTrack.IsPlaying then
+		slideTrack:Stop(0.1)
+	end
+end
+
+local function stopDashAnim()
+	if dashTrack then
+		local track: AnimationTrack = dashTrack
+		pcall(function()
+			if track.IsPlaying then
+				track:Stop(0.1)
+			end
+		end)
+	end
+end
+
+local function playDashAnim()
+	if dashTrack then
+		local track: AnimationTrack = dashTrack
+		pcall(function()
+			track:Play(0.08, 1, 1)
+		end)
+	end
+end
+
 -- ── Dash ──────────────────────────────────────────────────────────────────────
 -- Spec §3: DashDistance (12) studs in DashDuration (0.2s), DashCooldown (6s),
 -- DashPounceInvulnTime (0.15s, F07 vs pounce lunge only — server enforces this).
@@ -476,6 +527,7 @@ local function cancelDash()
 		dashConn = nil
 	end
 	isDashing = false
+	stopDashAnim() -- dash anim lives strictly inside the dash window
 	stopDashFX()
 	applySpeed()
 	pushAttributes()
@@ -523,6 +575,10 @@ local function performDash()
 	-- VFX: ribbon on during the glide + one-shot particle burst at the heels.
 	startDashFX()
 
+	-- Animation: sprint yields for exactly the dash window, then resumes.
+	stopSprintAnim()
+	playDashAnim()
+
 	-- Clamp travel so we stop at walls instead of phasing through them.
 	local travel = Mv.DashDistance * Mv.SpeedScale
 	local rayParams = RaycastParams.new()
@@ -556,7 +612,7 @@ local function performDash()
 		local face = HRP.CFrame - HRP.CFrame.Position
 		HRP.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha)) * face
 		if alpha >= 1 then
-			cancelDash()
+			cancelDash() -- move done; anim cut with it, sprint resumes at once
 		end
 	end)
 end
@@ -574,6 +630,7 @@ local function endSlide()
 	-- Restore exact HipHeight captured at slide start (never assume the default).
 	Humanoid.HipHeight = slideHipHeight
 	isSliding = false
+	stopSlideAnim()
 	applySpeed()
 	pushAttributes(true)
 end
@@ -623,6 +680,60 @@ local function performSlide()
 	pushAttributes(true)
 	-- NOTE: server is NOT notified (slide is client-predicted; tag validation
 	-- uses rewound server positions per TDD §4.3).
+	if slideTrack then
+		slideTrack:Play(0.05, 1, 1) -- snap in; clip length matches SlideDuration
+	end
+end
+
+-- ── Published animation tracks (sprint / slide) ──────────────────────────────
+-- Loads once per character. Tracks never touch speed, stamina, or hitbox.
+local function loadAnimTracks()
+	sprintTrack = nil
+	slideTrack = nil
+	dashTrack = nil
+	if not Humanoid then
+		return
+	end
+	local animator = Humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		return
+	end
+	local function tryLoad(id: string, priority: Enum.AnimationPriority, looped: boolean): AnimationTrack?
+		if id == "" then
+			return nil
+		end
+		local ok, track = pcall(function(): AnimationTrack
+			local anim = Instance.new("Animation")
+			anim.AnimationId = id
+			local t = animator:LoadAnimation(anim)
+			t.Priority = priority
+			t.Looped = looped
+			return t
+		end)
+		if ok and track then
+			return track
+		end
+		return nil
+	end
+	sprintTrack = tryLoad(Mv.SprintAnimId, Enum.AnimationPriority.Movement, true)
+	slideTrack = tryLoad(Mv.SlideAnimId, Enum.AnimationPriority.Action, false)
+	dashTrack = tryLoad(Mv.DashAnimId, Enum.AnimationPriority.Action, false)
+end
+
+-- Runs every heartbeat: plays the sprint loop on the sprint transition, stops
+-- it the moment sprinting ends (role swap, lock, stun, depletion), and scales
+-- playback with real WalkSpeed so feet keep up when SpeedScale changes.
+local function tickSprintAnim()
+	if isSprinting and Humanoid then
+		if sprintTrack then
+			if not sprintTrack.IsPlaying then
+				sprintTrack:Play(0.15, 1, 1)
+			end
+			sprintTrack:AdjustSpeed(math.max(0.1, Humanoid.WalkSpeed / Mv.RunnerSprintSpeed))
+		end
+	elseif sprintTrack and sprintTrack.IsPlaying then
+		sprintTrack:Stop(0.15)
+	end
 end
 
 -- ── Skill: RS_01 Luksong Baka (T18 vertical slice) ───────────────────────────
@@ -2020,6 +2131,7 @@ local function startHeartbeat()
 
 		tickCooldowns(dt)
 		updateStamina(dt)
+		tickSprintAnim()
 		pushAttributes(false)
 
 		-- Process buffered inputs (resolved once per frame)
@@ -2342,6 +2454,7 @@ local function onCharacterAdded(char: Model)
 	Humanoid = char:WaitForChild("Humanoid") :: Humanoid
 	HRP = char:WaitForChild("HumanoidRootPart") :: BasePart
 	buildDashFX(char) -- dash trail + burst rig (rebuilt per respawn)
+	loadAnimTracks() -- sprint/slide tracks (rebuilt per respawn)
 
 	-- Reset state on respawn
 	stamina = Mv.StaminaMax
@@ -2499,6 +2612,9 @@ local function onCharacterAdded(char: Model)
 	Humanoid.Died:Connect(function()
 		tsinelasHeld = false
 		tsinelasCancelAim("death") -- death ends aiming and restores the camera
+		stopSprintAnim()
+		stopSlideAnim()
+		stopDashAnim()
 		if isSliding then
 			isSliding = false
 		end
