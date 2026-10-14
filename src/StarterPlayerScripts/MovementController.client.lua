@@ -15,9 +15,10 @@
 --     HRush_Dash one-shots strictly inside the 0.2s dash window (sprint
 --     stops at dash start and resumes at move end via tickSprintAnim).
 --     Cosmetic only; a failed load silently keeps the default animations.
---   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide gated to MS_04.
---     NOTE (playtest): Bootstrap TEMP auto-fires MS_04/Runner 1.5s after spawn
---     until MatchService T07 owns the state machine — without it you stay locked.
+--   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide open in
+--     MS_01 lobby warm-up and MS_04 Round Live, closed otherwise.
+--     NOTE (playtest): spawn straight into the lobby and press C — no
+--     FIND MATCH needed to test slide; MatchService owns MS_02-MS_06.
 --   • Bindings (UI/UX Spec §4): PC Shift/Q/C/E · Gamepad L2-stick/B/R1/X · Touch
 --   • Dash VFX: rear Trail ribbon + particle burst on Q (Config.Movement.DashVFX)
 --   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
@@ -163,11 +164,14 @@ end
 -- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s, stamina rules unchanged.
 local boostLeft = 0.0
 
--- Movement lock: MS_03 Countdown locks input; MS_05/MS_06/MS_01 freeze & end slides.
-local inputLocked = true
+-- Movement lock: MS_03 Countdown locks input; MS_05/MS_06/MS_02 freeze & end slides.
+-- MS_01 lobby is a warm-up playground (movement + dash/slide open) so solo
+-- Studio tests work without pressing FIND MATCH; MS_04 is Round Live.
+local inputLocked = false
 
 local role = "Runner" -- "Runner" | "Taya"; updated by StateChanged
 local roundLive = false -- true only during MS_04 Round Live (dash/slide gate)
+local lobbyWarmup = true -- true in MS_01 lobby OR before the first StateChanged
 
 -- Sprint input held flags per device
 local sprintHeld_KB     = false
@@ -511,8 +515,28 @@ local function stopSprintAnim()
 end
 
 local function stopSlideAnim()
-	if slideTrack and slideTrack.IsPlaying then
-		slideTrack:Stop(0.1)
+	if slideTrack then
+		local track: AnimationTrack = slideTrack
+		pcall(function()
+			if track.IsPlaying then
+				track:Stop(0.1)
+			end
+		end)
+	end
+end
+
+local function playSlideAnim()
+	if slideTrack then
+		local track: AnimationTrack = slideTrack
+		pcall(function()
+			-- Fit the clip to SlideDuration so a re-published clip never
+			-- overruns or gets cut: speed = clipLen / duration.
+			local len = track.Length
+			if len > 0 and Mv.SlideDuration > 0 then
+				track:AdjustSpeed(len / Mv.SlideDuration)
+			end
+			track:Play(0.05, 1, 1) -- snap in; one-shot per slide
+		end)
 	end
 end
 
@@ -555,8 +579,11 @@ local function cancelDash()
 end
 
 local function performDash()
-	if not roundLive or inputLocked then
+	if inputLocked then
 		return
+	end
+	if not (roundLive or lobbyWarmup) then
+		return -- MS_02/MS_03/MS_05/MS_06: abilities closed
 	end
 	if isStunned() then
 		return -- stunned: no new actions
@@ -566,6 +593,9 @@ local function performDash()
 	end
 	if isDashing or dashCooldownLeft > 0 then
 		return
+	end
+	if stamina < Mv.DashStaminaCost then
+		return -- not enough in the tank; show nothing, HUD already shows the bar
 	end
 	if isSliding then
 		return
@@ -577,6 +607,14 @@ local function performDash()
 	isDashing = true
 	dashInvulnLeft = Mv.DashPounceInvulnTime
 	dashCooldownLeft = Mv.DashCooldown
+	-- Stamina spend: same depletion entry as sprint (walk until StaminaDepletedMin).
+	stamina = clamp(stamina - Mv.DashStaminaCost, 0, Mv.StaminaMax)
+	if stamina <= 0 then
+		stamina = 0
+		isDepletion = true
+	end
+	regenTimer = 0.0
+	pushAttributes(true)
 
 	-- Direction: current move direction if moving, else facing.
 	local moveDir = Humanoid.MoveDirection
@@ -590,7 +628,9 @@ local function performDash()
 	end
 	moveDir = moveDir.Unit
 
-	-- Notify the server (server records dash direction + timestamp for invuln check).
+	-- Notify the server of dash direction for future validation. NOTE: no server
+	-- handler consumes RequestDash yet, so cooldown/round gating is client-side
+	-- only; invuln stays client-predicted while the server owns the pounce verdict.
 	RequestDash:FireServer(moveDir)
 
 	-- VFX: ribbon on during the glide + one-shot particle burst at the heels.
@@ -658,8 +698,11 @@ local function endSlide()
 end
 
 local function performSlide()
-	if not roundLive or inputLocked then
+	if inputLocked then
 		return
+	end
+	if not (roundLive or lobbyWarmup) then
+		return -- MS_02/MS_03/MS_05/MS_06: abilities closed
 	end
 	if isStunned() then
 		return -- stunned: no new actions
@@ -702,9 +745,9 @@ local function performSlide()
 	pushAttributes(true)
 	-- NOTE: server is NOT notified (slide is client-predicted; tag validation
 	-- uses rewound server positions per TDD §4.3).
-	if slideTrack then
-		slideTrack:Play(0.05, 1, 1) -- snap in; clip length matches SlideDuration
-	end
+	-- Sprint yields for the whole slide so the loop never fights the one-shot.
+	stopSprintAnim()
+	playSlideAnim()
 end
 
 -- ── Published animation tracks (sprint / slide) ──────────────────────────────
@@ -746,7 +789,7 @@ end
 -- it the moment sprinting ends (role swap, lock, stun, depletion), and scales
 -- playback with real WalkSpeed so feet keep up when SpeedScale changes.
 local function tickSprintAnim()
-	if isSprinting and Humanoid then
+	if isSprinting and not isSliding and Humanoid then
 		if sprintTrack then
 			if not sprintTrack.IsPlaying then
 				sprintTrack:Play(0.15, 1, 1)
@@ -2207,7 +2250,8 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 	end
 	if typeof(state) == "string" then
 		roundLive = (state == "MS_04")
-		inputLocked = (state == "MS_03") or not roundLive
+		lobbyWarmup = (state == "MS_01")
+		inputLocked = (state == "MS_03") or (not roundLive and not lobbyWarmup)
 		if state == "MS_03" then
 			-- Countdown: lock in place, full stamina, abilities cooling.
 			isSprinting = false

@@ -10,12 +10,13 @@ Config.Movement = {
 	SpeedScale = 1.5, -- [SD] multiplies every movement speed and speed-derived distance (1 = locked bases)
 	StaminaMax         = 100,
 	StaminaDrainRate   = 20,
-	StaminaRegenRate   = 12,
-	StaminaRegenDelay  = 1.0,
+	StaminaRegenRate   = 16, -- [SD] was 12; recharges one dash in ~1.9 s with the 0.6 s delay
+	StaminaRegenDelay  = 0.6, -- [SD] was 1.0
 	StaminaDepletedMin = 10,
 	DashDistance           = 12,
 	DashDuration           = 0.2,
-	DashCooldown           = 6.0,
+	DashCooldown           = 1.5, -- [SD] was 6.0; stamina cost governs spam now
+	DashStaminaCost        = 20, -- [SD] stamina per dash; 5 dashes empty a full tank
 	DashPounceInvulnTime   = 0.15,
 	DashSoundId            = "rbxassetid://139674215369268", -- [SD] dash whoosh (assets/sfx/dash.mp3, see ASSET_LOG)
 	DashSoundVolume        = 0.7, -- [SD] dash whoosh volume 0-1

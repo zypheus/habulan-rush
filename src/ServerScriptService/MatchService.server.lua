@@ -497,6 +497,21 @@ local function initPlayer(player: Player)
 	player:SetAttribute("HRushQueue", "Idle")
 	player:SetAttribute("HRushState", "MS_01")
 	player:SetAttribute("HRushRole", "Runner")
+	-- Late joiners never see returnToLobby's broadcast, so push the lobby
+	-- state directly: without this the client keeps its pre-first-message
+	-- defaults and movement stays frozen until the next full match cycle.
+	task.defer(function()
+		if player.Parent then
+			pcall(function()
+				StateChanged:FireClient(player, {
+					state = "MS_01",
+					role = "Runner",
+					round = currentRound,
+					timer = workspace:GetServerTimeNow(),
+				})
+			end)
+		end
+	end)
 end
 
 Players.PlayerAdded:Connect(initPlayer)
