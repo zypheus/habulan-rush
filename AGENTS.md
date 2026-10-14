@@ -62,6 +62,7 @@ Habulan Rush is a competitive Roblox playground chase game (Filipino "habulan"/t
 
 ## Docs
 - Design baseline: `md-doc/` (GDD, System Specification, Technical Design Document, Balance Workbook, UI/UX Specification, Art and Audio Bible).
+- Working notes: `dev-notes/00-index.md` (Obsidian vault root, docs only; canonical docs stay in `md-doc/`).
 - Locked rules: `DESIGN_LOCK.md`. Ownership: `MODULE_OWNERSHIP.md`. Architecture: `.gemini/PLANNING.md`. Live tasks: `.gemini/TASK.md`.
 - Compliance: `AI_LOG.md` (Form 03) and `ASSET_LOG.md` (Rule B.6).
 

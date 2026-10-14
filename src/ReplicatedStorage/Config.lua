@@ -425,6 +425,12 @@ Config.UI = {
 		FovDelta = 0,
 		ReticleSizePx = 12,
 	},
+	MatchIntro = {
+		BackgroundImageId = "", -- [SD] match-start cover art; empty = gradient only until the art ID lands
+		BgmId = "rbxassetid://94984747143473", -- [SD] match BGM loop, see ASSET_LOG
+		BgmVolume = 0.5, -- [SD] match BGM volume 0-1
+		BgmFadeTime = 1.0, -- [SD] fade in/out on match enter/exit (s)
+	},
 }
 
 return Config

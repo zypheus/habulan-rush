@@ -1,3 +1,6 @@
 # Generated Rojo place build and lock file
 HabulanRush.rbxlx
 HabulanRush.rbxlx.lock
+
+# Local Obsidian UI state (notes under dev-notes/ stay tracked)
+.obsidian/

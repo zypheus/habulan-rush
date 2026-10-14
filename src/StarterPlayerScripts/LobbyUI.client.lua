@@ -25,6 +25,16 @@ local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
 local QueueEvent = Remotes and Remotes:WaitForChild("QueueEvent", 10)
 local PartyEvent = Remotes and Remotes:WaitForChild("PartyEvent", 10)
 
+-- Shared tuning (match cover art + BGM). Falls back to silent gradient-only
+-- when an older Config has no MatchIntro table.
+local SharedConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("Config"))
+local INTRO = SharedConfig.UI.MatchIntro or {
+	BackgroundImageId = "",
+	BgmId = "",
+	BgmVolume = 0.5,
+	BgmFadeTime = 1.0,
+}
+
 -- Opens the Roblox friends invite prompt. PartyService puts invitees in your
 -- party automatically via JoinData.LaunchData = your UserId.
 local function promptGameInvite()
@@ -2185,6 +2195,17 @@ local loadingGroup = createFrame({
 	Size = UDim2.fromScale(1, 1),
 	BackgroundColor3 = COLORS.Navy,
 }, loadingGui)
+-- Match cover art: full-screen crop behind the loading content. Empty
+-- BackgroundImageId hides it (gradient only) until the art ID lands.
+local loadingBg = create("ImageLabel", {
+	Name = "MatchBackground",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Image = INTRO.BackgroundImageId,
+	ScaleType = Enum.ScaleType.Crop,
+	Visible = INTRO.BackgroundImageId ~= "",
+}, loadingGroup)
 local loadingVeil = createFrame({
 	Name = "FadeVeil",
 	Size = UDim2.fromScale(1, 1),
@@ -2347,10 +2368,53 @@ local function setLoadingVisible(visible)
 	end
 end
 
+-- Match BGM: loops while you are in a match (round active or otherwise out
+-- of the lobby), fades out on exit. One persistent Sound, never rebuilt.
+-- NOTE: the Settings Music toggle is visual-only today, so BGM cannot honor
+-- it yet; wiring that toggle is a separate step.
+local bgm = Instance.new("Sound")
+bgm.Name = "HRushMatchBGM"
+bgm.SoundId = INTRO.BgmId
+bgm.Volume = 0
+bgm.Looped = true
+bgm.Parent = playerGui
+local bgmToken = 0
+
+local function setBgmPlaying(playing)
+	bgmToken += 1
+	local token = bgmToken
+	if playing then
+		if INTRO.BgmId == "" then
+			return
+		end
+		if not bgm.IsPlaying then
+			bgm.Volume = 0
+			local ok = pcall(function()
+				bgm:Play()
+			end)
+			if not ok then
+				return
+			end
+		end
+		tween(bgm, TweenInfo.new(INTRO.BgmFadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = INTRO.BgmVolume })
+	else
+		if not bgm.IsPlaying then
+			return
+		end
+		local t = tween(bgm, TweenInfo.new(INTRO.BgmFadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = 0 })
+		t.Completed:Connect(function()
+			if bgmToken == token then
+				bgm:Stop()
+			end
+		end)
+	end
+end
+
 local function refreshLoading()
 	local inMatch = player:GetAttribute("HRushInMatch") == true
 	local st = player:GetAttribute("HRushState")
 	setLoadingVisible(inMatch and typeof(st) == "string" and LOADING_WAIT_STATES[st] == true)
+	setBgmPlaying(inMatch)
 end
 
 player:GetAttributeChangedSignal("HRushInMatch"):Connect(refreshLoading)

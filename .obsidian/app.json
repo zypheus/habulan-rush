@@ -1,1 +1,6 @@
-{}
+{
+  "useMarkdownLinks": true,
+  "alwaysUpdateLinks": false,
+  "showUnsupportedFiles": false,
+  "propertiesInDocument": "source"
+}

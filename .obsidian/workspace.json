@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "f54f26da6f84cfc0",
+        "id": "6b493e13a14ffd82",
         "type": "tabs",
         "children": [
           {
-            "id": "373ab72c8ccb898d",
+            "id": "e733822277f7bdaa",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -79,7 +79,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "364f378486c67087",
@@ -181,8 +182,32 @@
       "bases:Create new base": false
     }
   },
-  "active": "373ab72c8ccb898d",
+  "active": "e733822277f7bdaa",
   "lastOpenFiles": [
-    "HabulanRush.rbxlx.lock"
+    "HabulanRush.rbxlx.lock",
+    "dev-notes/animation-builders.md",
+    "dev-notes/sprint-vfx-trail-design.md",
+    "dev-notes/handoffs/2026-10-14-obsidian-setup-complete.md",
+    "Untitled.canvas",
+    "dev-notes/obsidian-setup-guide.md",
+    "dev-notes/prompts",
+    "dev-notes/handoffs",
+    "dev-notes/playtests",
+    "scripts/check-notes.ps1",
+    "dev-notes/decisions/speed-scale-experiment.md",
+    "dev-notes/decisions",
+    "dev-notes/pending-doc-updates.md",
+    "dev-notes/check-syntax-script.md",
+    "dev-notes/studio-mcp-rule.md",
+    "dev-notes/rebuild-and-test-rule.md",
+    "dev-notes/rs-03-tsinelas-throw.md",
+    "dev-notes/templates/playtest-template.md",
+    "dev-notes/templates/handoff-template.md",
+    "dev-notes/templates/decision-template.md",
+    "dev-notes/templates/bug-template.md",
+    "dev-notes/templates/agent-task-prompt-template.md",
+    "dev-notes/templates",
+    "dev-notes/00-index.md",
+    "dev-notes"
   ]
 }

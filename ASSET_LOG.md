@@ -21,6 +21,7 @@ _All models, textures, audio, and assets used in the game must be logged here._
 | _(none yet)_ | — | — | — | — | — | — | No assets imported yet. All current code is original. |
 | 2026-10-14 | dash whoosh (`assets/sfx/dash.mp3`, `rbxassetid://139674215369268`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Dash SFX (`Config.Movement.DashSoundId`) | Superseded | Replaced 2026-10-14 by Pixabay whoosh below; kept for history. |
 | 2026-10-14 | dash whoosh (`rbxassetid://115548807322300`) | Audio | Pixabay Sound Effects | Royalty-free (Pixabay Content License: free commercial use, no attribution required; allowed under Rule B.6) | Dash SFX (`Config.Movement.DashSoundId`) | Pending Review | Replaces 139674215369268. Needs one team member review to mark Approved (protocol §6). |
+| 2026-10-14 | match BGM (`rbxassetid://94984747143473`) | Audio | TBD (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Match BGM loop (`Config.UI.MatchIntro.BgmId`, `LobbyUI` loading cover) | Pending Review | Loops while in match, fades out on lobby return. Must confirm license before submission (Rule B.6). |
 
 ---
 
