@@ -9,7 +9,9 @@
 --   • Post-tag ex-Taya boost: +20% walk+sprint for 2s (F08, via TagEvent)
 --   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s pounce invuln (F07),
 --     wall-clamped raycast, RequestDash → server (server validates + records)
---   • Slide: 0.6s, 3s cooldown, 50% hitbox (HipHeight), momentum entry (F09)
+--   • Slide: 1.0s, 3s cooldown, 50% hitbox (HipHeight), 1.25x boosted
+--     momentum entry sustained per-Heartbeat, locked heading, both roles (F09)
+--   • Slide anim guaranteed: verified load + watchdog retry + one warn/character
 --   • Published anims (Config IDs): HRush_Sprint loops while sprinting
 --     (playback scaled with WalkSpeed), HRush_Slide one-shots per slide,
 --     HRush_Dash one-shots strictly inside the 0.2s dash window (sprint
@@ -89,6 +91,11 @@ local isSliding = false
 local slideCooldownLeft = 0.0
 local slideTimer = 0.0
 local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
+local slideConn: RBXScriptConnection? = nil -- Heartbeat sustain: holds boosted entry speed
+local slideDir = Vector3.new(0, 0, -1) -- slide heading, fixed at entry (steer lock)
+local slideSpeed = 0.0 -- slide speed, fixed at entry (entry x SlideSpeedMult)
+local slideGen = 0 -- slide generation: watchdog retries only the latest slide
+local slideAnimWarned = false -- one warn per character when the clip will not play
 
 -- Published animation tracks (HRush_Sprint / HRush_Slide / HRush_Dash): cosmetic only.
 -- Played on the owned character, so other clients see them too (the Animator
@@ -529,15 +536,65 @@ local function playSlideAnim()
 	if slideTrack then
 		local track: AnimationTrack = slideTrack
 		pcall(function()
-			-- Fit the clip to SlideDuration so a re-published clip never
-			-- overruns or gets cut: speed = clipLen / duration.
+			track:Play(0.05, 1, 1) -- snap in; clip length matches SlideDuration
+			-- Fit AFTER play starts (guarded): a re-published clip never overruns
+			-- or gets cut, and a zero Length can never freeze frame 0.
 			local len = track.Length
-			if len > 0 and Mv.SlideDuration > 0 then
+			if len > 0.5 and Mv.SlideDuration > 0 then
 				track:AdjustSpeed(len / Mv.SlideDuration)
 			end
-			track:Play(0.05, 1, 1) -- snap in; one-shot per slide
 		end)
 	end
+end
+
+-- Slide feel (dash pattern): heel dust burst + whoosh hook. Declared here above
+-- performSlide per the single-pass rule. An empty SlideSoundId stays silent
+-- until a licensed asset lands (ASSET_LOG rule).
+local function playSlideSound()
+	if not HRP then
+		return
+	end
+	local id = Mv.SlideSoundId
+	if typeof(id) ~= "string" or id == "" then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = Mv.SlideSoundVolume
+	sound.RollOffMaxDistance = 60
+	sound.Parent = HRP
+	sound:Play()
+	Debris:AddItem(sound, 3)
+end
+
+local function emitSlideDust()
+	if not HRP then
+		return
+	end
+	local att = Instance.new("Attachment")
+	att.Name = "SlideDust"
+	att.Position = Vector3.new(0, -2, 0) -- near the heels where the slide kicks up
+	att.Parent = HRP
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Rate = 0 -- burst only, never a stream (mobile particle budget)
+	emitter.Lifetime = NumberRange.new(Mv.SlideDustLifeMin, Mv.SlideDustLifeMax)
+	emitter.Speed = NumberRange.new(Mv.SlideDustSpeedMin, Mv.SlideDustSpeedMax)
+	emitter.SpreadAngle = Vector2.new(55, 55)
+	emitter.EmissionDirection = Enum.NormalId.Top
+	emitter.Acceleration = Vector3.new(0, -12, 0) -- dust settles, it does not float
+	emitter.Color = ColorSequence.new(Color3.fromRGB(214, 200, 176))
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, Mv.SlideDustSize),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emitter.Parent = att
+	emitter:Emit(Mv.SlideDustCount)
+	Debris:AddItem(att, 1.2) -- cleanup margin only, not a gameplay number
 end
 
 local function stopDashAnim()
@@ -680,14 +737,20 @@ local function performDash()
 end
 
 -- ── Slide ─────────────────────────────────────────────────────────────────────
--- Spec §3 + F09: SlideDuration (0.6s), SlideCooldown (3s), hitbox at
+-- Spec §3 + F09: SlideDuration (1.0s), SlideCooldown (3s), hitbox at
 -- SlideHitboxScale (50% height) so touch tag cannot hit a Runner under a low gap
 -- (TagService reads the sliding flag via position/height; server owns the verdict).
--- Entry keeps current momentum with a small forward burst; WalkSpeed is held at
--- slide entry speed. Cancelled by dash attempts, tag swaps, round end, or death.
+-- Entry keeps boosted momentum (x SlideSpeedMult) sustained per-Heartbeat;
+-- WalkSpeed is held at boosted entry speed. Heading locks at entry while
+-- SlideSteerLock is on. Both roles slide. Dust + whoosh on entry (dash
+-- pattern). Cancelled by tag swaps, round end, stun, or death.
 local function endSlide()
 	if not isSliding or not Humanoid then
 		return
+	end
+	if slideConn then
+		slideConn:Disconnect()
+		slideConn = nil
 	end
 	-- Restore exact HipHeight captured at slide start (never assume the default).
 	Humanoid.HipHeight = slideHipHeight
@@ -707,9 +770,7 @@ local function performSlide()
 	if isStunned() then
 		return -- stunned: no new actions
 	end
-	if role ~= "Runner" then
-		return
-	end
+	-- Both roles slide (Runner escape + Taya chase through low gaps).
 	if isSliding or slideCooldownLeft > 0 then
 		return
 	end
@@ -731,23 +792,78 @@ local function performSlide()
 	-- Shrink hitbox: halve height (F09 — low-gap evasion).
 	Humanoid.HipHeight = slideHipHeight * Mv.SlideHitboxScale
 
-	-- Hold entry momentum: lock WalkSpeed at max(walk, current horizontal speed)
-	-- and add a small forward burst via AssemblyLinearVelocity (physics-safe).
+	-- Boosted entry momentum: lock WalkSpeed at boosted entry and sustain it
+	-- every Heartbeat (a one-frame burst alone is eaten by humanoid friction).
+	-- Velocity-driven so walls still collide normally. Heading locks at entry
+	-- while SlideSteerLock is on; MoveDirection steers when it is off.
 	local flatVel = Vector3.new(HRP.AssemblyLinearVelocity.X, 0, HRP.AssemblyLinearVelocity.Z)
-	local entrySpeed = math.max(Mv.RunnerWalkSpeed * Mv.SpeedScale, flatVel.Magnitude)
+	local baseWalk = if role == "Taya"
+		then Mv.TayaSpeed * Mv.SpeedScale
+		else Mv.RunnerWalkSpeed * Mv.SpeedScale
+	local entrySpeed = math.max(baseWalk, flatVel.Magnitude) * Mv.SlideSpeedMult
 	Humanoid.WalkSpeed = entrySpeed
+	local hum = Humanoid -- captured: sustain reads this character, never a respawned one
 	local burstDir = Vector3.new(Humanoid.MoveDirection.X, 0, Humanoid.MoveDirection.Z)
 	if burstDir.Magnitude > 0.01 then
 		burstDir = burstDir.Unit
-		local targetVel = burstDir * entrySpeed
-		HRP.AssemblyLinearVelocity = Vector3.new(targetVel.X, HRP.AssemblyLinearVelocity.Y, targetVel.Z)
+		slideDir = burstDir
+		slideSpeed = entrySpeed
+		HRP.AssemblyLinearVelocity = Vector3.new(burstDir.X * entrySpeed, HRP.AssemblyLinearVelocity.Y, burstDir.Z * entrySpeed)
+		if slideConn then
+			slideConn:Disconnect()
+			slideConn = nil
+		end
+		slideConn = RunService.Heartbeat:Connect(function()
+			if not isSliding or not HRP or not HRP.Parent then
+				return
+			end
+			local dir = slideDir
+			if not Mv.SlideSteerLock and hum.Parent then
+				local md = hum.MoveDirection
+				if md.Magnitude > 0.1 then
+					dir = Vector3.new(md.X, 0, md.Z).Unit
+				end
+			end
+			local v = HRP.AssemblyLinearVelocity
+			HRP.AssemblyLinearVelocity = Vector3.new(dir.X * slideSpeed, v.Y, dir.Z * slideSpeed)
+		end)
 	end
 	pushAttributes(true)
 	-- NOTE: server is NOT notified (slide is client-predicted; tag validation
 	-- uses rewound server positions per TDD §4.3).
 	-- Sprint yields for the whole slide so the loop never fights the one-shot.
 	stopSprintAnim()
+	emitSlideDust()
+	playSlideSound()
 	playSlideAnim()
+	-- Animation guarantee: the clip MUST run while sliding. Verify shortly
+	-- after Play; retry once, then warn once per character (named asset id).
+	slideGen += 1
+	local gen = slideGen
+	task.delay(0.15, function()
+		if gen ~= slideGen or not isSliding then
+			return -- superseded slide or clean exit: nothing to do
+		end
+		local t = slideTrack
+		local playing = false
+		if t then
+			pcall(function()
+				playing = t.IsPlaying
+			end)
+		end
+		if playing then
+			return
+		end
+		if t then
+			pcall(function()
+				t:Play(0.05, 1, 1)
+			end)
+		end
+		if not slideAnimWarned then
+			slideAnimWarned = true
+			warn("[Slide] animation failed to play (" .. tostring(Mv.SlideAnimId) .. ")")
+		end
+	end)
 end
 
 -- ── Published animation tracks (sprint / slide) ──────────────────────────────
@@ -783,6 +899,9 @@ local function loadAnimTracks()
 	sprintTrack = tryLoad(Mv.SprintAnimId, Enum.AnimationPriority.Movement, true)
 	slideTrack = tryLoad(Mv.SlideAnimId, Enum.AnimationPriority.Action, false)
 	dashTrack = tryLoad(Mv.DashAnimId, Enum.AnimationPriority.Action, false)
+	if slideTrack == nil then
+		warn("[Slide] failed to load SlideAnimId " .. tostring(Mv.SlideAnimId))
+	end
 end
 
 -- Runs every heartbeat: plays the sprint loop on the sprint transition, stops
@@ -2534,6 +2653,13 @@ local function onCharacterAdded(char: Model)
 	slideCooldownLeft = 0.0
 	slideTimer = 0.0
 	slideHipHeight = 0.0
+	if slideConn then
+		slideConn:Disconnect()
+		slideConn = nil
+	end
+	slideDir = Vector3.new(0, 0, -1)
+	slideSpeed = 0.0
+	slideAnimWarned = false -- new character: warn again if its clip will not play
 	boostLeft = 0.0
 	sprintHeld_KB = false
 	sprintHeld_GP = false
@@ -2683,6 +2809,10 @@ local function onCharacterAdded(char: Model)
 		stopDashAnim()
 		if isSliding then
 			isSliding = false
+		end
+		if slideConn then
+			slideConn:Disconnect()
+			slideConn = nil
 		end
 		skillFlightLeft = 0 -- a flight cannot outlive its character
 		skillPendingVelocity = nil
