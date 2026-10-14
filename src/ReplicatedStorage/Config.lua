@@ -274,6 +274,7 @@ Config.Debug = {
 	ShowSkillDebug = true,
 	ShowSprintVFX = true, -- sprint VFX state prints
 	ForceTrailsVisible = false, -- sprint trail test override
+	SettingsTestTone = false, -- TODO: remove before submission (debug loop proving the Music slider)
 }
 
 Config.Skills = {
@@ -398,6 +399,34 @@ Config.MapVote = {
 	},
 }
 
+-- ============================================================
+-- SETTINGS (client presentation only; never gameplay)
+-- ============================================================
+-- Defaults, ranges, and steps live here. Player choices live in
+-- ClientSettings (StarterPlayerScripts) and never write back here.
+Config.Settings = {
+	MasterDefault = 100, -- [SD] master volume 0-100
+	MusicDefault = 60, -- [SD] music volume 0-100
+	SfxDefault = 100, -- [SD] SFX volume 0-100
+	VfxDefault = 100, -- [SD] cosmetic VFX intensity percent 0-100
+	ReducedCameraDefault = false, -- [SD] reduced camera effects off
+	VolumeCurve = 2, -- [SD] loudness curve power for slider mapping
+	SliderStep = 5, -- [SD] slider snap step for keyboard and gamepad
+	TelegraphFloor = 0.35, -- [SD] minimum visibility kept for telegraph effects
+}
+
+-- Per-match-state music tracks. All IDs stay "" until licensed audio is
+-- logged in ASSET_LOG.md. The MusicController skips empty entries.
+Config.Audio = {
+	Music = {
+		lobby = "", -- [SD] MS_01
+		draft = "", -- [SD] MS_02
+		countdown = "", -- [SD] MS_03
+		round = "", -- [SD] MS_04
+		roundEnd = "", -- [SD] MS_05
+		matchEnd = "", -- [SD] MS_06
+	},
+}
 -- ============================================================
 -- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
 -- ============================================================

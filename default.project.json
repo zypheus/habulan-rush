@@ -102,6 +102,18 @@
         },
         "MapVoteUI": {
           "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"
+        },
+        "ClientSettings": {
+          "$path": "src/StarterPlayerScripts/ClientSettings.lua"
+        },
+        "AudioRouter": {
+          "$path": "src/StarterPlayerScripts/AudioRouter.lua"
+        },
+        "MusicController": {
+          "$path": "src/StarterPlayerScripts/MusicController.lua"
+        },
+        "VfxScale": {
+          "$path": "src/StarterPlayerScripts/VfxScale.lua"
         }
       }
     }

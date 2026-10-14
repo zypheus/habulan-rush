@@ -185,6 +185,10 @@
   "active": "e733822277f7bdaa",
   "lastOpenFiles": [
     "HabulanRush.rbxlx.lock",
+    "src/StarterPlayerScripts/VfxScale.lua",
+    "src/StarterPlayerScripts/MusicController.lua",
+    "src/StarterPlayerScripts/AudioRouter.lua",
+    "src/StarterPlayerScripts/ClientSettings.lua",
     "dev-notes/animation-builders.md",
     "dev-notes/sprint-vfx-trail-design.md",
     "dev-notes/handoffs/2026-10-14-obsidian-setup-complete.md",
@@ -207,7 +211,6 @@
     "dev-notes/templates/bug-template.md",
     "dev-notes/templates/agent-task-prompt-template.md",
     "dev-notes/templates",
-    "dev-notes/00-index.md",
-    "dev-notes"
+    "dev-notes/00-index.md"
   ]
 }

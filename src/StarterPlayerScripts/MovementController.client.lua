@@ -55,6 +55,11 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Mv     = Config.Movement   -- shorthand
 
+-- Sibling module (same Rojo sync): routes one-shot sounds into the SFX group.
+local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
+-- Sibling module (same Rojo sync): cosmetic scale and reduced camera flag.
+local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+
 -- ── Player / character refs ──────────────────────────────────────────────────
 local LocalPlayer = Players.LocalPlayer
 local Character: Model
@@ -477,7 +482,10 @@ local function startDashFX()
 		dashTrail.Enabled = true
 	end
 	if dashEmitter then
-		dashEmitter:Emit(Mv.DashVFX.BurstCount)
+		local n = VfxScale.count(Mv.DashVFX.BurstCount)
+		if n > 0 then
+			dashEmitter:Emit(n)
+		end
 	end
 end
 
@@ -504,6 +512,7 @@ local function playDashSound()
 	sound.SoundId = id
 	sound.Volume = Mv.DashSoundVolume
 	sound.RollOffMaxDistance = 60
+	AudioRouter.route(sound, "sfx")
 	sound.Parent = HRP
 	sound:Play()
 	Debris:AddItem(sound, 3)
@@ -562,6 +571,7 @@ local function playSlideSound()
 	sound.SoundId = id
 	sound.Volume = Mv.SlideSoundVolume
 	sound.RollOffMaxDistance = 60
+	AudioRouter.route(sound, "sfx")
 	sound.Parent = HRP
 	sound:Play()
 	Debris:AddItem(sound, 3)
@@ -593,7 +603,10 @@ local function emitSlideDust()
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	emitter.Parent = att
-	emitter:Emit(Mv.SlideDustCount)
+	local dust = VfxScale.count(Mv.SlideDustCount)
+	if dust > 0 then
+		emitter:Emit(dust)
+	end
 	Debris:AddItem(att, 1.2) -- cleanup margin only, not a gameplay number
 end
 
@@ -902,6 +915,21 @@ local function loadAnimTracks()
 	if slideTrack == nil then
 		warn("[Slide] failed to load SlideAnimId " .. tostring(Mv.SlideAnimId))
 	end
+	if slideTrack == nil and Mv.SlideAnimId ~= "" then
+		-- Streaming can fail the first load right after spawn. Retry once a
+		-- few seconds later; the guard drops it if a respawn replaced the
+		-- character or the track recovered another way.
+		local hum = Humanoid
+		task.delay(3, function()
+			if slideTrack ~= nil or Humanoid ~= hum then
+				return
+			end
+			slideTrack = tryLoad(Mv.SlideAnimId, Enum.AnimationPriority.Action, false)
+			if slideTrack == nil then
+				warn("[Slide] retry failed for SlideAnimId " .. tostring(Mv.SlideAnimId))
+			end
+		end)
+	end
 end
 
 -- Runs every heartbeat: plays the sprint loop on the sprint transition, stops
@@ -939,6 +967,9 @@ local function startSkillFOV()
 	if cam == nil or p == nil then
 		return
 	end
+	if VfxScale.reducedCamera() then
+		return -- reduced camera effects: no FOV kick, flight unchanged
+	end
 	skillFOVBase = cam.FieldOfView
 	skillFOVOn = true
 	-- fovTime lives in the vfx table (the Stage A crash was reading it from
@@ -965,6 +996,9 @@ local function stopSkillFOV(withShake: boolean)
 	skillFOVBase = nil
 	if not withShake or cam == nil or p == nil then
 		return
+	end
+	if VfxScale.reducedCamera() then
+		return -- reduced camera effects: no landing shake
 	end
 	local duration = p.shakeDuration
 	local amp = Config.Skills.RS_01.vfx.shakeAmp
@@ -1055,7 +1089,10 @@ local function emitBurst(hrp: BasePart, count: number)
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	emitter.Parent = att
-	emitter:Emit(count)
+	local n = VfxScale.count(count)
+	if n > 0 then
+		emitter:Emit(n)
+	end
 	Debris:AddItem(att, 1.2) -- cleanup margin only, not a gameplay number
 end
 
@@ -1170,6 +1207,7 @@ local function playSkillSound(hrp: BasePart, soundId: unknown)
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
 	sound.RollOffMaxDistance = 60
+	AudioRouter.route(sound, "sfx")
 	sound.Parent = hrp
 	sound:Play()
 	Debris:AddItem(sound, 3)
@@ -1211,7 +1249,10 @@ local function playSkillCastFX(casterId: number, sid: string, dir: Vector3)
 			return
 		end
 		spawnGroundRing(hrp.Position, sk.vfx.ringStart, sk.vfx.ringEnd, sk.vfx.ringTime, char)
-		startAirTrail(hrp, sk.vfx.trailLifetime)
+		local trailLife = sk.vfx.trailLifetime * VfxScale.cosmetic()
+		if trailLife > 0.05 then
+			startAirTrail(hrp, math.max(0.15, trailLife))
+		end
 		playSkillSound(hrp, sk.sounds.takeoff)
 		if isOwner then
 			skillPreviewRing = spawnLandingPreview(hrp.Position, sk.vfx.previewSize, dir, sk.params.distance * Mv.SpeedScale)
@@ -1313,13 +1354,13 @@ local function spawnSlipper(casterId: number, origin: Vector3, target: Vector3, 
 	ribbon.Attachment0 = attA
 	ribbon.Attachment1 = attB
 	ribbon.FaceCamera = true
-	ribbon.Lifetime = v.trailLifetime
+	ribbon.Lifetime = math.max(0.15, v.trailLifetime * VfxScale.cosmetic())
 	ribbon.Color = ColorSequence.new(v.trailColorStart, v.trailColorEnd)
 	ribbon.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, v.trailTransparencyIn),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	ribbon.Enabled = true
+	ribbon.Enabled = VfxScale.cosmetic() > 0
 	ribbon.Parent = part
 	local entry: { part: BasePart, conn: RBXScriptConnection? } = { part = part, conn = nil }
 	local elapsed = 0
@@ -1373,7 +1414,10 @@ local function spawnStarBurst(at: Vector3, withSound: boolean)
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	stars.Parent = att
-	stars:Emit(v.impactCount)
+	local burst = VfxScale.count(v.impactCount)
+	if burst > 0 then
+		stars:Emit(burst)
+	end
 	spawnGroundRing(at, v.starSize * 2, sk.params.projectileRadius * 2, v.impactRingTime)
 	if withSound then
 		playSkillSound(anchor, sk.sounds.impact)
@@ -1718,7 +1762,13 @@ end
 
 local function tsinelasAimCamTo(target: number)
 	local cfg = Config.UI.TsinelasCam
-	if not cfg.Enabled then
+	if not cfg.Enabled or VfxScale.reducedCamera() then
+		-- Aim stays third person (reduced camera effects or cam disabled):
+		-- dots, marker, and center reticle still telegraph the throw.
+		aimCamEnsureReticle()
+		if aimReticle ~= nil then
+			aimReticle.Visible = true
+		end
 		return
 	end
 	local cam = Workspace.CurrentCamera
@@ -1782,7 +1832,7 @@ local function tsinelasUpdateAim()
 	end
 	local origin = HRP.Position + Vector3.new(0, sk.params.launchHeight, 0) + dir * 2
 	local v0, flightT, short = TsinelasArc.solveArc(origin, target)
-	local count = v.aimDotCount
+	local count = VfxScale.telegraphCount(v.aimDotCount)
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 	rayParams.FilterDescendantsInstances = { Character }
@@ -1832,7 +1882,8 @@ local function tsinelasShowAim()
 		return
 	end
 	local v = sk.vfx
-	for _ = 1, v.aimDotCount do
+	local dotCount = VfxScale.telegraphCount(v.aimDotCount)
+	for _ = 1, dotCount do
 		local dot = Instance.new("Part")
 		dot.Name = "TsinelasAimDot"
 		dot.Shape = Enum.PartType.Ball
@@ -2626,6 +2677,23 @@ local function hookMobileBindables()
 			task.wait(0.2)
 		end
 	end)
+
+	-- Settings-opened bridge (LobbyUI-owned event): opening the settings panel
+	-- cancels RS_03 aim through the existing exit path, so camera, mouse lock,
+	-- FOV, and body transparency all restore. Separate retry: LobbyUI may load
+	-- after this controller.
+	task.spawn(function()
+		for _ = 1, 50 do
+			local ev = ReplicatedStorage:FindFirstChild("HRushSettingsOpened")
+			if ev and ev:IsA("BindableEvent") then
+				ev.Event:Connect(function()
+					tsinelasCancelAim("settings opened")
+				end)
+				break
+			end
+			task.wait(0.2)
+		end
+	end)
 end
 
 -- ── Character lifecycle ───────────────────────────────────────────────────────
@@ -2838,6 +2906,33 @@ if LocalPlayer.Character then
 	task.spawn(onCharacterAdded, LocalPlayer.Character)
 end
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Animation preload (slide load fix): streaming can fail the first
+-- LoadAnimation right after spawn, which used to leave slideTrack nil with
+-- only a warn. Preloading once at startup puts the bytes local before any
+-- character needs them. Failure here only warns; loadAnimTracks plus its
+-- delayed retry remain the backstops.
+task.spawn(function()
+	local ok = pcall(function()
+		local anims: { Animation } = {}
+		for _, id in { Mv.SprintAnimId, Mv.SlideAnimId, Mv.DashAnimId } do
+			if typeof(id) == "string" and id ~= "" then
+				local anim = Instance.new("Animation")
+				anim.AnimationId = id
+				table.insert(anims, anim)
+			end
+		end
+		if #anims > 0 then
+			game:GetService("ContentProvider"):PreloadAsync(anims)
+		end
+		for _, anim in anims do
+			anim:Destroy()
+		end
+	end)
+	if not ok then
+		warn("[MovementController] animation preload failed")
+	end
+end)
 
 pushAttributes(true)
 print("[MovementController] Loaded — T09 + RS_01 slice (walk/sprint/stamina/dash/slide/boost/skill).")

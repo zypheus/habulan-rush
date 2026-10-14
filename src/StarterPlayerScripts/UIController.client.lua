@@ -450,6 +450,32 @@ local function updateRoleBanner()
 	end
 end
 
+-- ── HUD settings gear (top-right, in-round settings access) ───────────────
+-- Child of the HUD gui, so the match gate shows and hides it with the rest.
+-- Fires the LobbyUI-owned toggle event (looked up on click: LobbyUI may load
+-- after this controller). 64x64 meets the touch minimum.
+local settingsGear = Instance.new("TextButton")
+settingsGear.Name = "SettingsGear"
+settingsGear.AnchorPoint = Vector2.new(1, 0)
+settingsGear.Position = UDim2.new(1, -12, 0, 12)
+settingsGear.Size = UDim2.fromOffset(64, 64)
+settingsGear.BackgroundColor3 = COL_PANEL
+settingsGear.BackgroundTransparency = 0.05
+settingsGear.BorderSizePixel = 0
+settingsGear.Font = Enum.Font.GothamBold
+settingsGear.TextSize = 18
+settingsGear.Text = "SET"
+settingsGear.TextColor3 = HUD_DIM
+settingsGear.Parent = gui
+corner(settingsGear, 12)
+stroke(settingsGear, HUD_DIM, 1)
+settingsGear.Activated:Connect(function()
+	local ev = ReplicatedStorage:FindFirstChild("HRushSettingsToggle")
+	if ev and ev:IsA("BindableEvent") then
+		ev:Fire()
+	end
+end)
+
 -- Attribute readers
 local function attrNum(name: string, fallback: number): number
 	local v = LocalPlayer:GetAttribute(name)

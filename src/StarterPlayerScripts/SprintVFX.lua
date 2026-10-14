@@ -13,6 +13,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
+-- Sibling module (same Rojo sync): player VFX scale and reduced camera flag.
+local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+
 local SprintVFX = {}
 
 local LocalPlayer = Players.LocalPlayer
@@ -106,7 +109,8 @@ local function disconnectLoop()
 end
 
 -- Quality scale: High 1, Medium 0.75, Low 0.5. Auto picks Low on
--- touch-only devices. ReducedEffects halves again.
+-- touch-only devices. ReducedEffects halves again. The player VFX slider
+-- multiplies on top: at 100 percent this reads exactly as before.
 local function qualityScale(): number
 	local q = Config.SprintVFX.Quality
 	local base = 1.0
@@ -122,7 +126,7 @@ local function qualityScale(): number
 	if Config.SprintVFX.ReducedEffects then
 		base *= 0.5
 	end
-	return base
+	return base * VfxScale.player()
 end
 
 local function readSpeed(): number
@@ -508,7 +512,9 @@ end
 function updateFov(dt: number)
 	local cfg = Config.SprintVFX
 	local want = 0.0
-	if not cfg.ReducedEffects then
+	-- Player reduced-camera toggle joins the Config override: either one eases
+	-- the widening back to zero, live, with no snap.
+	if not cfg.ReducedEffects and not VfxScale.reducedCamera() then
 		want = cfg.FovDelta * intensity
 	end
 	if want == fovApplied then

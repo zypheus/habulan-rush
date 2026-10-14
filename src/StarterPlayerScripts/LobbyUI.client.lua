@@ -20,6 +20,7 @@ local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local SocialService = game:GetService("SocialService")
+local ContextActionService = game:GetService("ContextActionService")
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
 local QueueEvent = Remotes and Remotes:WaitForChild("QueueEvent", 10)
@@ -34,6 +35,9 @@ local INTRO = SharedConfig.UI.MatchIntro or {
 	BgmVolume = 0.5,
 	BgmFadeTime = 1.0,
 }
+
+-- Sibling module (same Rojo sync): the settings model this screen edits.
+local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
 
 -- Opens the Roblox friends invite prompt. PartyService puts invitees in your
 -- party automatically via JoinData.LaunchData = your UserId.
@@ -1409,81 +1413,317 @@ end
 
 -- (PLAY panel removed: the PLAY button starts matchmaking directly)
 
--- SETTINGS PANEL ------------------------------------------------------------
-local settingsPanel = createPanel("Settings", "SETTINGS", 520, 360)
+-- SETTINGS SCREEN -----------------------------------------------------------
+-- Real settings: audio volumes, VFX intensity, reduced camera effects.
+-- Every control writes ClientSettings only. Audio, VFX, and gameplay read
+-- the model live, so changes apply with no rejoin. Replaces the old
+-- visual-only Music/SFX toggles, which never did anything.
+local settingsPanel = createPanel("Settings", "SETTINGS", 520, 640)
+local settingsStep = SharedConfig.Settings.SliderStep
 do
-	local c = settingsPanel.Content -- 464 x 242
+	local c = settingsPanel.Content -- 464 x 522
 
-	local function createRow(index, labelText)
-		local row = createCard(c, 0, (index - 1) * 76, 464, 64)
-		createLabel({
-			Position = UDim2.fromOffset(20, 0),
-			Size = UDim2.fromOffset(240, 64),
-			Text = labelText,
-			FontFace = FONTS.Bold,
-			TextSize = 17,
-			TextXAlignment = Enum.TextXAlignment.Left,
-		}, row)
-		return row
+	local settingsRows: { [string]: any } = {}
+	local rowCards: { [string]: Instance } = {}
+	local rowOrder = { "master", "music", "sfx", "vfx", "reducedCamera" }
+	local rowTitles: { [string]: string } = {
+		master = "Master Volume",
+		music = "Music Volume",
+		sfx = "SFX Volume",
+		vfx = "VFX Intensity",
+		reducedCamera = "Reduced Camera Effects",
+	}
+
+	local function valueFromX(track: Frame, x: number): number
+		local size = track.AbsoluteSize.X
+		if size <= 0 then
+			return 0
+		end
+		return math.clamp((x - track.AbsolutePosition.X) / size * 100, 0, 100)
 	end
 
-	local function createToggle(row, initial)
-		local state = initial
+	local function refreshSlider(key: string)
+		local row = settingsRows[key]
+		if row == nil then
+			return
+		end
+		local v = ClientSettings.get(key)
+		if typeof(v) ~= "number" then
+			return
+		end
+		-- Plain locals, never a leading parenthesis: a statement starting
+		-- with "(" is ambiguous call syntax and kills this whole script.
+		local fillFrame: Frame = row.fill
+		local knobFrame: Frame = row.knob
+		local valueLabel: TextLabel = row.value
+		fillFrame.Size = UDim2.fromScale(v / 100, 1)
+		knobFrame.Position = UDim2.fromScale(v / 100, 0.5)
+		valueLabel.Text = tostring(math.floor(v + 0.5))
+	end
+
+	local function refreshReduced()
+		local row = settingsRows.reducedCamera
+		if row == nil then
+			return
+		end
+		local on = ClientSettings.get("reducedCamera") == true
+		tween(row.track, INFO_FAST, { BackgroundColor3 = on and COLORS.Lime or COLORS.SlateEdge })
+		tween(row.knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = on and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 18, 0.5, 0),
+			BackgroundColor3 = on and COLORS.Navy or COLORS.TextDim,
+		})
+	end
+
+	local dragKey: string? = nil
+	local dragTracks: { [string]: Frame } = {}
+
+	local function createSliderRow(index: number, key: string)
+		local row = createCard(c, 0, (index - 1) * 84, 464, 76)
+		rowCards[key] = row
+		stroke(row, COLORS.Lime, 2, 1) -- focus ring, shown for the selected row
+		createLabel({
+			Position = UDim2.fromOffset(20, 6),
+			Size = UDim2.fromOffset(320, 24),
+			Text = rowTitles[key],
+			FontFace = FONTS.Bold,
+			TextSize = 18,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		local valueLabel = createLabel({
+			Position = UDim2.fromOffset(344, 6),
+			Size = UDim2.fromOffset(100, 24),
+			Text = "100",
+			FontFace = FONTS.Heavy,
+			TextSize = 18,
+			TextColor3 = COLORS.Lime,
+			TextXAlignment = Enum.TextXAlignment.Right,
+		}, row)
+		local track = createFrame({
+			Position = UDim2.fromOffset(20, 46),
+			Size = UDim2.new(1, -40, 0, 8),
+			BackgroundColor3 = COLORS.SlateEdge,
+		}, row)
+		corner(track, FULL)
+		local fill = createFrame({
+			Size = UDim2.fromScale(0, 1),
+			BackgroundColor3 = COLORS.Lime,
+		}, track)
+		corner(fill, FULL)
+		local knob = createFrame({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0, 0.5),
+			Size = UDim2.fromOffset(28, 28),
+			BackgroundColor3 = COLORS.Cream,
+		}, track)
+		corner(knob, 14)
+		-- Whole card is the touch target (76 px tall): drag anywhere on it.
+		local hit = createButton({
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = "",
+			ZIndex = 5,
+		}, row)
+		hit.InputBegan:Connect(function(input: InputObject)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				dragKey = key
+				ClientSettings.set(key, valueFromX(track, input.Position.X))
+			end
+		end)
+		hit.InputEnded:Connect(function(input: InputObject)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				if dragKey == key then
+					dragKey = nil
+				end
+			end
+		end)
+		settingsRows[key] = { fill = fill, knob = knob, value = valueLabel }
+		dragTracks[key] = track
+		refreshSlider(key)
+	end
+
+	for i, key in rowOrder do
+		if key ~= "reducedCamera" then
+			createSliderRow(i, key)
+		end
+	end
+
+	-- Reduced camera toggle row (same card size, wired to the model).
+	do
+		local row = createCard(c, 0, 4 * 84, 464, 76)
+		rowCards.reducedCamera = row
+		stroke(row, COLORS.Lime, 2, 1)
+		createLabel({
+			Position = UDim2.fromOffset(20, 6),
+			Size = UDim2.fromOffset(360, 24),
+			Text = rowTitles.reducedCamera,
+			FontFace = FONTS.Bold,
+			TextSize = 18,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		createLabel({
+			Position = UDim2.fromOffset(20, 32),
+			Size = UDim2.fromOffset(360, 20),
+			Text = "No FOV kicks, shake, or aim camera.",
+			FontFace = FONTS.SemiBold,
+			TextSize = 13,
+			TextColor3 = COLORS.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
 		local track = createButton({
-			Position = UDim2.fromOffset(464 - 20 - 64, 16),
+			Position = UDim2.fromOffset(464 - 20 - 64, 22),
 			Size = UDim2.fromOffset(64, 32),
-			BackgroundColor3 = state and COLORS.Lime or COLORS.SlateEdge,
+			BackgroundColor3 = COLORS.SlateEdge,
+			Text = "",
 		}, row)
 		corner(track, FULL)
 		local knob = createFrame({
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = state and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 18, 0.5, 0),
+			Position = UDim2.new(0, 18, 0.5, 0),
 			Size = UDim2.fromOffset(24, 24),
-			BackgroundColor3 = state and COLORS.Navy or COLORS.TextDim,
+			BackgroundColor3 = COLORS.TextDim,
 		}, track)
 		corner(knob, FULL)
+		settingsRows.reducedCamera = { track = track, knob = knob }
 		track.Activated:Connect(function()
-			state = not state
-			tween(track, INFO_FAST, { BackgroundColor3 = state and COLORS.Lime or COLORS.SlateEdge })
-			tween(knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Position = state and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 18, 0.5, 0),
-				BackgroundColor3 = state and COLORS.Navy or COLORS.TextDim,
-			})
+			ClientSettings.set("reducedCamera", not (ClientSettings.get("reducedCamera") == true))
 		end)
+		refreshReduced()
 	end
 
-	createToggle(createRow(1, "Music"), true)
-	createToggle(createRow(2, "Sound Effects"), true)
+	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, 5 * 84 + 8, 464, 56, function()
+		ClientSettings.reset()
+	end, 16)
 
-	local gfxRow = createRow(3, "Graphics")
-	local options = { "LOW", "MED", "HIGH" }
-	local optButtons = {}
-	local function selectGraphics(idx)
-		for i, b in ipairs(optButtons) do
-			local on = i == idx
-			tween(b, INFO_FAST, {
-				BackgroundColor3 = on and COLORS.Lime or COLORS.SlateEdge,
-				TextColor3 = on and COLORS.Navy or COLORS.TextDim,
-			})
+	createLabel({
+		Position = UDim2.fromOffset(0, 5 * 84 + 72),
+		Size = UDim2.new(1, 0, 0, 24),
+		Text = "H opens settings anywhere. DPad moves, Left and Right adjust.",
+		FontFace = FONTS.SemiBold,
+		TextSize = 13,
+		TextColor3 = COLORS.TextDim,
+	}, c)
+
+	-- Live refresh: model changes (drag, gamepad, reset) repaint the rows.
+	ClientSettings.Changed:Connect(function(key: unknown, _value: unknown)
+		if typeof(key) ~= "string" then
+			return
+		end
+		if key == "reducedCamera" then
+			refreshReduced()
+		else
+			refreshSlider(key)
+		end
+	end)
+
+	-- Gamepad focus: DPad moves between rows, Left/Right adjusts. Thumbsticks
+	-- are never captured, so the character keeps simulating underneath.
+	local focused = 1
+	local function refreshFocus()
+		for i, key in rowOrder do
+			local card = rowCards[key]
+			if card then
+				for _, child in card:GetChildren() do
+					if child:IsA("UIStroke") then
+						child.Transparency = if i == focused then 0 else 1
+					end
+				end
+			end
 		end
 	end
-	for i, text in ipairs(options) do
-		local b = createButton({
-			Position = UDim2.fromOffset(464 - 20 - 3 * 66 + (i - 1) * 66, 16),
-			Size = UDim2.fromOffset(62, 32),
-			BackgroundColor3 = COLORS.SlateEdge,
-			Text = text,
-			FontFace = FONTS.Heavy,
-			TextSize = 12,
-			TextColor3 = COLORS.TextDim,
-		}, gfxRow)
-		corner(b, 8)
-		b.Activated:Connect(function()
-			selectGraphics(i)
-		end)
-		optButtons[i] = b
+
+	-- Cross-script bridge: the HUD gear (UIController) and the H key toggle
+	-- through this event; opening fires the aim-cancel event for Movement.
+	local function settingsEvent(name: string): BindableEvent
+		local rs = game:GetService("ReplicatedStorage")
+		local existing = rs:FindFirstChild(name)
+		if existing and existing:IsA("BindableEvent") then
+			return existing
+		end
+		local be = Instance.new("BindableEvent")
+		be.Name = name
+		be.Parent = rs
+		return be
 	end
-	selectGraphics(3)
+	local toggleEvent = settingsEvent("HRushSettingsToggle")
+	local openedEvent = settingsEvent("HRushSettingsOpened")
+
+	local function openSettings()
+		openPanel(settingsPanel)
+		focused = 1
+		refreshFocus()
+		for _, key in rowOrder do
+			if key == "reducedCamera" then
+				refreshReduced()
+			else
+				refreshSlider(key)
+			end
+		end
+		openedEvent:Fire()
+	end
+
+	local function toggleSettings()
+		if currentPanel == settingsPanel then
+			closePanel()
+		else
+			openSettings()
+		end
+	end
+	toggleEvent.Event:Connect(function()
+		toggleSettings()
+	end)
+
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if dragKey == nil then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+			local track = dragTracks[dragKey]
+			if track then
+				ClientSettings.set(dragKey, valueFromX(track, input.Position.X))
+			end
+		end
+	end)
+
+	-- H opens settings anywhere, ButtonSelect on gamepad. Always Pass: movement
+	-- input is never sunk, so the match keeps simulating under the panel.
+	ContextActionService:BindAction("HRUSH_Settings", function(_name, state, _obj)
+		if state == Enum.UserInputState.Begin then
+			toggleSettings()
+		end
+		return Enum.ContextActionResult.Pass
+	end, false, Enum.KeyCode.H, Enum.KeyCode.ButtonSelect)
+
+	ContextActionService:BindAction("HRUSH_SettingsNav", function(_name, state, input)
+		if currentPanel ~= settingsPanel then
+			return Enum.ContextActionResult.Pass
+		end
+		if state ~= Enum.UserInputState.Begin then
+			return Enum.ContextActionResult.Sink
+		end
+		local kc = input.KeyCode
+		if kc == Enum.KeyCode.DPadUp then
+			focused = if focused <= 1 then #rowOrder else focused - 1
+			refreshFocus()
+		elseif kc == Enum.KeyCode.DPadDown then
+			focused = if focused >= #rowOrder then 1 else focused + 1
+			refreshFocus()
+		elseif kc == Enum.KeyCode.DPadLeft or kc == Enum.KeyCode.DPadRight then
+			local key = rowOrder[focused]
+			local dir = if kc == Enum.KeyCode.DPadRight then 1 else -1
+			if key == "reducedCamera" then
+				ClientSettings.set(key, not (ClientSettings.get(key) == true))
+			else
+				local v = ClientSettings.get(key)
+				if typeof(v) == "number" then
+					ClientSettings.set(key, v + dir * settingsStep)
+				end
+			end
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.DPadUp, Enum.KeyCode.DPadDown, Enum.KeyCode.DPadLeft, Enum.KeyCode.DPadRight)
 end
 
 -- GAME MODES PANEL -----------------------------------------------------------
@@ -2368,53 +2608,15 @@ local function setLoadingVisible(visible)
 	end
 end
 
--- Match BGM: loops while you are in a match (round active or otherwise out
--- of the lobby), fades out on exit. One persistent Sound, never rebuilt.
--- NOTE: the Settings Music toggle is visual-only today, so BGM cannot honor
--- it yet; wiring that toggle is a separate step.
-local bgm = Instance.new("Sound")
-bgm.Name = "HRushMatchBGM"
-bgm.SoundId = INTRO.BgmId
-bgm.Volume = 0
-bgm.Looped = true
-bgm.Parent = playerGui
-local bgmToken = 0
-
-local function setBgmPlaying(playing)
-	bgmToken += 1
-	local token = bgmToken
-	if playing then
-		if INTRO.BgmId == "" then
-			return
-		end
-		if not bgm.IsPlaying then
-			bgm.Volume = 0
-			local ok = pcall(function()
-				bgm:Play()
-			end)
-			if not ok then
-				return
-			end
-		end
-		tween(bgm, TweenInfo.new(INTRO.BgmFadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = INTRO.BgmVolume })
-	else
-		if not bgm.IsPlaying then
-			return
-		end
-		local t = tween(bgm, TweenInfo.new(INTRO.BgmFadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = 0 })
-		t.Completed:Connect(function()
-			if bgmToken == token then
-				bgm:Stop()
-			end
-		end)
-	end
-end
+-- Match music now lives in MusicController (per-state tracks with crossfades,
+-- test tone, and the Music SoundGroup). It subscribes to the same attributes.
+local MusicController = require(script.Parent:WaitForChild("MusicController"))
+MusicController.Init()
 
 local function refreshLoading()
 	local inMatch = player:GetAttribute("HRushInMatch") == true
 	local st = player:GetAttribute("HRushState")
 	setLoadingVisible(inMatch and typeof(st) == "string" and LOADING_WAIT_STATES[st] == true)
-	setBgmPlaying(inMatch)
 end
 
 player:GetAttributeChangedSignal("HRushInMatch"):Connect(refreshLoading)
