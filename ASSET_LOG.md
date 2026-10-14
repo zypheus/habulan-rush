@@ -30,6 +30,9 @@ _All models, textures, audio, and assets used in the game must be logged here._
 | 2026-10-14 | countdown tick (`rbxassetid://84745673202062`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | MS_03 tick (`Config.Sfx.Countdown.tick`) | Pending Review | Batch 1 SFX. Must confirm license before submission (Rule B.6). |
 | 2026-10-14 | countdown go (`rbxassetid://123128040491688`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | MS_03 launch (`Config.Sfx.Countdown.go`) | Pending Review | Batch 1 SFX. Must confirm license before submission (Rule B.6). |
 | 2026-10-14 | tag slap (`rbxassetid://138862668790692`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Tag confirm (`Config.Sfx.Tag.slap`) | Pending Review | Batch 1 SFX. Must confirm license before submission (Rule B.6). |
+| 2026-10-14 | footstep (`rbxassetid://75359803824642`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Sprint footstep (`Config.Sfx.Movement.footstep`) | Pending Review | Batch 2 SFX. Must confirm license before submission (Rule B.6). |
+| 2026-10-14 | stamina empty (`rbxassetid://81474882182684`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Stamina cue (`Config.Sfx.Movement.staminaEmpty`) | Pending Review | Batch 2 SFX. Must confirm license before submission (Rule B.6). |
+| 2026-10-14 | slide whoosh (`rbxassetid://75817307201002`) | Audio | Team-provided (origin unconfirmed) | TBD (confirm original or royalty-free with competition license) | Slide SFX (`Config.Movement.SlideSoundId`) | Pending Review | Batch 2 SFX. Must confirm license before submission (Rule B.6). |
 
 ---
 

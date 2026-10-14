@@ -15,6 +15,8 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
 -- Sibling module (same Rojo sync): player VFX scale and reduced camera flag.
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+-- Sibling module (same Rojo sync): footstep one-shots through the SFX group.
+local StepAudio = require(script.Parent:WaitForChild("AudioRouter"))
 
 local SprintVFX = {}
 
@@ -494,6 +496,11 @@ function updateDust(dt: number)
 	if moved >= cfg.Dust.FootstepDistance and footTimer >= 1 / cfg.Dust.FootstepRate then
 		dustEmit.Color = ColorSequence.new(tint)
 		dustEmit:Emit(math.max(1, math.floor(cfg.Dust.PuffCount * qualityScale())))
+		-- Footstep tap at the same throttled edge, positional on the root.
+		-- Empty ID stays silent; pitch varies slightly per step.
+		local mv = Config.Sfx.Movement
+		local pitch = mv.pitchMin + math.random() * (mv.pitchMax - mv.pitchMin)
+		StepAudio.playSfxId(mv.footstep, mv.volume, HRP, pitch)
 		lastFoot = HRP.Position
 		footTimer = 0
 	end

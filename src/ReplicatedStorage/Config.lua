@@ -31,7 +31,7 @@ Config.Movement = {
 	SlideDustSpeedMin = 4, -- [SD] dust kick speed low (studs/s)
 	SlideDustSpeedMax = 9, -- [SD] dust kick speed high (studs/s)
 	SlideDustSize     = 0.7, -- [SD] dust particle start size (studs)
-	SlideSoundId      = "", -- [SD] slide whoosh hook, silent until a licensed ID lands (ASSET_LOG rule)
+	SlideSoundId      = "rbxassetid://75817307201002", -- [SD] slide whoosh (see ASSET_LOG)
 	SlideSoundVolume  = 0.7, -- [SD] slide whoosh volume 0-1
 	SprintAnimId = "rbxassetid://92487449831774", -- [SD] published HRush_Sprint (loops while sprinting)
 	SlideAnimId  = "rbxassetid://129414076083716", -- [SD] published HRush_Slide v4 (one-shot per slide)
@@ -448,6 +448,13 @@ Config.Sfx = {
 	Tag = {
 		slap = "rbxassetid://138862668790692", -- [SD] touch tag confirmation
 		volume = 1.0, -- [SD] tag slap volume 0-1
+	},
+	Movement = {
+		footstep = "rbxassetid://75359803824642", -- [SD] sprint footstep tap (positional, throttled by dust rate)
+		staminaEmpty = "rbxassetid://81474882182684", -- [SD] stamina depletion cue (once per entry)
+		volume = 0.5, -- [SD] movement one-shot volume 0-1
+		pitchMin = 0.95, -- [SD] footstep pitch variation low
+		pitchMax = 1.05, -- [SD] footstep pitch variation high
 	},
 }
 -- ============================================================

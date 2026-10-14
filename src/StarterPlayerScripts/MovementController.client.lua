@@ -301,6 +301,7 @@ local function updateStamina(dt: number)
 			stamina = 0
 			isSprinting = false
 			isDepletion = true -- enter depletion; walk enforced
+			AudioRouter.playSfxId(Config.Sfx.Movement.staminaEmpty, Config.Sfx.Movement.volume)
 		end
 	else
 		-- Regen stamina after delay
@@ -682,6 +683,7 @@ local function performDash()
 	if stamina <= 0 then
 		stamina = 0
 		isDepletion = true
+		AudioRouter.playSfxId(Config.Sfx.Movement.staminaEmpty, Config.Sfx.Movement.volume)
 	end
 	regenTimer = 0.0
 	pushAttributes(true)

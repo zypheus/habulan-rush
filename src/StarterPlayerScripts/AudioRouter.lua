@@ -110,20 +110,28 @@ function AudioRouter.sfx(): SoundGroup?
 end
 
 -- Non-positional one-shot through the SFX group (UI, countdown, tag slap).
--- Empty IDs stay silent. Parent PlayerGui so distance never mutes it.
-function AudioRouter.playSfxId(id: unknown, volume: number)
+-- Empty IDs stay silent. Defaults to PlayerGui so distance never mutes it;
+-- pass a part (and optional pitch) for positional world sounds like footsteps.
+function AudioRouter.playSfxId(id: unknown, volume: number, parent: Instance?, pitch: number?)
 	if typeof(id) ~= "string" or id == "" then
 		return
 	end
-	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
-	if playerGui == nil then
+	local host = parent
+	if host == nil then
+		host = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	end
+	if host == nil then
 		return
 	end
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
 	sound.Volume = volume
+	sound.RollOffMaxDistance = 60
+	if pitch ~= nil then
+		sound.PlaybackSpeed = pitch
+	end
 	AudioRouter.route(sound, "sfx")
-	sound.Parent = playerGui
+	sound.Parent = host
 	local ok = pcall(function()
 		sound:Play()
 	end)
