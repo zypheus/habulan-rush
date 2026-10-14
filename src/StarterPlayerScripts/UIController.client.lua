@@ -33,6 +33,7 @@ local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local Mv     = Config.Movement
 local TS     = Config.UI.Tsinelas -- RS_03 slot sizes, labels, and timings
 
@@ -470,6 +471,7 @@ settingsGear.Parent = gui
 corner(settingsGear, 12)
 stroke(settingsGear, HUD_DIM, 1)
 settingsGear.Activated:Connect(function()
+	AudioRouter.playUi("click")
 	local ev = ReplicatedStorage:FindFirstChild("HRushSettingsToggle")
 	if ev and ev:IsA("BindableEvent") then
 		ev:Fire()
@@ -1025,6 +1027,7 @@ local function updateCountdown()
 			countdownLabel.Size = UDim2.fromOffset(560, 120)
 			local ts = game:GetService("TweenService")
 			ts:Create(countdownLabel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(500, 110) }):Play()
+			AudioRouter.playSfxId(Config.Sfx.Countdown.tick, Config.Sfx.Countdown.volume)
 		end
 	else
 		-- 0: the launch moment
@@ -1034,6 +1037,7 @@ local function updateCountdown()
 			countdownLabel.Text = "HABULAN NA!"
 			countdownLabel.TextSize = 72
 			countdownLabel.TextColor3 = HUD_RED
+			AudioRouter.playSfxId(Config.Sfx.Countdown.go, Config.Sfx.Countdown.volume)
 		end
 	end
 end

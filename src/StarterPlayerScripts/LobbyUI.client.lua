@@ -38,6 +38,8 @@ local INTRO = SharedConfig.UI.MatchIntro or {
 
 -- Sibling module (same Rojo sync): the settings model this screen edits.
 local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
+-- Sibling module (same Rojo sync): shared UI one-shots through the SFX group.
+local UIAudio = require(script.Parent:WaitForChild("AudioRouter"))
 
 -- Opens the Roblox friends invite prompt. PartyService puts invitees in your
 -- party automatically via JoinData.LaunchData = your UserId.
@@ -1535,6 +1537,7 @@ do
 				or input.UserInputType == Enum.UserInputType.Touch then
 				if dragKey == key then
 					dragKey = nil
+					UIAudio.playUi("sliderEnd")
 				end
 			end
 		end)
@@ -1587,12 +1590,14 @@ do
 		corner(knob, FULL)
 		settingsRows.reducedCamera = { track = track, knob = knob }
 		track.Activated:Connect(function()
+			UIAudio.playUi("toggle")
 			ClientSettings.set("reducedCamera", not (ClientSettings.get("reducedCamera") == true))
 		end)
 		refreshReduced()
 	end
 
 	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, 5 * 84 + 8, 464, 56, function()
+		UIAudio.playUi("click")
 		ClientSettings.reset()
 	end, 16)
 
@@ -2163,6 +2168,7 @@ end
 --------------------------------------------------------------------------
 -- PLAY starts matchmaking directly; tapping it again while searching cancels.
 bindButton(playButton, playHolderScale, function()
+	UIAudio.playUi("click")
 	local q = player:GetAttribute("HRushQueue") or "Idle"
 	if QueueEvent then
 		QueueEvent:FireServer(q == "Searching" and "Cancel" or "Play")
@@ -2170,6 +2176,7 @@ bindButton(playButton, playHolderScale, function()
 end, 1.04, 0.96)
 
 bindButton(settingsButton, settingsHolderScale, function()
+	UIAudio.playUi("click")
 	openPanel(settingsPanel)
 end, 1.08, 0.92)
 
@@ -2203,11 +2210,19 @@ tween(chevronLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirecti
 -- Driven by the MatchService attributes (HRushQueue / HRushSearchEndsAt).
 --------------------------------------------------------------------------
 local queueStateToken = 0
+local prevQueue = "Idle"
 local function refreshPlayButton()
 	queueStateToken += 1
 	local token = queueStateToken
 	local q = player:GetAttribute("HRushQueue") or "Idle"
-
+	if prevQueue ~= q then
+		if q == "Idle" and prevQueue == "Searching" then
+			UIAudio.playUi("queueCancel")
+		elseif q == "InMatch" then
+			UIAudio.playUi("matchFound")
+		end
+		prevQueue = q
+	end
 	if q == "Searching" then
 		playText.Position = UDim2.fromOffset(84, 10)
 		playText.Size = UDim2.fromOffset(190, 44)

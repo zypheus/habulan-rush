@@ -427,6 +427,29 @@ Config.Audio = {
 		matchEnd = "", -- [SD] MS_06
 	},
 }
+
+-- One-shot SFX IDs. All "" until licensed audio is logged in ASSET_LOG.md.
+-- Every hook skips empty IDs, so the game stays silent but wired.
+Config.Sfx = {
+	UI = {
+		click = "rbxassetid://89121173273417", -- [SD] button presses
+		toggle = "rbxassetid://130394308198775", -- [SD] toggle flips
+		sliderEnd = "rbxassetid://134203145736891", -- [SD] slider release tick
+		error = "", -- [SD] invalid actions (unhooked until draft UI)
+		queueCancel = "rbxassetid://120812370100773", -- [SD] matchmaking cancel
+		matchFound = "rbxassetid://127385873459389", -- [SD] match built
+		volume = 0.7, -- [SD] UI one-shot volume 0-1
+	},
+	Countdown = {
+		tick = "rbxassetid://84745673202062", -- [SD] MS_03 per-second tick
+		go = "rbxassetid://123128040491688", -- [SD] MS_03 launch moment
+		volume = 0.8, -- [SD] countdown volume 0-1
+	},
+	Tag = {
+		slap = "rbxassetid://138862668790692", -- [SD] touch tag confirmation
+		volume = 1.0, -- [SD] tag slap volume 0-1
+	},
+}
 -- ============================================================
 -- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
 -- ============================================================

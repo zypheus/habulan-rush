@@ -2462,6 +2462,8 @@ TagEvent.OnClientEvent:Connect(function(payload: { taggerId: number?, targetId: 
 	if typeof(payload) ~= "table" then
 		return
 	end
+	-- Confirmation slap for every match client (non-positional, always heard).
+	AudioRouter.playSfxId(Config.Sfx.Tag.slap, Config.Sfx.Tag.volume)
 	local myId = LocalPlayer.UserId
 	if payload.targetId == myId then
 		-- We are the new Taya: no boost, Taya speed applies via role update.

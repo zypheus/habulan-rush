@@ -7,6 +7,10 @@
 -- Refs: Settings screen task (Art Bible section 3, UI/UX Spec section 7).
 
 local SoundService = game:GetService("SoundService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
 local AudioRouter = {}
 
@@ -26,7 +30,6 @@ local function settings(): any
 end
 
 local function curve(v: number): number
-	local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Config"))
 	local power = Config.Settings.VolumeCurve
 	return math.pow(math.clamp(v, 0, 1), power)
 end
@@ -104,6 +107,42 @@ end
 function AudioRouter.sfx(): SoundGroup?
 	AudioRouter.ensure()
 	return sfxGroup
+end
+
+-- Non-positional one-shot through the SFX group (UI, countdown, tag slap).
+-- Empty IDs stay silent. Parent PlayerGui so distance never mutes it.
+function AudioRouter.playSfxId(id: unknown, volume: number)
+	if typeof(id) ~= "string" or id == "" then
+		return
+	end
+	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if playerGui == nil then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = volume
+	AudioRouter.route(sound, "sfx")
+	sound.Parent = playerGui
+	local ok = pcall(function()
+		sound:Play()
+	end)
+	if not ok then
+		sound:Destroy()
+		return
+	end
+	game:GetService("Debris"):AddItem(sound, 3)
+end
+
+-- Shared UI one-shot. Reads Config.Sfx.UI; unhooked keys (error) wait for
+-- the feature that fires them.
+function AudioRouter.playUi(key: string)
+	local ui = Config.Sfx.UI
+	local id = (ui :: any)[key]
+	if typeof(id) ~= "string" or id == "" then
+		return
+	end
+	AudioRouter.playSfxId(id, ui.volume)
 end
 
 return AudioRouter
