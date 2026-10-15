@@ -13,6 +13,10 @@ related:
 
 Start here. This folder holds working notes. The repo stays the single source of truth. New to Obsidian here? Read [obsidian-setup-guide](./obsidian-setup-guide.md) first.
 
+## Research guides
+
+- [UTG and scoring implementation guide](./utg-and-scoring-implementation-guide.md): Untitled Tag Game adoptions plus the scoring gap audit, with per-item build specs.
+
 ## Root files
 
 - [AGENTS.md](../AGENTS.md): agent operating rules.

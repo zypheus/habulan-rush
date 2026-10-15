@@ -184,6 +184,7 @@
   },
   "active": "e733822277f7bdaa",
   "lastOpenFiles": [
+    "dev-notes/utg-and-scoring-implementation-guide.md",
     "HabulanRush.rbxlx.lock",
     "assets/sfx/batch2/Slide whoosh.mp3",
     "assets/sfx/batch2/Stamina empty.mp3",
@@ -194,7 +195,6 @@
     "assets/sfx/Tag slap.mp3",
     "assets/sfx/UI toggle.mp3",
     "assets/sfx/blip.mp3",
-    "assets/sfx/Countdown go.mp3",
     "dev-notes/animation-builders.md",
     "dev-notes/sprint-vfx-trail-design.md",
     "dev-notes/handoffs/2026-10-14-obsidian-setup-complete.md",
