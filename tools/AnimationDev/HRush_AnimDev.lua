@@ -1,802 +1,2033 @@
 --!strict
 -- tools/AnimationDev/HRush_AnimDev.lua
 -- Studio copy: Workspace/AnimationDevelopment/HRush_AnimDev (ModuleScript)
--- Owner: temporary dev tool (no module owner; NOT production gameplay code)
--- Responsibility:
---   * Builds three ORIGINAL animation KeyframeSequences for the project R15 rig:
---       HRush_Sprint (looping athletic run cycle)
---       HRush_Slide  (sprint-to-slide tactical slide, 3 phases, non-looping)
---       HRush_Dash   (burst-forward dash, non-looping, hands off to sprint)
---   * Preview evaluators for MCP screenshot validation:
---       setJointsEnabled + hardPose/hardReset (Edit mode): Transform writes do
---         NOT render in Edit mode, and with joints active the physics layer
---         reverts any rotation write instantly. Disabling the rig's
---         Motor6D/AnimationConstraint joints frees the parts, so hardPose can
---         solve the posed skeleton (Part0 * C0 * pose * C1i) and write world
---         CFrames that stick. Rest pose captured on first use; re-enable and
---         hardReset after capturing.
---       showAt/reset (play mode): writes joint Transforms, which do render
---         while the run service is stepping.
--- Task refs: animation authoring task Phases 2-5; T09 MovementController.
--- Rebuild safety: buildAll() REPLACES same-named KeyframeSequences inside
---   Workspace/AnimationDevelopment only. Nothing outside that folder changes.
--- Production note: these sequences must be published from the Animation
---   Editor and their asset IDs added to Config before any runtime use; live
---   games cannot load KeyframeSequence instances.
+-- Owner: Project Owner
+-- Responsibility: data-driven original R15 animation building, validation, and local preview.
+-- Task/spec: Movement animation amendment, Batches 0 through B, approved 2026-10-15.
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AnimationClipProvider = game:GetService("AnimationClipProvider")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 
-export type PoseSpec = { name: string, cf: CFrame, children: { PoseSpec } }
-export type JointCFs = {
-	root: CFrame, waist: CFrame, neck: CFrame,
-	lsh: CFrame, lelb: CFrame, rsh: CFrame, relb: CFrame,
-	lhip: CFrame, lknee: CFrame, lankle: CFrame,
-	rhip: CFrame, rknee: CFrame, rankle: CFrame,
+export type JointPose = {
+	cframe: CFrame,
+	intentionalJump: boolean?,
+}
+
+export type KeyframeSpec = {
+	time: number,
+	easingStyle: Enum.PoseEasingStyle,
+	easingDirection: Enum.PoseEasingDirection,
+	pose: { [string]: JointPose },
+}
+
+export type MarkerSpec = {
+	name: string,
+	time: number,
+}
+
+export type AnimationSpec = {
+	name: string,
+	looped: boolean,
+	priority: Enum.AnimationPriority,
+	duration: number,
+	keyframes: { KeyframeSpec },
+	markers: { MarkerSpec },
+	developmentOnly: boolean?,
 }
 
 local AnimDev = {}
 
-local FOLDER_NAME = "AnimationDevelopment"
-local SPRINT_NAME = "HRush_Sprint"
-local SLIDE_NAME = "HRush_Slide"
-local DASH_NAME = "HRush_Dash"
+local OUTPUT_FOLDER_NAME = "AnimationDevelopment"
+local PREVIEW_RIG_NAME = "HRush_AnimationPreviewRig"
+local POSITION_TOLERANCE = 0.0001
+local ROTATION_TOLERANCE_DEGREES = 0.1
+local MAX_ROTATION_JUMP_DEGREES = 120
 
--- ── Sprint design (v3, AAA pass) ────────────────────────────────────────────
--- Built around Contact / Down / Passing / Up poses per leg at 24 samples
--- (25 keyframes incl. wrap copy) over CycleTime. Tunables first, detail below.
--- Sign conventions (character faces -Z, part-space rotations):
---   pitch +X = limbs swing forward; torso +X = lean back; knee flexion = -X;
---   elbow flexion = +X; ankle plantarflexion (toes down) = -X.
--- Assumptions: standard R15 Motor6D offsets and hip height; Pose CFrames carry
---   rotation only, except a small vertical dip on LowerTorso (BounceHeight).
---   No horizontal root translation: gameplay owns horizontal movement, so the
---   clip cannot cause animation drift or double-applied speed.
-local SprintParams = {
-	-- ── Style knobs (tune these first) ──
-	CycleTime = 0.64, -- s per full stride cycle; range 0.60-0.70 (faster reads more aggressive)
-	Samples = 24, -- keyframe intervals per cycle; Knee/Ankle tables must hold exactly this many entries
-	LeanAngle = 18, -- forward torso lean in deg; range 14-22 (applied as negative root pitch)
-	BounceHeight = 0.08, -- vertical torso dip in studs, deepest on contact, highest on push-off; range 0-0.15 (0 disables; lower it if feet penetrate)
-	ArmPumpAmount = 46, -- shoulder swing in deg; range 38-55 (hands reach chin height at the top end)
-	KneeDrive = 1.0, -- scales the knee-flexion curve; range 0.8-1.2 (peak 100 at 1.0)
-	StrideLength = 44, -- hip swing in deg; range 35-50
-	Asymmetry = 1.0, -- master lateral-asymmetry scale; range 0-2 (0 = perfectly mirrored)
-	-- ── Fine detail ──
-	Bob = 2.0, -- root pitch wobble at double stride rate (deg)
-	PelvisYaw = 7, -- pelvis counter-rotation (deg)
-	PelvisRoll = 3,
-	WaistLean = 3,
-	WaistYaw = 13, -- shoulders counter-rotate against the pelvis (deg)
-	NeckPitch = 10, -- keeps the head near level over the leaned torso (deg)
-	NeckYaw = 3,
-	ElbowBase = 90, -- base sprinter elbow flexion carry (deg)
-	ElbowVar = 12, -- front arm slightly more closed than the back arm (deg)
-	ArmAsym = 2, -- left arm swings slightly wider than right (deg, scaled by Asymmetry)
-	HipAsym = 1.5, -- left thigh swings slightly wider than right (deg, scaled by Asymmetry)
-	ElbowAsym = 4, -- left elbow carries slightly more open than right (deg, scaled by Asymmetry)
-	ShoulderBias = 2, -- constant drive bias so hands never mirror (deg, scaled by Asymmetry)
-	RollBias = 1, -- constant pelvis roll trim; loop-safe (s = 0 at the boundary)
-	ElbowLag = 1, -- forearm overlap behind the shoulder, in frames
-	AnkleLag = 1, -- foot overlap behind the shin, in frames
-	HeadLag = 2, -- head yaw overlap behind the torso, in frames
-	-- Knee flexion per 1/24-cycle phase; left-leg contact at index 1, right leg
-	-- reads the same curve +12. Stance spans idx 22-5, swing idx 6-21.
-	-- Peak 100 during swing-through (heel toward glute), min 11 at Down.
-	Knee = { 22, 18, 13, 11, 14, 24, 42, 62, 82, 95, 100, 94, 80, 62, 45, 32, 26, 24, 24, 26, 28, 26, 24, 23 },
-	-- Ankle (toes-down positive) per phase; dorsiflexed through stance (-10),
-	-- plantarflexion spike 26 at toe-off, neutral recovery through swing.
-	Ankle = { -6, -8, -10, -8, -2, 8, 18, 26, 18, 8, 0, -4, -6, -8, -8, -6, -4, -2, 0, 0, -2, -4, -5, -6 },
+local EASE = {
+	Linear = {
+		style = Enum.PoseEasingStyle.Linear,
+		direction = Enum.PoseEasingDirection.InOut,
+	},
+	CubicIn = {
+		style = Enum.PoseEasingStyle.CubicV2,
+		direction = Enum.PoseEasingDirection.In,
+	},
+	CubicOut = {
+		style = Enum.PoseEasingStyle.CubicV2,
+		direction = Enum.PoseEasingDirection.Out,
+	},
+	CubicInOut = {
+		style = Enum.PoseEasingStyle.CubicV2,
+		direction = Enum.PoseEasingDirection.InOut,
+	},
 }
 
--- ── Slide design (v4, tactical slide) ─────────────────────────────────────────
--- Sprint-to-slide in three phases: entry drop (0-0.12), glide hold (0.12-0.70),
--- tuck/drive exit (0.70-1.00). Keyframes are phase fractions of the total
--- duration; the live total comes from Config.Movement.SlideDuration (target
--- 1.0, so the phase times above read literally once Config is set to 1.0).
--- Tunables live in SlideParams (one place, top of section): Duration documents
--- the target clip length, LeanPeak the peak torso lean back, HipDrop the
--- LowerTorso drop at full glide, HoldEnd the glide/exit split. SlideKeys
--- references them, so editing SlideParams then rebuilding is enough; touch the
--- keys only to restyle phases.
--- rp/wp/np = root/waist/neck pitch (+ = lean back), ry/rr = root yaw/roll,
--- hip + = thigh forward, knee = flexion, sh + = arm forward, elbow = flexion,
--- drop = LowerTorso Y offset in studs (visual hip drop; HumanoidRootPart is
--- untouched, slide speed stays 100% script-driven).
--- Lead leg is RIGHT (extended, knee ~straight, heel dug); trailing leg is LEFT
--- (folded under the body, knee bent sharply). Right arm braces back, left arm
--- balances forward; the neck counter-pitches the torso lean so the head stays
--- level. ed = Pose direction ("O" = ease-out on the entry key, "I" =
--- ease-in-out elsewhere). The glide keys drift only 1-3 deg per joint so the
--- hold feels alive without jitter. Blend-in and handoff are NOT tabled:
--- buildSlide emits them from live sprintJoints(0) so both ends always match
--- the sprint loop exactly (same trick as buildDash).
-local SlideParams = {
-	Duration = 1.0, -- target clip length in s; actual length comes from Config.Movement.SlideDuration (set it to 1.0)
-	LeanPeak = 26, -- peak torso lean back in deg (root pitch on the glide keys); range 22-30
-	HipDrop = 0.85, -- LowerTorso drop at full glide in studs; range 0.6-1.0 (lower it if feet clip the floor)
-	HoldEnd = 0.70, -- fraction where the glide ends and the exit begins; range 0.60-0.75
-	LeanDir = 0, -- lateral style lean, -1..1 (adds roll/yaw bias; 0 = centered)
-}
+AnimDev.Ease = EASE
 
-local SlideKeys = {
-	{ f = 0.12, ed = "O", rp = 22, ry = 4, rr = 5, drop = 0.55, wp = 8, wy = 5, np = -20, ny = 1,
-		lhip = 25, lknee = 110, lankle = 14, rhip = 75, rknee = 15, rankle = -10,
-		lsh = 35, lelb = 55, rsh = -45, relb = 40 }, -- entry drop: fast sink, torso back, lead leg throws forward, right arm braces back
-	{ f = 0.24, ed = "I", rp = SlideParams.LeanPeak, ry = 5, rr = 6, drop = SlideParams.HipDrop, wp = 9, wy = 6, np = -22, ny = 1,
-		lhip = 28, lknee = 115, lankle = 14, rhip = 78, rknee = 12, rankle = -10,
-		lsh = 40, lelb = 60, rsh = -50, relb = 38 }, -- glide start: full extension, lowest hips, widest silhouette
-	{ f = 0.45, ed = "I", rp = 25, ry = 5, rr = 6, drop = SlideParams.HipDrop, wp = 8, wy = 6, np = -21, ny = 2,
-		lhip = 29, lknee = 114, lankle = 13, rhip = 77, rknee = 13, rankle = -10,
-		lsh = 37, lelb = 58, rsh = -47, relb = 40 }, -- glide mid: alive drift, 1-3 deg off the start key
-	{ f = SlideParams.HoldEnd, ed = "I", rp = 24, ry = 5, rr = 6, drop = SlideParams.HipDrop, wp = 7, wy = 6, np = -20, ny = 2,
-		lhip = 29, lknee = 113, lankle = 13, rhip = 76, rknee = 14, rankle = -10,
-		lsh = 36, lelb = 58, rsh = -46, relb = 40 }, -- glide end: settle, still low and readable
-	{ f = 0.85, ed = "I", rp = 10, ry = 2, rr = 3, drop = 0.35, wp = 2, wy = 3, np = -8, ny = 1,
-		lhip = 35, lknee = 85, lankle = 8, rhip = 45, rknee = 45, rankle = -4,
-		lsh = -10, lelb = 75, rsh = -20, relb = 65 }, -- tuck/drive: legs gather under the body, torso rises toward the run
-}
-
--- Documented default from Config.Movement.SlideDuration, used only when the
--- live Config module is unavailable (e.g. the module runs in a foreign place).
-local SLIDE_DURATION_FALLBACK = 1.0
-
--- ── Dash design (v1) ─────────────────────────────────────────────────────────
--- ORIGINAL burst-forward dash. Total length DashParams.Duration (0.42s default,
--- in the 0.35-0.50 spec band). This is the ANIMATION length, not the gameplay
--- dash: Config.Movement.DashDuration (0.2s) owns travel time, the clip overruns
--- it and blends into the sprint loop.
--- Tunables live in DashParams (one place, top of section). DashKeys references
--- them, so editing DashParams then rebuilding is enough; touch the keys only
--- to restyle phases. Sign conventions match sprint/slide: pitch +X = limbs
--- forward, torso +X = lean back (forward lean is negative rp), knee flexion is
--- stored positive and negated in dashJoints, elbow flexion positive.
--- ee = style (always "C" Cubic here: no linear snapping per spec); ed = Pose
--- direction ("O" = ease-out on the burst keys, "I" = ease-in-out elsewhere).
--- Key 4 overshoots Key 3 by TorsoOvershoot/ArmOvershoot for punch; Key 5 lets
--- the right arm swing forward early (follow-through) while the torso is still
--- settling. Final handoff is NOT tabled: buildDash appends sprintJoints(phi 0)
--- so the dash always matches the live sprint first frame exactly.
--- No HumanoidRootPart content anywhere: LowerTorso carries rotation only, so
--- dash speed stays 100% script-driven. Elbows stay open (58+) on burst keys
--- so swept-back hands clear the torso.
-local DashParams = {
-	Duration = 0.42, -- total clip length in s; range 0.35-0.50
-	LeanPeak = 30, -- burst torso lean in deg forward; range 25-35
-	ArmSweep = 50, -- burst shoulder sweep back in deg; range 40-60
-	ArmOvershoot = 6, -- extra back-sweep on the overshoot key; range 0-10 (0 = no arm punch)
-	TorsoOvershoot = 4, -- extra lean on the overshoot key; range 0-8
-	StrideFront = 55, -- front hip drive in deg; range 45-65
-	StrideBack = 48, -- rear hip extension in deg (applied negative); range 40-55
-}
-
-local DashKeys = {
-	{ f = 0.000, ee = "C", ed = "I", rp = -16, ry = 0, rr = 1, wp = -4, wy = 2, np = 10, ny = 0,
-		lhip = 42, lknee = 30, lankle = -4, rhip = -30, rknee = 72, rankle = -4,
-		lsh = -42, lelb = 78, rsh = 32, relb = 95 }, -- anticipation start: light crouch off the run
-	{ f = 0.190, ee = "C", ed = "I", rp = -(DashParams.LeanPeak - 12), ry = -1, rr = 1, wp = -5, wy = 2, np = 11, ny = 0,
-		lhip = 46, lknee = 55, lankle = 0, rhip = -12, rknee = 85, rankle = 2,
-		lsh = -38, lelb = 72, rsh = 28, relb = 88 }, -- anticipation dip (~0.08s): weight drops, arms gather
-	{ f = 0.405, ee = "C", ed = "O", rp = -DashParams.LeanPeak, ry = 2, rr = 2, wp = -7, wy = 4, np = 15, ny = 0,
-		lhip = DashParams.StrideFront, lknee = 75, lankle = 10, rhip = -DashParams.StrideBack, rknee = 18, rankle = -10,
-		lsh = -(DashParams.ArmSweep + 2), lelb = 60, rsh = -(DashParams.ArmSweep - 5), relb = 65 }, -- burst peak (~0.17s): full lean, long stride, arms swept
-	{ f = 0.524, ee = "C", ed = "O", rp = -(DashParams.LeanPeak + DashParams.TorsoOvershoot), ry = 2, rr = 2, wp = -8, wy = 4, np = 16, ny = 0,
-		lhip = DashParams.StrideFront + 3, lknee = 78, lankle = 11, rhip = -(DashParams.StrideBack + 3), rknee = 16, rankle = -11,
-		lsh = -(DashParams.ArmSweep + 2 + DashParams.ArmOvershoot), lelb = 58, rsh = -(DashParams.ArmSweep - 5 + DashParams.ArmOvershoot), relb = 62 }, -- overshoot (~0.22s): punch past the peak
-	{ f = 0.714, ee = "C", ed = "I", rp = -20, ry = 0, rr = 1, wp = -4, wy = 2, np = 11, ny = 0,
-		lhip = 46, lknee = 40, lankle = -2, rhip = -32, rknee = 70, rankle = -5,
-		lsh = -46, lelb = 75, rsh = 30, relb = 92 }, -- recovery (~0.30s): torso rises, right arm swings forward first
-}
-
-local REQUIRED_PARTS = {
-	"LowerTorso", "UpperTorso", "Head",
-	"LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm",
-	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
-}
-
--- ── Small helpers ─────────────────────────────────────────────────────────────
-local function rx(deg: number): CFrame return CFrame.Angles(math.rad(deg), 0, 0) end
-local function ry(deg: number): CFrame return CFrame.Angles(0, math.rad(deg), 0) end
-local function rz(deg: number): CFrame return CFrame.Angles(0, 0, math.rad(deg)) end
-
-local function pose(name: string, cf: CFrame): PoseSpec
-	return { name = name, cf = cf, children = {} }
+local function rx(degrees: number): CFrame
+	return CFrame.Angles(math.rad(degrees), 0, 0)
 end
 
--- Instantiate a pose tree under the given Keyframe (or parent Pose).
-local function assemble(spec: PoseSpec, parent: Instance)
-	local p = Instance.new("Pose")
-	p.Name = spec.name
-	p.CFrame = spec.cf
-	p.EasingStyle = Enum.PoseEasingStyle.Linear
-	p.Weight = 1
-	p.Parent = parent
-	for _, child in spec.children do
-		assemble(child, p)
-	end
+local function ry(degrees: number): CFrame
+	return CFrame.Angles(0, math.rad(degrees), 0)
 end
 
--- Nest the flat joint set into the R15 pose hierarchy:
--- LowerTorso -> (UpperTorso -> Head/arms -> forearms), thighs -> shins -> feet.
-local function makeTree(j: JointCFs): PoseSpec
-	local root = pose("LowerTorso", j.root)
-	local upper = pose("UpperTorso", j.waist)
-	local head = pose("Head", j.neck)
-	local lArm = pose("LeftUpperArm", j.lsh)
-	local lFore = pose("LeftLowerArm", j.lelb)
-	local rArm = pose("RightUpperArm", j.rsh)
-	local rFore = pose("RightLowerArm", j.relb)
-	local lThigh = pose("LeftUpperLeg", j.lhip)
-	local lShin = pose("LeftLowerLeg", j.lknee)
-	local lFoot = pose("LeftFoot", j.lankle)
-	local rThigh = pose("RightUpperLeg", j.rhip)
-	local rShin = pose("RightLowerLeg", j.rknee)
-	local rFoot = pose("RightFoot", j.rankle)
-
-	lArm.children = { lFore }
-	rArm.children = { rFore }
-	lThigh.children = { lShin }
-	lShin.children = { lFoot }
-	rThigh.children = { rShin }
-	rShin.children = { rFoot }
-	upper.children = { head, lArm, rArm }
-	root.children = { upper, lThigh, rThigh }
-	return root
+local function rz(degrees: number): CFrame
+	return CFrame.Angles(0, 0, math.rad(degrees))
 end
 
-local function keyframeAt(time: number, tree: PoseSpec): Keyframe
-	local kf = Instance.new("Keyframe")
-	kf.Time = time
-	assemble(tree, kf)
-	return kf
+function AnimDev.rotation(xDegrees: number, yDegrees: number, zDegrees: number): CFrame
+	return rx(xDegrees) * ry(yDegrees) * rz(zDegrees)
 end
 
--- ── Rig validation ───────────────────────────────────────────────────────────
-local function validateRig(rig: Model?): (Model?, Humanoid?, string?)
-	if rig == nil then
-		return nil, nil, "target rig not found (expected Workspace.Rig)"
-	end
-	local hum = rig:FindFirstChildOfClass("Humanoid")
-	if not hum then
-		return nil, nil, rig:GetFullName() .. " has no Humanoid"
-	end
-	if hum.RigType ~= Enum.HumanoidRigType.R15 then
-		return nil, nil, ("rig type is %s, expected R15"):format(hum.RigType.Name)
-	end
-	for _, partName in REQUIRED_PARTS do
-		local p = rig:FindFirstChild(partName)
-		if not (p and p:IsA("BasePart")) then
-			return nil, nil, ("missing R15 part %s on %s"):format(partName, rig:GetFullName())
-		end
-	end
-	local jointCount = 0
-	for _, d in rig:GetDescendants() do
-		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
-			jointCount += 1
-		end
-	end
-	if jointCount < 15 then
-		return nil, nil, ("found only %d Motor6D/AnimationConstraint joints (expected >= 15)"):format(jointCount)
-	end
-	return rig, hum, nil
+function AnimDev.offset(x: number, y: number, z: number): CFrame
+	return CFrame.new(x, y, z)
 end
 
--- ── Sprint pose math (v3) ────────────────────────────────────────────────────
--- Left-leg phase phi in [0,1); right leg runs phi + 0.5. Key poses per leg:
--- Contact (phi 0), Down (phi ~0.125), Passing/Push-off (phi ~0.25),
--- Up/fold (phi ~0.375). Overlap: elbows, ankles, and head yaw evaluate on
--- lagged phases so extremities trail their parents by 1-2 frames. Every lag
--- term is periodic in phi, so the phi=0 / phi=1 loop seam stays exact.
--- Samples must be even (legs split N/2 apart); Knee/Ankle length must equal
--- Samples (buildSprint errors otherwise instead of silently misindexing).
-local function sprintJoints(phi: number, K: typeof(SprintParams)): JointCFs
-	local N = K.Samples
-	local c = math.cos(2 * math.pi * phi)
-	local c2 = math.cos(4 * math.pi * phi)
-	local s = math.sin(2 * math.pi * phi)
-	local cE = math.cos(2 * math.pi * (phi - K.ElbowLag / N)) -- forearm overlap
-	local cH = math.cos(2 * math.pi * (phi - K.HeadLag / N)) -- head overlap
-	local asym = K.Asymmetry
-	local idx = math.floor(phi * N + 0.5) % N + 1 -- nearest sample
-	local idxR = (idx - 1 + N / 2) % N + 1
-	local idxA = (idx - 1 - K.AnkleLag) % N + 1 -- foot overlap
-	local idxRA = (idxA - 1 + N / 2) % N + 1
-	local dip = K.BounceHeight * (0.5 + 0.5 * c2) -- down on contact, up on push-off
+local AnimationSpecs: { [string]: AnimationSpec } = {
+	HRush_Walk = {
+		name = "HRush_Walk",
+		looped = true,
+		priority = Enum.AnimationPriority.Movement,
+		duration = 0.70,
+		keyframes = {
+			{
+				time = 0.00,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.02, 0) * rx(-5) * ry(-2) },
+					Waist = { cframe = ry(5) * rz(1) },
+					Neck = { cframe = ry(-3) * rz(-1) },
+					LeftShoulder = { cframe = rx(-20) * rz(-3) },
+					LeftElbow = { cframe = rx(18) },
+					RightShoulder = { cframe = rx(22) * rz(3) },
+					RightElbow = { cframe = rx(24) },
+					LeftHip = { cframe = rx(25) * rz(-1) },
+					LeftKnee = { cframe = rx(-8) },
+					LeftAnkle = { cframe = rx(-5) },
+					RightHip = { cframe = rx(-22) * rz(1) },
+					RightKnee = { cframe = rx(-28) },
+					RightAnkle = { cframe = rx(10) },
+				},
+			},
+			{
+				time = 0.12,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.07, 0) * rx(-6) * ry(-1) },
+					Waist = { cframe = ry(3) },
+					Neck = { cframe = ry(-2) },
+					LeftShoulder = { cframe = rx(-12) * rz(-2) },
+					LeftElbow = { cframe = rx(22) },
+					RightShoulder = { cframe = rx(14) * rz(2) },
+					RightElbow = { cframe = rx(28) },
+					LeftHip = { cframe = rx(14) },
+					LeftKnee = { cframe = rx(-18) },
+					LeftAnkle = { cframe = rx(2) },
+					RightHip = { cframe = rx(-14) },
+					RightKnee = { cframe = rx(-34) },
+					RightAnkle = { cframe = rx(13) },
+				},
+			},
+			{
+				time = 0.23,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.01, 0) * rx(-4) },
+					Waist = { cframe = ry(1) },
+					Neck = { cframe = ry(-1) },
+					LeftShoulder = { cframe = rx(3) },
+					LeftElbow = { cframe = rx(18) },
+					RightShoulder = { cframe = rx(-2) },
+					RightElbow = { cframe = rx(23) },
+					LeftHip = { cframe = rx(-4) },
+					LeftKnee = { cframe = rx(-8) },
+					LeftAnkle = { cframe = rx(-3) },
+					RightHip = { cframe = rx(5) },
+					RightKnee = { cframe = rx(-42) },
+					RightAnkle = { cframe = rx(11) },
+				},
+			},
+			{
+				time = 0.35,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.02, 0) * rx(-5) * ry(2) },
+					Waist = { cframe = ry(-5) * rz(-1) },
+					Neck = { cframe = ry(3) * rz(1) },
+					LeftShoulder = { cframe = rx(22) * rz(-3) },
+					LeftElbow = { cframe = rx(24) },
+					RightShoulder = { cframe = rx(-20) * rz(3) },
+					RightElbow = { cframe = rx(18) },
+					LeftHip = { cframe = rx(-22) * rz(-1) },
+					LeftKnee = { cframe = rx(-28) },
+					LeftAnkle = { cframe = rx(10) },
+					RightHip = { cframe = rx(25) * rz(1) },
+					RightKnee = { cframe = rx(-8) },
+					RightAnkle = { cframe = rx(-5) },
+				},
+			},
+			{
+				time = 0.47,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.07, 0) * rx(-6) * ry(1) },
+					Waist = { cframe = ry(-3) },
+					Neck = { cframe = ry(2) },
+					LeftShoulder = { cframe = rx(14) * rz(-2) },
+					LeftElbow = { cframe = rx(28) },
+					RightShoulder = { cframe = rx(-12) * rz(2) },
+					RightElbow = { cframe = rx(22) },
+					LeftHip = { cframe = rx(-14) },
+					LeftKnee = { cframe = rx(-34) },
+					LeftAnkle = { cframe = rx(13) },
+					RightHip = { cframe = rx(14) },
+					RightKnee = { cframe = rx(-18) },
+					RightAnkle = { cframe = rx(2) },
+				},
+			},
+			{
+				time = 0.58,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.01, 0) * rx(-4) },
+					Waist = { cframe = ry(-1) },
+					Neck = { cframe = ry(1) },
+					LeftShoulder = { cframe = rx(-2) },
+					LeftElbow = { cframe = rx(23) },
+					RightShoulder = { cframe = rx(3) },
+					RightElbow = { cframe = rx(18) },
+					LeftHip = { cframe = rx(5) },
+					LeftKnee = { cframe = rx(-42) },
+					LeftAnkle = { cframe = rx(11) },
+					RightHip = { cframe = rx(-4) },
+					RightKnee = { cframe = rx(-8) },
+					RightAnkle = { cframe = rx(-3) },
+				},
+			},
+			{
+				time = 0.70,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.02, 0) * rx(-5) * ry(-2) },
+					Waist = { cframe = ry(5) * rz(1) },
+					Neck = { cframe = ry(-3) * rz(-1) },
+					LeftShoulder = { cframe = rx(-20) * rz(-3) },
+					LeftElbow = { cframe = rx(18) },
+					RightShoulder = { cframe = rx(22) * rz(3) },
+					RightElbow = { cframe = rx(24) },
+					LeftHip = { cframe = rx(25) * rz(-1) },
+					LeftKnee = { cframe = rx(-8) },
+					LeftAnkle = { cframe = rx(-5) },
+					RightHip = { cframe = rx(-22) * rz(1) },
+					RightKnee = { cframe = rx(-28) },
+					RightAnkle = { cframe = rx(10) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_Sprint = {
+		name = "HRush_Sprint",
+		looped = true,
+		priority = Enum.AnimationPriority.Movement,
+		duration = 0.45,
+		keyframes = {
+			{
+				time = 0.000,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(-4) * rz(-1) },
+					Waist = { cframe = ry(9) * rz(2) },
+					Neck = { cframe = rx(5) * ry(-6) * rz(-1) },
+					LeftShoulder = { cframe = rx(-46) * ry(-4) * rz(-6) },
+					LeftElbow = { cframe = rx(86) * rz(-4) },
+					LeftWrist = { cframe = rx(-8) },
+					RightShoulder = { cframe = rx(52) * ry(4) * rz(7) },
+					RightElbow = { cframe = rx(92) * rz(4) },
+					RightWrist = { cframe = rx(-10) },
+					LeftHip = { cframe = rx(44) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-12) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(-38) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-48) },
+					RightAnkle = { cframe = rx(17) },
+				},
+			},
+			{
+				time = 0.060,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.14, 0) * rx(-17) * ry(-2) },
+					Waist = { cframe = ry(6) },
+					Neck = { cframe = rx(6) * ry(-4) },
+					LeftShoulder = { cframe = rx(-28) * rz(-4) },
+					LeftElbow = { cframe = rx(91) },
+					RightShoulder = { cframe = rx(34) * rz(5) },
+					RightElbow = { cframe = rx(96) },
+					LeftHip = { cframe = rx(22) },
+					LeftKnee = { cframe = rx(-37) },
+					LeftAnkle = { cframe = rx(7) },
+					RightHip = { cframe = rx(-24) },
+					RightKnee = { cframe = rx(-62) },
+					RightAnkle = { cframe = rx(21) },
+				},
+			},
+			{
+				time = 0.115,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.11, 0) * rx(-16) * ry(1) * rz(1) },
+					Waist = { cframe = ry(-3) * rz(-2) },
+					Neck = { cframe = rx(5) * ry(2) * rz(1) },
+					LeftShoulder = { cframe = rx(20) * rz(-3) },
+					LeftElbow = { cframe = rx(82) },
+					RightShoulder = { cframe = rx(-18) * rz(4) },
+					RightElbow = { cframe = rx(88) },
+					LeftHip = { cframe = rx(-27) * rz(-2) },
+					LeftKnee = { cframe = rx(-23) },
+					LeftAnkle = { cframe = rx(-12) },
+					RightHip = { cframe = rx(33) * rz(2) },
+					RightKnee = { cframe = rx(-88) },
+					RightAnkle = { cframe = rx(20) },
+				},
+			},
+			{
+				time = 0.225,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(4) * rz(1) },
+					Waist = { cframe = ry(-9) * rz(-2) },
+					Neck = { cframe = rx(5) * ry(6) * rz(1) },
+					LeftShoulder = { cframe = rx(52) * ry(-4) * rz(-7) },
+					LeftElbow = { cframe = rx(92) * rz(-4) },
+					LeftWrist = { cframe = rx(-10) },
+					RightShoulder = { cframe = rx(-46) * ry(4) * rz(6) },
+					RightElbow = { cframe = rx(86) * rz(4) },
+					RightWrist = { cframe = rx(-8) },
+					LeftHip = { cframe = rx(-38) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-48) },
+					LeftAnkle = { cframe = rx(17) },
+					RightHip = { cframe = rx(44) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-12) },
+					RightAnkle = { cframe = rx(-9) },
+				},
+			},
+			{
+				time = 0.285,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.14, 0) * rx(-17) * ry(2) },
+					Waist = { cframe = ry(-6) },
+					Neck = { cframe = rx(6) * ry(4) },
+					LeftShoulder = { cframe = rx(34) * rz(-5) },
+					LeftElbow = { cframe = rx(96) },
+					RightShoulder = { cframe = rx(-28) * rz(4) },
+					RightElbow = { cframe = rx(91) },
+					LeftHip = { cframe = rx(-24) },
+					LeftKnee = { cframe = rx(-62) },
+					LeftAnkle = { cframe = rx(21) },
+					RightHip = { cframe = rx(22) },
+					RightKnee = { cframe = rx(-37) },
+					RightAnkle = { cframe = rx(7) },
+				},
+			},
+			{
+				time = 0.340,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.11, 0) * rx(-16) * ry(-1) * rz(-1) },
+					Waist = { cframe = ry(3) * rz(2) },
+					Neck = { cframe = rx(5) * ry(-2) * rz(-1) },
+					LeftShoulder = { cframe = rx(-18) * rz(-4) },
+					LeftElbow = { cframe = rx(88) },
+					RightShoulder = { cframe = rx(20) * rz(3) },
+					RightElbow = { cframe = rx(82) },
+					LeftHip = { cframe = rx(33) * rz(-2) },
+					LeftKnee = { cframe = rx(-88) },
+					LeftAnkle = { cframe = rx(20) },
+					RightHip = { cframe = rx(-27) * rz(2) },
+					RightKnee = { cframe = rx(-23) },
+					RightAnkle = { cframe = rx(-12) },
+				},
+			},
+			{
+				time = 0.450,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(-4) * rz(-1) },
+					Waist = { cframe = ry(9) * rz(2) },
+					Neck = { cframe = rx(5) * ry(-6) * rz(-1) },
+					LeftShoulder = { cframe = rx(-46) * ry(-4) * rz(-6) },
+					LeftElbow = { cframe = rx(86) * rz(-4) },
+					LeftWrist = { cframe = rx(-8) },
+					RightShoulder = { cframe = rx(52) * ry(4) * rz(7) },
+					RightElbow = { cframe = rx(92) * rz(4) },
+					RightWrist = { cframe = rx(-10) },
+					LeftHip = { cframe = rx(44) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-12) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(-38) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-48) },
+					RightAnkle = { cframe = rx(17) },
+				},
+			},
+		},
+		markers = {
+			{ name = "FootstepL", time = 0.00 },
+			{ name = "FootstepR", time = 0.225 },
+		},
+	},
+	HRush_Dash = {
+		name = "HRush_Dash",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.25,
+		keyframes = {
+			{
+				time = 0.000,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(-4) * rz(-1) },
+					Waist = { cframe = ry(9) * rz(2) },
+					Neck = { cframe = rx(5) * ry(-6) * rz(-1) },
+					LeftShoulder = { cframe = rx(-46) * ry(-4) * rz(-6) },
+					LeftElbow = { cframe = rx(86) * rz(-4) },
+					LeftWrist = { cframe = rx(-8) },
+					RightShoulder = { cframe = rx(52) * ry(4) * rz(7) },
+					RightElbow = { cframe = rx(92) * rz(4) },
+					RightWrist = { cframe = rx(-10) },
+					LeftHip = { cframe = rx(44) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-12) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(-38) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-48) },
+					RightAnkle = { cframe = rx(17) },
+				},
+			},
+			{
+				time = 0.035,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.13, 0) * rx(-19) * ry(-2) },
+					Waist = { cframe = rx(2) * ry(5) },
+					Neck = { cframe = rx(6) * ry(-3) },
+					LeftShoulder = { cframe = rx(-55) * rz(-8) },
+					LeftElbow = { cframe = rx(65) },
+					RightShoulder = { cframe = rx(18) * rz(8) },
+					RightElbow = { cframe = rx(70) },
+					LeftHip = { cframe = rx(31) },
+					LeftKnee = { cframe = rx(-30) },
+					RightHip = { cframe = rx(-29) },
+					RightKnee = { cframe = rx(-61) },
+					LeftAnkle = { cframe = rx(4) },
+					RightAnkle = { cframe = rx(20) },
+				},
+			},
+			{
+				time = 0.075,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.03, 0) * rx(-31) * ry(2) * rz(1) },
+					Waist = { cframe = rx(5) * ry(-4) * rz(-2) },
+					Neck = { cframe = rx(12) * ry(3) * rz(1) },
+					LeftShoulder = { cframe = rx(-68) * ry(-4) * rz(-12) },
+					LeftElbow = { cframe = rx(34) * rz(-5) },
+					LeftWrist = { cframe = rx(-13) },
+					RightShoulder = { cframe = rx(-62) * ry(5) * rz(13) },
+					RightElbow = { cframe = rx(29) * rz(5) },
+					RightWrist = { cframe = rx(-11) },
+					LeftHip = { cframe = rx(54) * ry(-4) * rz(-3) },
+					LeftKnee = { cframe = rx(-24) },
+					LeftAnkle = { cframe = rx(-16) },
+					RightHip = { cframe = rx(-43) * ry(4) * rz(3) },
+					RightKnee = { cframe = rx(-56) },
+					RightAnkle = { cframe = rx(18) },
+				},
+			},
+			{
+				time = 0.140,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.06, 0) * rx(-34) * ry(3) },
+					Waist = { cframe = rx(6) * ry(-5) },
+					Neck = { cframe = rx(13) * ry(4) },
+					LeftShoulder = { cframe = rx(-72) * ry(-4) * rz(-13) },
+					LeftElbow = { cframe = rx(27) * rz(-5) },
+					LeftWrist = { cframe = rx(-15) },
+					RightShoulder = { cframe = rx(-66) * ry(5) * rz(14) },
+					RightElbow = { cframe = rx(24) * rz(5) },
+					RightWrist = { cframe = rx(-13) },
+					LeftHip = { cframe = rx(58) * ry(-4) * rz(-3) },
+					LeftKnee = { cframe = rx(-20) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-46) * ry(4) * rz(3) },
+					RightKnee = { cframe = rx(-52) },
+					RightAnkle = { cframe = rx(16) },
+				},
+			},
+			{
+				time = 0.205,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.01, 0) * rx(-23) * ry(1) },
+					Waist = { cframe = rx(3) * ry(-2) },
+					Neck = { cframe = rx(8) * ry(2) },
+					LeftShoulder = { cframe = rx(-43) * rz(-8) },
+					LeftElbow = { cframe = rx(55) },
+					RightShoulder = { cframe = rx(-38) * rz(9) },
+					RightElbow = { cframe = rx(51) },
+					LeftHip = { cframe = rx(27) },
+					LeftKnee = { cframe = rx(-37) },
+					RightHip = { cframe = rx(-22) },
+					RightKnee = { cframe = rx(-63) },
+					LeftAnkle = { cframe = rx(1) },
+					RightAnkle = { cframe = rx(20) },
+				},
+			},
+			{
+				time = 0.250,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(4) * rz(1) },
+					Waist = { cframe = ry(-9) * rz(-2) },
+					Neck = { cframe = rx(5) * ry(6) * rz(1) },
+					LeftShoulder = { cframe = rx(52) * ry(-4) * rz(-7) },
+					LeftElbow = { cframe = rx(92) * rz(-4) },
+					LeftWrist = { cframe = rx(-10) },
+					RightShoulder = { cframe = rx(-46) * ry(4) * rz(6) },
+					RightElbow = { cframe = rx(86) * rz(4) },
+					RightWrist = { cframe = rx(-8) },
+					LeftHip = { cframe = rx(-38) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-48) },
+					LeftAnkle = { cframe = rx(17) },
+					RightHip = { cframe = rx(44) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-12) },
+					RightAnkle = { cframe = rx(-9) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_JumpStart = {
+		name = "HRush_JumpStart",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.20,
+		keyframes = {
+			{
+				time = 0.00,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = rx(-4) },
+					Waist = { cframe = rx(2) },
+					Neck = { cframe = rx(2) },
+					LeftShoulder = { cframe = rx(-8) * rz(-3) },
+					RightShoulder = { cframe = rx(-8) * rz(3) },
+					LeftElbow = { cframe = rx(18) },
+					RightElbow = { cframe = rx(18) },
+					LeftHip = { cframe = rx(-5) },
+					RightHip = { cframe = rx(-5) },
+					LeftKnee = { cframe = rx(-12) },
+					RightKnee = { cframe = rx(-12) },
+				},
+			},
+			{
+				time = 0.045,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.16, 0) * rx(-8) },
+					Waist = { cframe = rx(4) },
+					Neck = { cframe = rx(4) },
+					LeftShoulder = { cframe = rx(-27) * rz(-5) },
+					RightShoulder = { cframe = rx(-24) * rz(5) },
+					LeftElbow = { cframe = rx(32) },
+					RightElbow = { cframe = rx(29) },
+					LeftHip = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-16) },
+					LeftKnee = { cframe = rx(-52) },
+					RightKnee = { cframe = rx(-48) },
+					LeftAnkle = { cframe = rx(16) },
+					RightAnkle = { cframe = rx(15) },
+				},
+			},
+			{
+				time = 0.090,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.36, 0) * rx(-12) },
+					Waist = { cframe = rx(7) },
+					Neck = { cframe = rx(6) },
+					LeftShoulder = { cframe = rx(-47) * rz(-7) },
+					RightShoulder = { cframe = rx(-43) * rz(7) },
+					LeftElbow = { cframe = rx(42) },
+					RightElbow = { cframe = rx(38) },
+					LeftHip = { cframe = rx(-32) * rz(-2) },
+					RightHip = { cframe = rx(-29) * rz(2) },
+					LeftKnee = { cframe = rx(-86) },
+					RightKnee = { cframe = rx(-80) },
+					LeftAnkle = { cframe = rx(24) },
+					RightAnkle = { cframe = rx(22) },
+				},
+			},
+			{
+				time = 0.145,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.08, 0) * rx(-9) },
+					Waist = { cframe = rx(-2) },
+					Neck = { cframe = rx(2) },
+					LeftShoulder = { cframe = rx(52) * rz(-9) },
+					RightShoulder = { cframe = rx(58) * rz(9) },
+					LeftElbow = { cframe = rx(24) },
+					RightElbow = { cframe = rx(20) },
+					LeftHip = { cframe = rx(11) * rz(-2) },
+					RightHip = { cframe = rx(8) * rz(2) },
+					LeftKnee = { cframe = rx(-14) },
+					RightKnee = { cframe = rx(-11) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightAnkle = { cframe = rx(-17) },
+				},
+			},
+			{
+				time = 0.20,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.13, 0) * rx(-7) * ry(-2) },
+					Waist = { cframe = rx(-3) * ry(2) },
+					Neck = { cframe = rx(1) * ry(-1) },
+					LeftShoulder = { cframe = rx(62) * rz(-10) },
+					RightShoulder = { cframe = rx(68) * rz(10) },
+					LeftElbow = { cframe = rx(16) },
+					RightElbow = { cframe = rx(13) },
+					LeftHip = { cframe = rx(-9) * rz(-3) },
+					RightHip = { cframe = rx(13) * rz(3) },
+					LeftKnee = { cframe = rx(-22) },
+					RightKnee = { cframe = rx(-8) },
+					LeftAnkle = { cframe = rx(-13) },
+					RightAnkle = { cframe = rx(-16) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_Fall = {
+		name = "HRush_Fall",
+		looped = true,
+		priority = Enum.AnimationPriority.Movement,
+		duration = 0.60,
+		keyframes = {
+			{
+				time = 0.00,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = rx(-9) * ry(-2) * rz(-1) },
+					Waist = { cframe = rx(3) * ry(3) },
+					Neck = { cframe = rx(6) * ry(-2) },
+					LeftShoulder = { cframe = rx(18) * ry(-6) * rz(-42) },
+					LeftElbow = { cframe = rx(24) * rz(-8) },
+					LeftWrist = { cframe = ry(-8) },
+					RightShoulder = { cframe = rx(12) * ry(6) * rz(45) },
+					RightElbow = { cframe = rx(28) * rz(8) },
+					RightWrist = { cframe = ry(8) },
+					LeftHip = { cframe = rx(-8) * ry(-6) * rz(-10) },
+					LeftKnee = { cframe = rx(-25) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(12) * ry(6) * rz(12) },
+					RightKnee = { cframe = rx(-18) },
+					RightAnkle = { cframe = rx(-12) },
+				},
+			},
+			{
+				time = 0.15,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.03, 0) * rx(-8) * ry(2) * rz(2) },
+					Waist = { cframe = rx(2) * ry(-3) * rz(-2) },
+					Neck = { cframe = rx(5) * ry(3) * rz(-1) },
+					LeftShoulder = { cframe = rx(14) * ry(-5) * rz(-48) },
+					LeftElbow = { cframe = rx(29) * rz(-7) },
+					RightShoulder = { cframe = rx(19) * ry(5) * rz(39) },
+					RightElbow = { cframe = rx(22) * rz(7) },
+					LeftHip = { cframe = rx(8) * ry(-5) * rz(-13) },
+					LeftKnee = { cframe = rx(-17) },
+					RightHip = { cframe = rx(-10) * ry(5) * rz(10) },
+					RightKnee = { cframe = rx(-28) },
+					LeftAnkle = { cframe = rx(-12) },
+					RightAnkle = { cframe = rx(-8) },
+				},
+			},
+			{
+				time = 0.30,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = rx(-10) * ry(3) * rz(1) },
+					Waist = { cframe = rx(4) * ry(-4) },
+					Neck = { cframe = rx(7) * ry(3) },
+					LeftShoulder = { cframe = rx(10) * ry(-4) * rz(-40) },
+					LeftElbow = { cframe = rx(31) * rz(-6) },
+					RightShoulder = { cframe = rx(22) * ry(4) * rz(47) },
+					RightElbow = { cframe = rx(25) * rz(6) },
+					LeftHip = { cframe = rx(14) * ry(-5) * rz(-9) },
+					LeftKnee = { cframe = rx(-21) },
+					RightHip = { cframe = rx(-12) * ry(5) * rz(14) },
+					RightKnee = { cframe = rx(-31) },
+					LeftAnkle = { cframe = rx(-10) },
+					RightAnkle = { cframe = rx(-7) },
+				},
+			},
+			{
+				time = 0.45,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.03, 0) * rx(-10) * ry(-2) * rz(-2) },
+					Waist = { cframe = rx(4) * ry(3) * rz(2) },
+					Neck = { cframe = rx(6) * ry(-3) * rz(1) },
+					LeftShoulder = { cframe = rx(21) * ry(-5) * rz(-38) },
+					LeftElbow = { cframe = rx(22) * rz(-7) },
+					RightShoulder = { cframe = rx(11) * ry(5) * rz(49) },
+					RightElbow = { cframe = rx(30) * rz(7) },
+					LeftHip = { cframe = rx(-11) * ry(-5) * rz(-14) },
+					LeftKnee = { cframe = rx(-29) },
+					RightHip = { cframe = rx(9) * ry(5) * rz(9) },
+					RightKnee = { cframe = rx(-16) },
+					LeftAnkle = { cframe = rx(-7) },
+					RightAnkle = { cframe = rx(-12) },
+				},
+			},
+			{
+				time = 0.60,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = rx(-9) * ry(-2) * rz(-1) },
+					Waist = { cframe = rx(3) * ry(3) },
+					Neck = { cframe = rx(6) * ry(-2) },
+					LeftShoulder = { cframe = rx(18) * ry(-6) * rz(-42) },
+					LeftElbow = { cframe = rx(24) * rz(-8) },
+					LeftWrist = { cframe = ry(-8) },
+					RightShoulder = { cframe = rx(12) * ry(6) * rz(45) },
+					RightElbow = { cframe = rx(28) * rz(8) },
+					RightWrist = { cframe = ry(8) },
+					LeftHip = { cframe = rx(-8) * ry(-6) * rz(-10) },
+					LeftKnee = { cframe = rx(-25) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(12) * ry(6) * rz(12) },
+					RightKnee = { cframe = rx(-18) },
+					RightAnkle = { cframe = rx(-12) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_Land = {
+		name = "HRush_Land",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.25,
+		keyframes = {
+			{
+				time = 0.00,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.08, 0) * rx(-7) },
+					Waist = { cframe = rx(2) },
+					Neck = { cframe = rx(4) },
+					LeftShoulder = { cframe = rx(22) * rz(-17) },
+					RightShoulder = { cframe = rx(18) * rz(17) },
+					LeftElbow = { cframe = rx(22) },
+					RightElbow = { cframe = rx(20) },
+					LeftHip = { cframe = rx(7) * rz(-2) },
+					RightHip = { cframe = rx(4) * rz(2) },
+					LeftKnee = { cframe = rx(-12) },
+					RightKnee = { cframe = rx(-10) },
+					LeftAnkle = { cframe = rx(-8) },
+					RightAnkle = { cframe = rx(-8) },
+				},
+			},
+			{
+				time = 0.05,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.05, 0) * rx(-9) },
+					Waist = { cframe = rx(4) },
+					Neck = { cframe = rx(5) },
+					LeftShoulder = { cframe = rx(8) * rz(-12) },
+					RightShoulder = { cframe = rx(5) * rz(12) },
+					LeftElbow = { cframe = rx(27) },
+					RightElbow = { cframe = rx(25) },
+					LeftHip = { cframe = rx(-9) },
+					RightHip = { cframe = rx(-8) },
+					LeftKnee = { cframe = rx(-32) },
+					RightKnee = { cframe = rx(-30) },
+					LeftAnkle = { cframe = rx(10) },
+					RightAnkle = { cframe = rx(9) },
+				},
+			},
+			{
+				time = 0.08,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.29, 0) * rx(-14) },
+					Waist = { cframe = rx(8) },
+					Neck = { cframe = rx(7) },
+					LeftShoulder = { cframe = rx(-18) * rz(-8) },
+					RightShoulder = { cframe = rx(-14) * rz(8) },
+					LeftElbow = { cframe = rx(38) },
+					RightElbow = { cframe = rx(35) },
+					LeftHip = { cframe = rx(-24) * rz(-2) },
+					RightHip = { cframe = rx(-22) * rz(2) },
+					LeftKnee = { cframe = rx(-68) },
+					RightKnee = { cframe = rx(-64) },
+					LeftAnkle = { cframe = rx(21) },
+					RightAnkle = { cframe = rx(20) },
+				},
+			},
+			{
+				time = 0.16,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.10, 0) * rx(-8) },
+					Waist = { cframe = rx(3) },
+					Neck = { cframe = rx(3) },
+					LeftShoulder = { cframe = rx(4) * rz(-5) },
+					RightShoulder = { cframe = rx(1) * rz(5) },
+					LeftElbow = { cframe = rx(24) },
+					RightElbow = { cframe = rx(22) },
+					LeftHip = { cframe = rx(-11) },
+					RightHip = { cframe = rx(-10) },
+					LeftKnee = { cframe = rx(-37) },
+					RightKnee = { cframe = rx(-35) },
+					LeftAnkle = { cframe = rx(12) },
+					RightAnkle = { cframe = rx(11) },
+				},
+			},
+			{
+				time = 0.25,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = rx(-5) },
+					Waist = { cframe = rx(1) },
+					Neck = { cframe = rx(1) },
+					LeftShoulder = { cframe = rx(-7) * rz(-3) },
+					RightShoulder = { cframe = rx(9) * rz(3) },
+					LeftElbow = { cframe = rx(18) },
+					RightElbow = { cframe = rx(20) },
+					LeftHip = { cframe = rx(8) },
+					RightHip = { cframe = rx(-7) },
+					LeftKnee = { cframe = rx(-11) },
+					RightKnee = { cframe = rx(-18) },
+				},
+			},
+		},
+		markers = {
+			{ name = "LandImpact", time = 0.08 },
+		},
+	},
+	HRush_LandHard = {
+		name = "HRush_LandHard",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.40,
+		keyframes = {
+			{
+				time = 0.00,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.10, 0) * rx(-10) },
+					Waist = { cframe = rx(4) },
+					Neck = { cframe = rx(5) },
+					LeftShoulder = { cframe = rx(26) * rz(-25) },
+					RightShoulder = { cframe = rx(30) * rz(28) },
+					LeftElbow = { cframe = rx(24) },
+					RightElbow = { cframe = rx(21) },
+					LeftHip = { cframe = rx(9) * rz(-4) },
+					RightHip = { cframe = rx(3) * rz(5) },
+					LeftKnee = { cframe = rx(-15) },
+					RightKnee = { cframe = rx(-11) },
+				},
+			},
+			{
+				time = 0.07,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.14, 0) * rx(-18) * ry(3) },
+					Waist = { cframe = rx(9) * ry(-3) },
+					Neck = { cframe = rx(8) * ry(2) },
+					LeftShoulder = { cframe = rx(4) * rz(-18) },
+					RightShoulder = { cframe = rx(10) * rz(21) },
+					LeftElbow = { cframe = rx(33) },
+					RightElbow = { cframe = rx(29) },
+					LeftHip = { cframe = rx(-17) * rz(-4) },
+					RightHip = { cframe = rx(-12) * rz(5) },
+					LeftKnee = { cframe = rx(-49) },
+					RightKnee = { cframe = rx(-43) },
+					LeftAnkle = { cframe = rx(15) },
+					RightAnkle = { cframe = rx(13) },
+				},
+			},
+			{
+				time = 0.10,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.66, 0) * rx(-29) * ry(7) * rz(3) },
+					Waist = { cframe = rx(17) * ry(-7) * rz(-3) },
+					Neck = { cframe = rx(13) * ry(4) },
+					LeftShoulder = { cframe = rx(-30) * ry(-6) * rz(-12) },
+					LeftElbow = { cframe = rx(62) * rz(-4) },
+					RightShoulder = { cframe = CFrame.new(0, -0.08, 0) * rx(-14) * ry(8) * rz(8) },
+					RightElbow = { cframe = rx(7) * rz(5) },
+					RightWrist = { cframe = rx(22) * rz(7) },
+					LeftHip = { cframe = rx(-38) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-104) * rz(-3) },
+					LeftAnkle = { cframe = rx(29) },
+					RightHip = { cframe = rx(-28) * ry(6) * rz(10) },
+					RightKnee = { cframe = rx(-83) * rz(3) },
+					RightAnkle = { cframe = rx(24) },
+				},
+			},
+			{
+				time = 0.16,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.70, 0) * rx(-31) * ry(6) * rz(2) },
+					Waist = { cframe = rx(18) * ry(-6) * rz(-2) },
+					Neck = { cframe = rx(14) * ry(4) },
+					LeftShoulder = { cframe = rx(-34) * ry(-5) * rz(-10) },
+					LeftElbow = { cframe = rx(66) },
+					RightShoulder = { cframe = CFrame.new(0, -0.10, 0) * rx(-18) * ry(7) * rz(7) },
+					RightElbow = { cframe = rx(5) * rz(4) },
+					RightWrist = { cframe = rx(25) * rz(6) },
+					LeftHip = { cframe = rx(-40) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-108) * rz(-3) },
+					LeftAnkle = { cframe = rx(31) },
+					RightHip = { cframe = rx(-31) * ry(6) * rz(10) },
+					RightKnee = { cframe = rx(-88) * rz(3) },
+					RightAnkle = { cframe = rx(26) },
+				},
+			},
+			{
+				time = 0.25,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.38, 0) * rx(-20) * ry(3) },
+					Waist = { cframe = rx(10) * ry(-3) },
+					Neck = { cframe = rx(8) * ry(2) },
+					LeftShoulder = { cframe = rx(-20) * rz(-7) },
+					LeftElbow = { cframe = rx(47) },
+					RightShoulder = { cframe = rx(8) * rz(7) },
+					RightElbow = { cframe = rx(15) },
+					RightWrist = { cframe = rx(12) },
+					LeftHip = { cframe = rx(-26) * rz(-4) },
+					LeftKnee = { cframe = rx(-77) },
+					LeftAnkle = { cframe = rx(23) },
+					RightHip = { cframe = rx(-19) * rz(5) },
+					RightKnee = { cframe = rx(-63) },
+					RightAnkle = { cframe = rx(18) },
+				},
+			},
+			{
+				time = 0.33,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.13, 0) * rx(-10) },
+					Waist = { cframe = rx(4) },
+					Neck = { cframe = rx(4) },
+					LeftShoulder = { cframe = rx(-9) * rz(-4) },
+					LeftElbow = { cframe = rx(29) },
+					RightShoulder = { cframe = rx(14) * rz(5) },
+					RightElbow = { cframe = rx(23) },
+					LeftHip = { cframe = rx(-12) },
+					LeftKnee = { cframe = rx(-41) },
+					LeftAnkle = { cframe = rx(13) },
+					RightHip = { cframe = rx(-8) },
+					RightKnee = { cframe = rx(-34) },
+					RightAnkle = { cframe = rx(10) },
+				},
+			},
+			{
+				time = 0.40,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = rx(-5) },
+					Waist = { cframe = rx(1) },
+					Neck = { cframe = rx(1) },
+					LeftShoulder = { cframe = rx(-7) * rz(-3) },
+					RightShoulder = { cframe = rx(9) * rz(3) },
+					LeftElbow = { cframe = rx(18) },
+					RightElbow = { cframe = rx(20) },
+					LeftHip = { cframe = rx(8) },
+					RightHip = { cframe = rx(-7) },
+					LeftKnee = { cframe = rx(-11) },
+					RightKnee = { cframe = rx(-18) },
+				},
+			},
+		},
+		markers = {
+			{ name = "LandImpact", time = 0.10 },
+		},
+	},
+	HRush_SlideEnter = {
+		name = "HRush_SlideEnter",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.12,
+		keyframes = {
+			{
+				time = 0.000,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(-4) * rz(-1) },
+					Waist = { cframe = ry(9) * rz(2) },
+					Neck = { cframe = rx(5) * ry(-6) * rz(-1) },
+					LeftShoulder = { cframe = rx(-46) * ry(-4) * rz(-6) },
+					LeftElbow = { cframe = rx(86) * rz(-4) },
+					LeftWrist = { cframe = rx(-8) },
+					RightShoulder = { cframe = rx(52) * ry(4) * rz(7) },
+					RightElbow = { cframe = rx(92) * rz(4) },
+					RightWrist = { cframe = rx(-10) },
+					LeftHip = { cframe = rx(44) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-12) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(-38) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-48) },
+					RightAnkle = { cframe = rx(17) },
+				},
+			},
+			{
+				time = 0.030,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.18, 0) * rx(-19) * ry(-2) },
+					Waist = { cframe = rx(4) * ry(5) },
+					Neck = { cframe = rx(6) * ry(-3) },
+					LeftShoulder = { cframe = rx(-26) * rz(-18) },
+					LeftElbow = { cframe = rx(63) },
+					RightShoulder = { cframe = rx(25) * rz(19) },
+					RightElbow = { cframe = rx(66) },
+					LeftHip = { cframe = rx(27) * rz(-3) },
+					LeftKnee = { cframe = rx(-37) },
+					RightHip = { cframe = rx(-25) * rz(4) },
+					RightKnee = { cframe = rx(-67) },
+					LeftAnkle = { cframe = rx(8) },
+					RightAnkle = { cframe = rx(22) },
+				},
+			},
+			{
+				time = 0.075,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.52, 0) * rx(10) * ry(3) * rz(2) },
+					Waist = { cframe = rx(-5) * ry(-4) * rz(-3) },
+					Neck = { cframe = rx(-5) * ry(3) },
+					LeftShoulder = { cframe = rx(-18) * ry(-4) * rz(-34) },
+					LeftElbow = { cframe = rx(53) * rz(-5) },
+					RightShoulder = { cframe = rx(-12) * ry(5) * rz(38) },
+					RightElbow = { cframe = rx(59) * rz(5) },
+					LeftHip = { cframe = rx(46) * ry(-4) * rz(-6) },
+					LeftKnee = { cframe = rx(-18) },
+					LeftAnkle = { cframe = rx(-11) },
+					RightHip = { cframe = rx(-31) * ry(5) * rz(8) },
+					RightKnee = { cframe = rx(-91) },
+					RightAnkle = { cframe = rx(24) },
+				},
+			},
+			{
+				time = 0.120,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.70, 0) * rx(24) * ry(4) * rz(2) },
+					Waist = { cframe = rx(-8) * ry(-5) * rz(-3) },
+					Neck = { cframe = rx(-11) * ry(4) * rz(1) },
+					LeftShoulder = { cframe = rx(-16) * ry(-5) * rz(-43) },
+					LeftElbow = { cframe = rx(49) * rz(-8) },
+					LeftWrist = { cframe = ry(-9) },
+					RightShoulder = { cframe = rx(-10) * ry(6) * rz(46) },
+					RightElbow = { cframe = rx(56) * rz(8) },
+					RightWrist = { cframe = ry(9) },
+					LeftHip = { cframe = rx(59) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-9) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-36) * ry(6) * rz(11) },
+					RightKnee = { cframe = rx(-102) },
+					RightAnkle = { cframe = rx(27) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_SlideLoop = {
+		name = "HRush_SlideLoop",
+		looped = true,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.45,
+		keyframes = {
+			{
+				time = 0.000,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.70, 0) * rx(24) * ry(4) * rz(2) },
+					Waist = { cframe = rx(-8) * ry(-5) * rz(-3) },
+					Neck = { cframe = rx(-11) * ry(4) * rz(1) },
+					LeftShoulder = { cframe = rx(-16) * ry(-5) * rz(-43) },
+					LeftElbow = { cframe = rx(49) * rz(-8) },
+					LeftWrist = { cframe = ry(-9) },
+					RightShoulder = { cframe = rx(-10) * ry(6) * rz(46) },
+					RightElbow = { cframe = rx(56) * rz(8) },
+					RightWrist = { cframe = ry(9) },
+					LeftHip = { cframe = rx(59) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-9) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-36) * ry(6) * rz(11) },
+					RightKnee = { cframe = rx(-102) },
+					RightAnkle = { cframe = rx(27) },
+				},
+			},
+			{
+				time = 0.110,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.73, 0) * rx(26) * ry(2) * rz(1) },
+					Waist = { cframe = rx(-9) * ry(-3) * rz(-2) },
+					Neck = { cframe = rx(-12) * ry(3) },
+					LeftShoulder = { cframe = rx(-18) * ry(-4) * rz(-46) },
+					LeftElbow = { cframe = rx(52) * rz(-9) },
+					LeftWrist = { cframe = ry(-10) },
+					RightShoulder = { cframe = rx(-8) * ry(5) * rz(43) },
+					RightElbow = { cframe = rx(53) * rz(7) },
+					RightWrist = { cframe = ry(8) },
+					LeftHip = { cframe = rx(61) * ry(-5) * rz(-9) },
+					LeftKnee = { cframe = rx(-8) },
+					LeftAnkle = { cframe = rx(-19) },
+					RightHip = { cframe = rx(-38) * ry(6) * rz(10) },
+					RightKnee = { cframe = rx(-104) },
+					RightAnkle = { cframe = rx(28) },
+				},
+			},
+			{
+				time = 0.225,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.68, 0) * rx(23) * ry(-2) * rz(-1) },
+					Waist = { cframe = rx(-7) * ry(2) * rz(1) },
+					Neck = { cframe = rx(-10) * ry(-2) },
+					LeftShoulder = { cframe = rx(-13) * ry(-4) * rz(-41) },
+					LeftElbow = { cframe = rx(47) * rz(-7) },
+					LeftWrist = { cframe = ry(-8) },
+					RightShoulder = { cframe = rx(-13) * ry(5) * rz(48) },
+					RightElbow = { cframe = rx(58) * rz(9) },
+					RightWrist = { cframe = ry(10) },
+					LeftHip = { cframe = rx(57) * ry(-5) * rz(-7) },
+					LeftKnee = { cframe = rx(-11) },
+					LeftAnkle = { cframe = rx(-17) },
+					RightHip = { cframe = rx(-34) * ry(6) * rz(12) },
+					RightKnee = { cframe = rx(-100) },
+					RightAnkle = { cframe = rx(26) },
+				},
+			},
+			{
+				time = 0.340,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.72, 0) * rx(25) * ry(3) * rz(2) },
+					Waist = { cframe = rx(-9) * ry(-4) * rz(-2) },
+					Neck = { cframe = rx(-12) * ry(3) * rz(1) },
+					LeftShoulder = { cframe = rx(-17) * ry(-5) * rz(-45) },
+					LeftElbow = { cframe = rx(51) * rz(-9) },
+					LeftWrist = { cframe = ry(-10) },
+					RightShoulder = { cframe = rx(-9) * ry(6) * rz(44) },
+					RightElbow = { cframe = rx(54) * rz(7) },
+					RightWrist = { cframe = ry(8) },
+					LeftHip = { cframe = rx(60) * ry(-5) * rz(-9) },
+					LeftKnee = { cframe = rx(-8) },
+					LeftAnkle = { cframe = rx(-19) },
+					RightHip = { cframe = rx(-37) * ry(6) * rz(10) },
+					RightKnee = { cframe = rx(-103) },
+					RightAnkle = { cframe = rx(28) },
+				},
+			},
+			{
+				time = 0.450,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.70, 0) * rx(24) * ry(4) * rz(2) },
+					Waist = { cframe = rx(-8) * ry(-5) * rz(-3) },
+					Neck = { cframe = rx(-11) * ry(4) * rz(1) },
+					LeftShoulder = { cframe = rx(-16) * ry(-5) * rz(-43) },
+					LeftElbow = { cframe = rx(49) * rz(-8) },
+					LeftWrist = { cframe = ry(-9) },
+					RightShoulder = { cframe = rx(-10) * ry(6) * rz(46) },
+					RightElbow = { cframe = rx(56) * rz(8) },
+					RightWrist = { cframe = ry(9) },
+					LeftHip = { cframe = rx(59) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-9) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-36) * ry(6) * rz(11) },
+					RightKnee = { cframe = rx(-102) },
+					RightAnkle = { cframe = rx(27) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_SlideExit = {
+		name = "HRush_SlideExit",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.15,
+		keyframes = {
+			{
+				time = 0.000,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.70, 0) * rx(24) * ry(4) * rz(2) },
+					Waist = { cframe = rx(-8) * ry(-5) * rz(-3) },
+					Neck = { cframe = rx(-11) * ry(4) * rz(1) },
+					LeftShoulder = { cframe = rx(-16) * ry(-5) * rz(-43) },
+					LeftElbow = { cframe = rx(49) * rz(-8) },
+					LeftWrist = { cframe = ry(-9) },
+					RightShoulder = { cframe = rx(-10) * ry(6) * rz(46) },
+					RightElbow = { cframe = rx(56) * rz(8) },
+					RightWrist = { cframe = ry(9) },
+					LeftHip = { cframe = rx(59) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-9) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-36) * ry(6) * rz(11) },
+					RightKnee = { cframe = rx(-102) },
+					RightAnkle = { cframe = rx(27) },
+				},
+			},
+			{
+				time = 0.045,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.75, 0) * rx(18) * ry(2) },
+					Waist = { cframe = rx(-5) * ry(-2) },
+					Neck = { cframe = rx(-7) * ry(2) },
+					LeftShoulder = { cframe = rx(-7) * rz(-37) },
+					LeftElbow = { cframe = rx(55) * rz(-6) },
+					RightShoulder = { cframe = rx(-3) * rz(39) },
+					RightElbow = { cframe = rx(61) * rz(6) },
+					LeftHip = { cframe = rx(45) * rz(-6) },
+					LeftKnee = { cframe = rx(-24) },
+					LeftAnkle = { cframe = rx(-9) },
+					RightHip = { cframe = rx(-29) * rz(8) },
+					RightKnee = { cframe = rx(-91) },
+					RightAnkle = { cframe = rx(24) },
+				},
+			},
+			{
+				time = 0.095,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.31, 0) * rx(-3) * ry(-1) * rz(-1) },
+					Waist = { cframe = rx(3) * ry(2) },
+					Neck = { cframe = rx(4) * ry(-1) },
+					LeftShoulder = { cframe = rx(24) * rz(-20) },
+					LeftElbow = { cframe = rx(72) },
+					RightShoulder = { cframe = rx(-29) * rz(22) },
+					RightElbow = { cframe = rx(70) },
+					LeftHip = { cframe = rx(8) * rz(-3) },
+					LeftKnee = { cframe = rx(-51) },
+					LeftAnkle = { cframe = rx(13) },
+					RightHip = { cframe = rx(18) * rz(4) },
+					RightKnee = { cframe = rx(-49) },
+					RightAnkle = { cframe = rx(8) },
+				},
+			},
+			{
+				time = 0.150,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.04, 0) * rx(-15) * ry(4) * rz(1) },
+					Waist = { cframe = ry(-9) * rz(-2) },
+					Neck = { cframe = rx(5) * ry(6) * rz(1) },
+					LeftShoulder = { cframe = rx(52) * ry(-4) * rz(-7) },
+					LeftElbow = { cframe = rx(92) * rz(-4) },
+					LeftWrist = { cframe = rx(-10) },
+					RightShoulder = { cframe = rx(-46) * ry(4) * rz(6) },
+					RightElbow = { cframe = rx(86) * rz(4) },
+					RightWrist = { cframe = rx(-8) },
+					LeftHip = { cframe = rx(-38) * ry(-3) * rz(-2) },
+					LeftKnee = { cframe = rx(-48) },
+					LeftAnkle = { cframe = rx(17) },
+					RightHip = { cframe = rx(44) * ry(3) * rz(2) },
+					RightKnee = { cframe = rx(-12) },
+					RightAnkle = { cframe = rx(-9) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_SlideJump = {
+		name = "HRush_SlideJump",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.30,
+		keyframes = {
+			{
+				time = 0.000,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.70, 0) * rx(24) * ry(4) * rz(2) },
+					Waist = { cframe = rx(-8) * ry(-5) * rz(-3) },
+					Neck = { cframe = rx(-11) * ry(4) * rz(1) },
+					LeftShoulder = { cframe = rx(-16) * ry(-5) * rz(-43) },
+					LeftElbow = { cframe = rx(49) * rz(-8) },
+					LeftWrist = { cframe = ry(-9) },
+					RightShoulder = { cframe = rx(-10) * ry(6) * rz(46) },
+					RightElbow = { cframe = rx(56) * rz(8) },
+					RightWrist = { cframe = ry(9) },
+					LeftHip = { cframe = rx(59) * ry(-5) * rz(-8) },
+					LeftKnee = { cframe = rx(-9) },
+					LeftAnkle = { cframe = rx(-18) },
+					RightHip = { cframe = rx(-36) * ry(6) * rz(11) },
+					RightKnee = { cframe = rx(-102) },
+					RightAnkle = { cframe = rx(27) },
+				},
+			},
+			{
+				time = 0.060,
+				easingStyle = EASE.CubicIn.style,
+				easingDirection = EASE.CubicIn.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.79, 0) * rx(20) * ry(2) },
+					Waist = { cframe = rx(-5) * ry(-2) },
+					Neck = { cframe = rx(-7) * ry(2) },
+					LeftShoulder = { cframe = rx(-5) * rz(-35) },
+					LeftElbow = { cframe = rx(61) * rz(-6) },
+					RightShoulder = { cframe = rx(2) * rz(37) },
+					RightElbow = { cframe = rx(65) * rz(6) },
+					LeftHip = { cframe = rx(29) * rz(-6) },
+					LeftKnee = { cframe = rx(-72) },
+					LeftAnkle = { cframe = rx(19) },
+					RightHip = { cframe = rx(-23) * rz(8) },
+					RightKnee = { cframe = rx(-108) },
+					RightAnkle = { cframe = rx(29) },
+				},
+			},
+			{
+				time = 0.120,
+				easingStyle = EASE.CubicOut.style,
+				easingDirection = EASE.CubicOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.04, 0) * rx(-11) * ry(-2) * rz(-1) },
+					Waist = { cframe = rx(3) * ry(3) },
+					Neck = { cframe = rx(5) * ry(-2) },
+					LeftShoulder = { cframe = rx(44) * ry(-4) * rz(-20) },
+					LeftElbow = { cframe = rx(42) * rz(-5) },
+					RightShoulder = { cframe = rx(49) * ry(4) * rz(22) },
+					RightElbow = { cframe = rx(38) * rz(5) },
+					LeftHip = { cframe = rx(19) * ry(-4) * rz(-7) },
+					LeftKnee = { cframe = rx(-96) },
+					LeftAnkle = { cframe = rx(22) },
+					RightHip = { cframe = rx(24) * ry(4) * rz(8) },
+					RightKnee = { cframe = rx(-101) },
+					RightAnkle = { cframe = rx(24) },
+				},
+			},
+			{
+				time = 0.200,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.17, 0) * rx(-16) * ry(-1) },
+					Waist = { cframe = rx(5) * ry(2) },
+					Neck = { cframe = rx(7) * ry(-1) },
+					LeftShoulder = { cframe = rx(57) * ry(-4) * rz(-17) },
+					LeftElbow = { cframe = rx(34) * rz(-4) },
+					RightShoulder = { cframe = rx(62) * ry(4) * rz(19) },
+					RightElbow = { cframe = rx(31) * rz(4) },
+					LeftHip = { cframe = rx(31) * ry(-4) * rz(-8) },
+					LeftKnee = { cframe = rx(-106) },
+					LeftAnkle = { cframe = rx(25) },
+					RightHip = { cframe = rx(36) * ry(4) * rz(9) },
+					RightKnee = { cframe = rx(-112) },
+					RightAnkle = { cframe = rx(27) },
+				},
+			},
+			{
+				time = 0.300,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, 0.10, 0) * rx(-10) * ry(2) * rz(1) },
+					Waist = { cframe = rx(4) * ry(-3) },
+					Neck = { cframe = rx(6) * ry(2) },
+					LeftShoulder = { cframe = rx(16) * ry(-5) * rz(-39) },
+					LeftElbow = { cframe = rx(28) * rz(-7) },
+					RightShoulder = { cframe = rx(21) * ry(5) * rz(43) },
+					RightElbow = { cframe = rx(25) * rz(7) },
+					LeftHip = { cframe = rx(13) * ry(-5) * rz(-10) },
+					LeftKnee = { cframe = rx(-38) },
+					LeftAnkle = { cframe = rx(-8) },
+					RightHip = { cframe = rx(-10) * ry(5) * rz(12) },
+					RightKnee = { cframe = rx(-47) },
+					RightAnkle = { cframe = rx(-10) },
+				},
+			},
+		},
+		markers = {},
+	},
+	HRush_Roll = {
+		name = "HRush_Roll",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.45,
+		keyframes = {},
+		markers = {
+			{ name = "RollImpact", time = 0.20 },
+		},
+	},
+	HRush_Vault = {
+		name = "HRush_Vault",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.40,
+		keyframes = {},
+		markers = {
+			{ name = "VaultPlant", time = 0.10 },
+			{ name = "VaultClear", time = 0.26 },
+		},
+	},
+	HRush_ClimbGrab = {
+		name = "HRush_ClimbGrab",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.15,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_ClimbLoop = {
+		name = "HRush_ClimbLoop",
+		looped = true,
+		priority = Enum.AnimationPriority.Movement,
+		duration = 0.60,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_ClimbMantle = {
+		name = "HRush_ClimbMantle",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.50,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_SwingGrab = {
+		name = "HRush_SwingGrab",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.15,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_SwingLoop = {
+		name = "HRush_SwingLoop",
+		looped = true,
+		priority = Enum.AnimationPriority.Movement,
+		duration = 0.80,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_SwingRelease = {
+		name = "HRush_SwingRelease",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.30,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_ZipHang = {
+		name = "HRush_ZipHang",
+		looped = true,
+		priority = Enum.AnimationPriority.Movement,
+		duration = 0.80,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_ZipRelease = {
+		name = "HRush_ZipRelease",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.25,
+		keyframes = {},
+		markers = {},
+	},
+	HRush_PipelineSelfTest = {
+		name = "HRush_PipelineSelfTest",
+		looped = false,
+		priority = Enum.AnimationPriority.Action,
+		duration = 0.50,
+		developmentOnly = true,
+		keyframes = {
+			{
+				time = 0,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {},
+			},
+			{
+				time = 0.25,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {
+					Root = { cframe = CFrame.new(0, -0.12, 0) * rx(-8) },
+					Waist = { cframe = ry(12) },
+					Neck = { cframe = ry(-12) },
+					LeftShoulder = { cframe = rx(35) * rz(-12) },
+					LeftElbow = { cframe = rx(70) },
+					LeftWrist = { cframe = rz(-18) },
+					RightShoulder = { cframe = rx(-35) * rz(12) },
+					RightElbow = { cframe = rx(70) },
+					RightWrist = { cframe = rz(18) },
+					LeftHip = { cframe = rx(-20) },
+					LeftKnee = { cframe = rx(-35) },
+					LeftAnkle = { cframe = rx(12) },
+					RightHip = { cframe = rx(20) },
+					RightKnee = { cframe = rx(-18) },
+					RightAnkle = { cframe = rx(-8) },
+				},
+			},
+			{
+				time = 0.50,
+				easingStyle = EASE.CubicInOut.style,
+				easingDirection = EASE.CubicInOut.direction,
+				pose = {},
+			},
+		},
+		markers = {
+			{ name = "PipelineMidpoint", time = 0.25 },
+		},
+	},
+}
+
+AnimDev.Animations = AnimationSpecs
+
+local JOINT_NAMES = {
+	Root = true,
+	Waist = true,
+	Neck = true,
+	LeftShoulder = true,
+	LeftElbow = true,
+	LeftWrist = true,
+	RightShoulder = true,
+	RightElbow = true,
+	RightWrist = true,
+	LeftHip = true,
+	LeftKnee = true,
+	LeftAnkle = true,
+	RightHip = true,
+	RightKnee = true,
+	RightAnkle = true,
+}
+
+local MIRRORED_JOINT = {
+	LeftShoulder = "RightShoulder",
+	LeftElbow = "RightElbow",
+	LeftWrist = "RightWrist",
+	RightShoulder = "LeftShoulder",
+	RightElbow = "LeftElbow",
+	RightWrist = "LeftWrist",
+	LeftHip = "RightHip",
+	LeftKnee = "RightKnee",
+	LeftAnkle = "RightAnkle",
+	RightHip = "LeftHip",
+	RightKnee = "LeftKnee",
+	RightAnkle = "LeftAnkle",
+}
+
+local function copyJointPose(value: JointPose): JointPose
 	return {
-		root = CFrame.new(0, -dip, 0) * rx(-(K.LeanAngle + K.Bob * c2)) * ry(-K.PelvisYaw * c) * rz(K.PelvisRoll * s + K.RollBias),
-		waist = rx(-(K.WaistLean + 0.6 * K.Bob * c2)) * ry(K.WaistYaw * c) * rz(-0.5 * K.PelvisRoll * s),
-		neck = rx(K.NeckPitch + K.Bob * c2) * ry(-K.NeckYaw * cH),
-		lsh = rx(-(K.ArmPumpAmount + K.ArmAsym * asym) * c - K.ShoulderBias * asym),
-		lelb = rx(K.ElbowBase + K.ElbowAsym * 0.5 * asym - K.ElbowVar * cE),
-		rsh = rx((K.ArmPumpAmount - K.ArmAsym * asym) * c + K.ShoulderBias * asym),
-		relb = rx(K.ElbowBase - K.ElbowAsym * 0.5 * asym + K.ElbowVar * cE),
-		lhip = rx((K.StrideLength + K.HipAsym * asym) * c),
-		lknee = rx(-K.Knee[idx] * K.KneeDrive),
-		lankle = rx(-K.Ankle[idxA]),
-		rhip = rx(-(K.StrideLength - K.HipAsym * asym) * c),
-		rknee = rx(-K.Knee[idxR] * K.KneeDrive),
-		rankle = rx(-K.Ankle[idxRA]),
+		cframe = value.cframe,
+		intentionalJump = value.intentionalJump,
 	}
 end
 
--- ── Slide pose tables ────────────────────────────────────────────────────────
--- LeanDir adds a lateral style lean without re-authoring keys. drop lowers the
--- LowerTorso pose in place (same pattern as the sprint bounce dip), so the
--- hips read close to the ground while HumanoidRootPart stays untouched.
-local function slideJoints(k: typeof(SlideKeys[1])): JointCFs
-	local D = SlideParams.LeanDir
-	return {
-		root = CFrame.new(0, -(k.drop or 0), 0) * rx(k.rp) * ry(k.ry + D * 2) * rz(k.rr + D * 4),
-		waist = rx(k.wp) * ry(k.wy + D * 2),
-		neck = rx(k.np) * ry(k.ny),
-		lsh = rx(k.lsh), lelb = rx(k.lelb), rsh = rx(k.rsh), relb = rx(k.relb),
-		lhip = rx(k.lhip), lknee = rx(-k.lknee), lankle = rx(-k.lankle),
-		rhip = rx(k.rhip), rknee = rx(-k.rknee), rankle = rx(-k.rankle),
-	}
+local function mirrorCFrame(value: CFrame): CFrame
+	local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = value:GetComponents()
+	return CFrame.new(
+		-x,
+		y,
+		z,
+		r00,
+		-r01,
+		-r02,
+		-r10,
+		r11,
+		r12,
+		-r20,
+		r21,
+		r22
+	)
 end
 
--- ── Dash pose tables ─────────────────────────────────────────────────────────
--- Pass-through like slideJoints: base numbers live in DashKeys (which already
--- references DashParams), so no extra math here. Rotation only, no position
--- offset: HumanoidRootPart motion stays script-driven.
-local function dashJoints(k: typeof(DashKeys[1])): JointCFs
-	return {
-		root = rx(k.rp) * ry(k.ry) * rz(k.rr),
-		waist = rx(k.wp) * ry(k.wy),
-		neck = rx(k.np) * ry(k.ny),
-		lsh = rx(k.lsh), lelb = rx(k.lelb), rsh = rx(k.rsh), relb = rx(k.relb),
-		lhip = rx(k.lhip), lknee = rx(-k.lknee), lankle = rx(-k.lankle),
-		rhip = rx(k.rhip), rknee = rx(-k.rknee), rankle = rx(-k.rankle),
-	}
+function AnimDev.mirrorPose(source: { [string]: JointPose }): { [string]: JointPose }
+	local mirrored: { [string]: JointPose } = {}
+	for jointName, value in source do
+		local targetName = MIRRORED_JOINT[jointName] or jointName
+		mirrored[targetName] = {
+			cframe = mirrorCFrame(value.cframe),
+			intentionalJump = value.intentionalJump,
+		}
+	end
+	return mirrored
 end
 
--- ── Pose easing ──────────────────────────────────────────────────────────────
--- Pose objects interpolate per joint. Limbs use Cubic (limb swings accelerate
--- and decelerate, so Cubic reads as weight); the core stays Linear (a Cubic-
--- smoothed torso feels mushy and lags direction changes). Elastic/Bounce are avoided
--- (cartoonish); Constant is avoided (it freezes then pops between keys).
--- Snaps come from tight key spacing (e.g. 0.08 gaps at entry), not from
--- Constant easing. Dense sprint keys (every ~27ms) make easing subtle but
--- still visible on the long swings.
-local SprintEase: { [string]: Enum.PoseEasingStyle } = {
-	LowerTorso = Enum.PoseEasingStyle.Linear,
-	UpperTorso = Enum.PoseEasingStyle.Linear,
-	Head = Enum.PoseEasingStyle.Linear,
-	LeftUpperArm = Enum.PoseEasingStyle.Cubic,
-	LeftLowerArm = Enum.PoseEasingStyle.Cubic,
-	RightUpperArm = Enum.PoseEasingStyle.Cubic,
-	RightLowerArm = Enum.PoseEasingStyle.Cubic,
-	LeftUpperLeg = Enum.PoseEasingStyle.Cubic,
-	LeftLowerLeg = Enum.PoseEasingStyle.Cubic,
-	LeftFoot = Enum.PoseEasingStyle.Cubic,
-	RightUpperLeg = Enum.PoseEasingStyle.Cubic,
-	RightLowerLeg = Enum.PoseEasingStyle.Cubic,
-	RightFoot = Enum.PoseEasingStyle.Cubic,
-}
-
--- Slide uses CubicV2 like the dash, not Cubic: Cubic is a legacy alias with a
--- known direction-reversal bug between the Animation Editor and runtime, and
--- the slide spec depends on direction (Out on entry, InOut elsewhere).
-local SlideEase: { [string]: Enum.PoseEasingStyle } = {
-	LowerTorso = Enum.PoseEasingStyle.CubicV2,
-	UpperTorso = Enum.PoseEasingStyle.CubicV2,
-	Head = Enum.PoseEasingStyle.CubicV2,
-	LeftUpperArm = Enum.PoseEasingStyle.CubicV2,
-	LeftLowerArm = Enum.PoseEasingStyle.CubicV2,
-	RightUpperArm = Enum.PoseEasingStyle.CubicV2,
-	RightLowerArm = Enum.PoseEasingStyle.CubicV2,
-	LeftUpperLeg = Enum.PoseEasingStyle.CubicV2,
-	LeftLowerLeg = Enum.PoseEasingStyle.CubicV2,
-	LeftFoot = Enum.PoseEasingStyle.CubicV2,
-	RightUpperLeg = Enum.PoseEasingStyle.CubicV2,
-	RightLowerLeg = Enum.PoseEasingStyle.CubicV2,
-	RightFoot = Enum.PoseEasingStyle.CubicV2,
-}
-
--- Dash uses CubicV2, not Cubic: Cubic is a legacy alias with a known
--- direction-reversal bug between the Animation Editor and runtime, and the
--- dash spec depends on direction (Out on burst, InOut on recovery).
-local DashEase: { [string]: Enum.PoseEasingStyle } = {
-	LowerTorso = Enum.PoseEasingStyle.CubicV2,
-	UpperTorso = Enum.PoseEasingStyle.CubicV2,
-	Head = Enum.PoseEasingStyle.CubicV2,
-	LeftUpperArm = Enum.PoseEasingStyle.CubicV2,
-	LeftLowerArm = Enum.PoseEasingStyle.CubicV2,
-	RightUpperArm = Enum.PoseEasingStyle.CubicV2,
-	RightLowerArm = Enum.PoseEasingStyle.CubicV2,
-	LeftUpperLeg = Enum.PoseEasingStyle.CubicV2,
-	LeftLowerLeg = Enum.PoseEasingStyle.CubicV2,
-	LeftFoot = Enum.PoseEasingStyle.CubicV2,
-	RightUpperLeg = Enum.PoseEasingStyle.CubicV2,
-	RightLowerLeg = Enum.PoseEasingStyle.CubicV2,
-	RightFoot = Enum.PoseEasingStyle.CubicV2,
-}
-
-local function setPoseEasing(kf: Keyframe, map: { [string]: Enum.PoseEasingStyle })
-	for _, d in kf:GetDescendants() do
-		if d:IsA("Pose") then
-			local e = map[d.Name]
-			if e then
-				d.EasingStyle = e
-			end
-		end
+function AnimDev.mirrorCycleKeyframes(
+	source: { KeyframeSpec },
+	duration: number,
+	phaseOffset: number
+): { KeyframeSpec }
+	assert(duration > 0, "duration must be positive")
+	local mirrored: { KeyframeSpec } = {}
+	for _, frame in source do
+		local shifted = (frame.time + phaseOffset) % duration
+		table.insert(mirrored, {
+			time = shifted,
+			easingStyle = frame.easingStyle,
+			easingDirection = frame.easingDirection,
+			pose = AnimDev.mirrorPose(frame.pose),
+		})
 	end
-end
-
--- Dash needs EasingDirection too (ease-out burst, ease-in-out recovery); the
--- older sprint/slide path never touched it and keeps its Studio defaults.
-local function setPoseEasingDirection(kf: Keyframe, dir: Enum.PoseEasingDirection)
-	for _, d in kf:GetDescendants() do
-		if d:IsA("Pose") then
-			d.EasingDirection = dir
-		end
-	end
-end
-
-local function slideDuration(): (number, string?)
-	local cfgModule = ReplicatedStorage:FindFirstChild("Config")
-	if cfgModule and cfgModule:IsA("ModuleScript") then
-		local ok, cfg = pcall(require, cfgModule)
-		if ok and typeof(cfg) == "table" and typeof((cfg :: any).Movement) == "table"
-			and typeof((cfg :: any).Movement.SlideDuration) == "number" then
-			return (cfg :: any).Movement.SlideDuration, nil
-		end
-		return SLIDE_DURATION_FALLBACK, "Config present but Movement.SlideDuration unreadable; used fallback 1.0"
-	end
-	return SLIDE_DURATION_FALLBACK, "ReplicatedStorage.Config not found; used fallback slide duration 1.0"
-end
-
--- ── Builders ─────────────────────────────────────────────────────────────────
-function AnimDev.buildSprint(rig: Model?): (KeyframeSequence?, string?)
-	local target, hum, err = validateRig(rig)
-	if target == nil or hum == nil or err ~= nil then
-		return nil, err
-	end
-	local K = SprintParams
-	if #K.Knee ~= K.Samples or #K.Ankle ~= K.Samples then
-		return nil, ("Knee/Ankle tables hold %d/%d entries but Samples = %d"):format(#K.Knee, #K.Ankle, K.Samples)
-	end
-	local kfs = Instance.new("KeyframeSequence")
-	kfs.Name = SPRINT_NAME
-	kfs.Loop = true
-	kfs.Priority = Enum.AnimationPriority.Movement
-	kfs.AuthoredHipHeight = hum.HipHeight
-	for i = 0, K.Samples do -- include phi = 1 wrap copy so the loop is exact
-		local phi = i / K.Samples
-		local kf = keyframeAt(phi * K.CycleTime, makeTree(sprintJoints(phi, K)))
-		setPoseEasing(kf, SprintEase)
-		kf.Parent = kfs
-	end
-	return kfs, nil
-end
-
-function AnimDev.buildSlide(rig: Model?): (KeyframeSequence?, string?, string?)
-	local target, hum, err = validateRig(rig)
-	if target == nil or hum == nil or err ~= nil then
-		return nil, nil, err
-	end
-	local dur, warn = slideDuration()
-	local kfs = Instance.new("KeyframeSequence")
-	kfs.Name = SLIDE_NAME
-	kfs.Loop = false
-	kfs.Priority = Enum.AnimationPriority.Action
-	kfs.AuthoredHipHeight = hum.HipHeight
-	-- Blend-in: computed from the live sprint first frame so edits to
-	-- SprintParams can never desync the handoff.
-	local blend = keyframeAt(0, makeTree(sprintJoints(0, SprintParams)))
-	setPoseEasing(blend, SlideEase)
-	setPoseEasingDirection(blend, Enum.PoseEasingDirection.InOut)
-	blend.Parent = kfs
-	for _, k in SlideKeys do
-		local kf = keyframeAt(k.f * dur, makeTree(slideJoints(k)))
-		setPoseEasing(kf, SlideEase) -- all CubicV2: no linear snapping
-		setPoseEasingDirection(kf, if k.ed == "O" then Enum.PoseEasingDirection.Out else Enum.PoseEasingDirection.InOut)
-		kf.Parent = kfs
-	end
-	-- Handoff: same computed frame at the end for a seamless return to sprint.
-	local hand = keyframeAt(dur, makeTree(sprintJoints(0, SprintParams)))
-	setPoseEasing(hand, SlideEase)
-	setPoseEasingDirection(hand, Enum.PoseEasingDirection.InOut)
-	hand.Parent = kfs
-	return kfs, warn, nil
-end
-
-function AnimDev.buildDash(rig: Model?): (KeyframeSequence?, string?)
-	local target, hum, err = validateRig(rig)
-	if target == nil or hum == nil or err ~= nil then
-		return nil, err
-	end
-	local dur = DashParams.Duration
-	local kfs = Instance.new("KeyframeSequence")
-	kfs.Name = DASH_NAME
-	kfs.Loop = false
-	kfs.Priority = Enum.AnimationPriority.Action
-	kfs.AuthoredHipHeight = hum.HipHeight
-	for _, k in DashKeys do
-		local kf = keyframeAt(k.f * dur, makeTree(dashJoints(k)))
-		setPoseEasing(kf, DashEase) -- all CubicV2: no linear snapping
-		setPoseEasingDirection(kf, if k.ed == "O" then Enum.PoseEasingDirection.Out else Enum.PoseEasingDirection.InOut)
-		kf.Parent = kfs
-	end
-	-- Handoff: computed from the live sprint first frame so edits to
-	-- SprintParams can never desync the blend.
-	local hand = keyframeAt(dur, makeTree(sprintJoints(0, SprintParams)))
-	setPoseEasing(hand, DashEase)
-	setPoseEasingDirection(hand, Enum.PoseEasingDirection.InOut)
-	hand.Parent = kfs
-	return kfs, nil
-end
-
--- Creates/replaces all three sequences inside Workspace/AnimationDevelopment.
--- Replaces only same-named KeyframeSequences in that folder; returns a report.
-function AnimDev.buildAll(): { ok: boolean, created: { string }, replaced: { string }, warnings: { string } }
-	local report = { ok = false, created = {}, replaced = {}, warnings = {} }
-	local rig, _, err = validateRig(workspace:FindFirstChild("Rig") :: Model?)
-	if err ~= nil then
-		table.insert(report.warnings, "rig validation failed: " .. err)
-		return report
-	end
-	local folder = workspace:FindFirstChild(FOLDER_NAME)
-	if not (folder and folder:IsA("Folder")) then
-		folder = Instance.new("Folder")
-		folder.Name = FOLDER_NAME
-		folder.Parent = workspace
-	end
-
-	local function place(kfs: KeyframeSequence)
-		local old = folder:FindFirstChild(kfs.Name)
-		if old then
-			old:Destroy()
-			table.insert(report.replaced, kfs.Name)
-		end
-		kfs.Parent = folder
-		table.insert(report.created, ("%s: %d keyframes, %.3gs, loop=%s, priority=%s"):format(
-			kfs.Name, #kfs:GetChildren(), kfs.Length, tostring(kfs.Loop), kfs.Priority.Name))
-	end
-
-	local sprint, serr = AnimDev.buildSprint(rig)
-	if sprint then
-		place(sprint)
-	else
-		table.insert(report.warnings, "sprint: " .. tostring(serr))
-	end
-	local slide, swarn, slerr = AnimDev.buildSlide(rig)
-	if slide then
-		place(slide)
-		if swarn then
-			table.insert(report.warnings, "slide: " .. swarn)
-		end
-	else
-		table.insert(report.warnings, "slide: " .. tostring(slerr))
-	end
-	local dash, derr = AnimDev.buildDash(rig)
-	if dash then
-		place(dash)
-	else
-		table.insert(report.warnings, "dash: " .. tostring(derr))
-	end
-	report.ok = (sprint ~= nil) and (slide ~= nil) and (dash ~= nil)
-	print("[AnimDev] buildAll: " .. table.concat(report.created, " | "))
-	return report
-end
-
--- ── Pose evaluation (shared by both preview modes) ───────────────────────────
-local function flattenPoses(node: Instance, out: { [string]: CFrame })
-	if node:IsA("Pose") then
-		out[node.Name] = node.CFrame
-	end
-	for _, child in node:GetChildren() do
-		flattenPoses(child, out)
-	end
-end
-
--- Linearly interpolated pose set at time t, exactly as the Animator would
--- blend between the bracketing keyframes (Poses are 1:1 with joints).
-local function evalPoses(kfs: KeyframeSequence, t: number): ({ [string]: CFrame }?, string?)
-	local frames = {}
-	for _, c in kfs:GetChildren() do
-		if c:IsA("Keyframe") then
-			table.insert(frames, c)
-		end
-	end
-	table.sort(frames, function(a, b)
-		return a.Time < b.Time
+	table.sort(mirrored, function(a, b)
+		return a.time < b.time
 	end)
-	if #frames == 0 then
-		return nil, "sequence has no keyframes"
-	end
-	local tc = math.clamp(t, frames[1].Time, frames[#frames].Time)
-	local iA = 1
-	for i = 1, #frames do
-		if frames[i].Time <= tc then
-			iA = i
-		end
-	end
-	local iB = math.min(iA + 1, #frames)
-	local posesA: { [string]: CFrame } = {}
-	local posesB: { [string]: CFrame } = {}
-	flattenPoses(frames[iA], posesA)
-	if iB ~= iA then
-		flattenPoses(frames[iB], posesB)
-	end
-	local span = frames[iB].Time - frames[iA].Time
-	local alpha = (span > 0) and ((tc - frames[iA].Time) / span) or 0
-	local out: { [string]: CFrame } = {}
-	for name, cfA in posesA do
-		out[name] = cfA:Lerp(posesB[name] or cfA, alpha)
-	end
-	for name, cfB in posesB do
-		if out[name] == nil then
-			out[name] = CFrame.identity:Lerp(cfB, alpha)
-		end
-	end
-	return out, nil
+	return mirrored
 end
 
--- ── Play-mode preview (Transform writes render while stepping) ───────────────
-local function jointMap(rig: Model): { [string]: any }
-	local map = {}
-	for _, d in rig:GetDescendants() do
-		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
-			local p1 = (d :: any).Part1
-			if p1 then
-				map[p1.Name] = d
+function AnimDev.copyPose(source: { [string]: JointPose }): { [string]: JointPose }
+	local copied: { [string]: JointPose } = {}
+	for jointName, value in source do
+		copied[jointName] = copyJointPose(value)
+	end
+	return copied
+end
+
+local function poseCFrame(frame: KeyframeSpec, jointName: string): CFrame
+	local value = frame.pose[jointName]
+	if value then
+		return value.cframe
+	end
+	return CFrame.new()
+end
+
+local function rotationDeltaDegrees(a: CFrame, b: CFrame): number
+	local _, radians = (a.Rotation:Inverse() * b.Rotation):ToAxisAngle()
+	return math.deg(math.abs(radians))
+end
+
+local function sameCFrame(a: CFrame, b: CFrame): boolean
+	if (a.Position - b.Position).Magnitude > POSITION_TOLERANCE then
+		return false
+	end
+	return rotationDeltaDegrees(a, b) <= ROTATION_TOLERANCE_DEGREES
+end
+
+local function sortedFrames(spec: AnimationSpec): { KeyframeSpec }
+	local frames = table.clone(spec.keyframes)
+	table.sort(frames, function(a, b)
+		return a.time < b.time
+	end)
+	return frames
+end
+
+function AnimDev.validate(name: string): (boolean, { string })
+	local spec = AnimationSpecs[name]
+	if not spec then
+		return false, { "unknown animation " .. name }
+	end
+
+	local errors: { string } = {}
+	if spec.name ~= name then
+		table.insert(errors, "table key and animation name must match")
+	end
+	if spec.duration <= 0 then
+		table.insert(errors, "duration must be positive")
+	end
+	if #spec.keyframes == 0 then
+		table.insert(errors, "placeholder has no keyframes")
+	end
+
+	local frames = sortedFrames(spec)
+	local previousDeclaredTime = -math.huge
+	local seenTimes: { [number]: boolean } = {}
+	for _, frame in spec.keyframes do
+		if frame.time < previousDeclaredTime then
+			table.insert(errors, "keyframes must be ordered by time")
+		end
+		previousDeclaredTime = frame.time
+	end
+	for _, frame in frames do
+		if frame.time < 0 or frame.time > spec.duration then
+			table.insert(errors, string.format("keyframe %.3f is outside duration %.3f", frame.time, spec.duration))
+		end
+		if seenTimes[frame.time] then
+			table.insert(errors, string.format("duplicate keyframe time %.3f", frame.time))
+		end
+		seenTimes[frame.time] = true
+
+		for jointName, value in frame.pose do
+			if not JOINT_NAMES[jointName] then
+				table.insert(errors, "unknown joint " .. jointName)
+			end
+			if typeof(value.cframe) ~= "CFrame" then
+				table.insert(errors, "joint " .. jointName .. " does not contain a CFrame")
+			end
+		end
+
+		local rootValue = frame.pose.Root
+		if rootValue then
+			local rootPosition = rootValue.cframe.Position
+			if math.abs(rootPosition.X) > POSITION_TOLERANCE or math.abs(rootPosition.Z) > POSITION_TOLERANCE then
+				table.insert(errors, string.format("Root at %.3f moves horizontally; only LowerTorso Y offset is allowed", frame.time))
 			end
 		end
 	end
-	return map
-end
 
-function AnimDev.reset(rig: Model?): number
-	local target = rig or workspace:FindFirstChild("Rig")
-	if not target then
-		return 0
-	end
-	local n = 0
-	for _, joint in jointMap(target :: Model) do
-		joint.Transform = CFrame.identity
-		n += 1
-	end
-	return n
-end
-
-function AnimDev.showAt(kfs: KeyframeSequence, t: number, rig: Model?): (number, string?)
-	local target = rig or workspace:FindFirstChild("Rig")
-	if not target then
-		return 0, "no target rig"
-	end
-	local poses, err = evalPoses(kfs, t)
-	if poses == nil then
-		return 0, err
-	end
-	local applied = 0
-	for name, joint in jointMap(target :: Model) do
-		local cf = poses[name]
-		joint.Transform = cf or CFrame.identity
-		if cf then
-			applied += 1
-		end
-	end
-	return applied, nil
-end
-
--- ── Edit-mode hard pose (direct world CFrame solve) ──────────────────────────
--- Edit mode keeps joint-connected parts at their identity arrangement: any
--- rotation write is reverted instantly (translation writes stick, rotations
--- do not). Disabling the joints first makes hardPose's writes stick; call
--- setJointsEnabled(rig, false) before hardPose and restore after capturing.
-local restCF: { [BasePart]: CFrame }? = nil
-local restAcc: { { handle: BasePart, rel: CFrame } }? = nil
-
-function AnimDev.setJointsEnabled(rig: Model?, enabled: boolean): number
-	local target = rig or workspace:FindFirstChild("Rig")
-	if not target then
-		return 0
-	end
-	local n = 0
-	for _, d in (target :: Model):GetDescendants() do
-		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
-			(d :: any).Enabled = enabled
-			n += 1
-		end
-	end
-	return n
-end
-
-local function ensureRest(rig: Model)
-	if restCF ~= nil then
-		return
-	end
-	restCF = {}
-	restAcc = {}
-	local head = rig:FindFirstChild("Head")
-	for _, d in rig:GetDescendants() do
-		if d:IsA("BasePart") then
-			(restCF :: { [BasePart]: CFrame })[d :: BasePart] = (d :: BasePart).CFrame
-		elseif d:IsA("Accessory") and head and head:IsA("BasePart") then
-			local h = d:FindFirstChild("Handle")
-			if h and h:IsA("BasePart") then
-				table.insert((restAcc :: { { handle: BasePart, rel: CFrame } }),
-					{ handle = h :: BasePart, rel = (head :: BasePart).CFrame:ToObjectSpace((h :: BasePart).CFrame) })
+	for index = 2, #frames do
+		local previous = frames[index - 1]
+		local current = frames[index]
+		for jointName in JOINT_NAMES do
+			local previousValue = previous.pose[jointName]
+			local currentValue = current.pose[jointName]
+			local intentional = (previousValue and previousValue.intentionalJump == true)
+				or (currentValue and currentValue.intentionalJump == true)
+			local delta = rotationDeltaDegrees(poseCFrame(previous, jointName), poseCFrame(current, jointName))
+			if delta > MAX_ROTATION_JUMP_DEGREES and not intentional then
+				table.insert(errors, string.format(
+					"%s jumps %.1f degrees between %.3f and %.3f; flag intentionalJump if required",
+					jointName,
+					delta,
+					previous.time,
+					current.time
+				))
 			end
 		end
 	end
-end
 
-function AnimDev.hardReset(rig: Model?): number
-	local target = rig or workspace:FindFirstChild("Rig")
-	if not target or restCF == nil then
-		return 0
-	end
-	local n = 0
-	for part, cf in restCF :: { [BasePart]: CFrame } do
-		if part.Parent then
-			part.CFrame = cf
-			n += 1
+	if spec.looped and #frames > 0 then
+		local first = frames[1]
+		local last = frames[#frames]
+		if math.abs(first.time) > POSITION_TOLERANCE then
+			table.insert(errors, "loop must start at time 0")
 		end
-	end
-	return n
-end
-
-function AnimDev.hardPose(kfs: KeyframeSequence, t: number, rig: Model?): (number, string?)
-	local target = rig or workspace:FindFirstChild("Rig")
-	if not target then
-		return 0, "no target rig"
-	end
-	local r = target :: Model
-	local poses, err = evalPoses(kfs, t)
-	if poses == nil then
-		return 0, err
-	end
-	ensureRest(r)
-	local hrp = r:FindFirstChild("HumanoidRootPart")
-	if not (hrp and hrp:IsA("BasePart")) then
-		return 0, "no HumanoidRootPart"
-	end
-	local worldOf: { [BasePart]: CFrame } = {}
-	worldOf[hrp] = hrp.CFrame
-	local pending: { any } = {}
-	for _, d in r:GetDescendants() do
-		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
-			local j = d :: any
-			if j.Part0 and j.Part1 then
-				table.insert(pending, j)
+		if math.abs(last.time - spec.duration) > POSITION_TOLERANCE then
+			table.insert(errors, "loop must end at its duration")
+		end
+		for jointName in JOINT_NAMES do
+			if not sameCFrame(poseCFrame(first, jointName), poseCFrame(last, jointName)) then
+				table.insert(errors, "loop start and end differ at " .. jointName)
 			end
 		end
 	end
-	local applied = 0
-	repeat
-		local progress = false
-		for i = #pending, 1, -1 do
-			local j = pending[i]
-			local p0 = j.Part0 :: BasePart
-			local p1 = j.Part1 :: BasePart
-			if worldOf[p0] ~= nil and worldOf[p1] == nil then
-				local cf = worldOf[p0] * j.C0 * (poses[p1.Name] or CFrame.identity) * (j.C1 :: CFrame):Inverse()
-				worldOf[p1] = cf
-				p1.CFrame = cf
-				applied += 1
-				table.remove(pending, i)
-				progress = true
-			end
+
+	for _, marker in spec.markers do
+		if marker.name == "" then
+			table.insert(errors, "marker name cannot be empty")
 		end
-	until not progress or #pending == 0
-	local head = r:FindFirstChild("Head")
-	if head and head:IsA("BasePart") and restAcc ~= nil then
-		for _, acc in restAcc :: { { handle: BasePart, rel: CFrame } } do
-			if acc.handle.Parent then
-				acc.handle.CFrame = (head :: BasePart).CFrame * acc.rel
+		if marker.time < 0 or marker.time > spec.duration then
+			table.insert(errors, string.format("marker %s is outside duration %.3f", marker.name, spec.duration))
+		end
+	end
+
+	return #errors == 0, errors
+end
+
+local function newPose(name: string, value: CFrame, frame: KeyframeSpec, weight: number?): Pose
+	local result = Instance.new("Pose")
+	result.Name = name
+	result.CFrame = value
+	result.EasingStyle = frame.easingStyle
+	result.EasingDirection = frame.easingDirection
+	result.Weight = weight or 1
+	return result
+end
+
+local function addPoseTree(keyframe: Keyframe, frame: KeyframeSpec)
+	local humanoidRootPart = newPose("HumanoidRootPart", CFrame.new(), frame, 0)
+	local lowerTorso = newPose("LowerTorso", poseCFrame(frame, "Root"), frame)
+	local upperTorso = newPose("UpperTorso", poseCFrame(frame, "Waist"), frame)
+	local head = newPose("Head", poseCFrame(frame, "Neck"), frame)
+
+	local leftUpperArm = newPose("LeftUpperArm", poseCFrame(frame, "LeftShoulder"), frame)
+	local leftLowerArm = newPose("LeftLowerArm", poseCFrame(frame, "LeftElbow"), frame)
+	local leftHand = newPose("LeftHand", poseCFrame(frame, "LeftWrist"), frame)
+	local rightUpperArm = newPose("RightUpperArm", poseCFrame(frame, "RightShoulder"), frame)
+	local rightLowerArm = newPose("RightLowerArm", poseCFrame(frame, "RightElbow"), frame)
+	local rightHand = newPose("RightHand", poseCFrame(frame, "RightWrist"), frame)
+
+	local leftUpperLeg = newPose("LeftUpperLeg", poseCFrame(frame, "LeftHip"), frame)
+	local leftLowerLeg = newPose("LeftLowerLeg", poseCFrame(frame, "LeftKnee"), frame)
+	local leftFoot = newPose("LeftFoot", poseCFrame(frame, "LeftAnkle"), frame)
+	local rightUpperLeg = newPose("RightUpperLeg", poseCFrame(frame, "RightHip"), frame)
+	local rightLowerLeg = newPose("RightLowerLeg", poseCFrame(frame, "RightKnee"), frame)
+	local rightFoot = newPose("RightFoot", poseCFrame(frame, "RightAnkle"), frame)
+
+	leftLowerArm:AddSubPose(leftHand)
+	leftUpperArm:AddSubPose(leftLowerArm)
+	rightLowerArm:AddSubPose(rightHand)
+	rightUpperArm:AddSubPose(rightLowerArm)
+	upperTorso:AddSubPose(head)
+	upperTorso:AddSubPose(leftUpperArm)
+	upperTorso:AddSubPose(rightUpperArm)
+
+	leftLowerLeg:AddSubPose(leftFoot)
+	leftUpperLeg:AddSubPose(leftLowerLeg)
+	rightLowerLeg:AddSubPose(rightFoot)
+	rightUpperLeg:AddSubPose(rightLowerLeg)
+	lowerTorso:AddSubPose(upperTorso)
+	lowerTorso:AddSubPose(leftUpperLeg)
+	lowerTorso:AddSubPose(rightUpperLeg)
+	humanoidRootPart:AddSubPose(lowerTorso)
+	keyframe:AddPose(humanoidRootPart)
+end
+
+local function markerKeyframe(sequence: KeyframeSequence, keyframesByTime: { [number]: Keyframe }, time: number): Keyframe
+	local existing = keyframesByTime[time]
+	if existing then
+		return existing
+	end
+	local created = Instance.new("Keyframe")
+	created.Name = string.format("Marker_%.3f", time)
+	created.Time = time
+	sequence:AddKeyframe(created)
+	keyframesByTime[time] = created
+	return created
+end
+
+function AnimDev.build(name: string): (KeyframeSequence?, string?)
+	local spec = AnimationSpecs[name]
+	if not spec then
+		return nil, "unknown animation " .. name
+	end
+	local valid, errors = AnimDev.validate(name)
+	if not valid then
+		return nil, table.concat(errors, "; ")
+	end
+
+	local sequence = Instance.new("KeyframeSequence")
+	sequence.Name = spec.name
+	sequence.Loop = spec.looped
+	sequence.Priority = spec.priority
+	local keyframesByTime: { [number]: Keyframe } = {}
+	for _, frame in sortedFrames(spec) do
+		local keyframe = Instance.new("Keyframe")
+		keyframe.Name = if math.abs(frame.time - spec.duration) <= POSITION_TOLERANCE then "End" else string.format("Key_%.3f", frame.time)
+		keyframe.Time = frame.time
+		addPoseTree(keyframe, frame)
+		sequence:AddKeyframe(keyframe)
+		keyframesByTime[frame.time] = keyframe
+	end
+
+	for _, markerSpec in spec.markers do
+		local keyframe = markerKeyframe(sequence, keyframesByTime, markerSpec.time)
+		local marker = Instance.new("KeyframeMarker")
+		marker.Name = markerSpec.name
+		marker.Parent = keyframe
+	end
+
+	return sequence, nil
+end
+
+local function outputFolder(): Folder
+	local existing = Workspace:FindFirstChild(OUTPUT_FOLDER_NAME)
+	if existing and existing:IsA("Folder") then
+		return existing
+	end
+	if existing then
+		existing:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = OUTPUT_FOLDER_NAME
+	folder.Parent = Workspace
+	return folder
+end
+
+function AnimDev.buildAll(includeDevelopment: boolean?): { KeyframeSequence }
+	local folder = outputFolder()
+	local built: { KeyframeSequence } = {}
+	for _, child in folder:GetChildren() do
+		if child:IsA("KeyframeSequence") and string.match(child.Name, "^HRush_") then
+			child:Destroy()
+		end
+	end
+	for name, spec in AnimationSpecs do
+		if (includeDevelopment or not spec.developmentOnly) and #spec.keyframes > 0 then
+			local sequence, buildError = AnimDev.build(name)
+			assert(sequence, buildError)
+			sequence.Parent = folder
+			table.insert(built, sequence)
+		end
+	end
+	table.sort(built, function(a, b)
+		return a.Name < b.Name
+	end)
+	return built
+end
+
+function AnimDev.validateAll(): boolean
+	local allValid = true
+	local names: { string } = {}
+	for name in AnimationSpecs do
+		table.insert(names, name)
+	end
+	table.sort(names)
+	for _, name in names do
+		local spec = AnimationSpecs[name]
+		if #spec.keyframes == 0 then
+			print("[HRush AnimDev] PLACEHOLDER " .. name)
+		else
+			local valid, errors = AnimDev.validate(name)
+			if valid then
+				print("[HRush AnimDev] OK " .. name)
+			else
+				allValid = false
+				warn("[HRush AnimDev] INVALID " .. name .. ": " .. table.concat(errors, "; "))
 			end
 		end
 	end
-	return applied, if #pending > 0 then ("%d joints unsolved"):format(#pending) else nil
+	return allValid
 end
 
-AnimDev.SprintParams = SprintParams
-AnimDev.SlideKeys = SlideKeys
-AnimDev.SlideParams = SlideParams
-AnimDev.DashParams = DashParams
-AnimDev.DashKeys = DashKeys
-AnimDev.DASH_NAME = DASH_NAME
-AnimDev.FOLDER_NAME = FOLDER_NAME
+function AnimDev.spawnPreviewRig(position: Vector3?): Model
+	local existing = Workspace:FindFirstChild(PREVIEW_RIG_NAME)
+	if existing then
+		existing:Destroy()
+	end
+	local rig = Players:CreateHumanoidModelFromDescriptionAsync(
+		Instance.new("HumanoidDescription"),
+		Enum.HumanoidRigType.R15
+	)
+	rig.Name = PREVIEW_RIG_NAME
+	rig:PivotTo(CFrame.new(position or Vector3.new(0, 4, 0)))
+	local humanoidRootPart = rig:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart and humanoidRootPart:IsA("BasePart") then
+		humanoidRootPart.Anchored = true
+	end
+	rig.Parent = Workspace
+	return rig
+end
+
+local activePreviewTrack: AnimationTrack? = nil
+
+local function previewAnimator(rig: Model): Animator
+	local humanoid = rig:FindFirstChildOfClass("Humanoid")
+	assert(humanoid, rig:GetFullName() .. " has no Humanoid")
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if animator then
+		return animator
+	end
+	local created = Instance.new("Animator")
+	created.Parent = humanoid
+	return created
+end
+
+function AnimDev.stopPreview(fadeTime: number?)
+	if activePreviewTrack then
+		activePreviewTrack:Stop(fadeTime or 0.08)
+		activePreviewTrack = nil
+	end
+end
+
+function AnimDev.preview(name: string, speed: number?, rig: Model?): AnimationTrack
+	local sequence, buildError = AnimDev.build(name)
+	assert(sequence, buildError)
+	local targetRig = rig or Workspace:FindFirstChild(PREVIEW_RIG_NAME)
+	if not (targetRig and targetRig:IsA("Model")) then
+		targetRig = AnimDev.spawnPreviewRig()
+	end
+	AnimDev.stopPreview(0)
+	local temporaryId = AnimationClipProvider:RegisterAnimationClip(sequence)
+	local animation = Instance.new("Animation")
+	animation.Name = name .. "_Preview"
+	animation.AnimationId = temporaryId
+	local track = previewAnimator(targetRig):LoadAnimation(animation)
+	track.Priority = sequence.Priority
+	track.Looped = sequence.Loop
+	track:Play(0.08, 1, speed or 1)
+	animation:Destroy()
+	sequence:Destroy()
+	activePreviewTrack = track
+	return track
+end
+
+function AnimDev.previewQuarterSpeed(name: string, rig: Model?): AnimationTrack
+	return AnimDev.preview(name, 0.25, rig)
+end
+
+function AnimDev.scrub(name: string, time: number, rig: Model?): AnimationTrack
+	local spec = AnimationSpecs[name]
+	assert(spec, "unknown animation " .. name)
+	local track = AnimDev.preview(name, 0, rig)
+	track.TimePosition = math.clamp(time, 0, spec.duration)
+	track:AdjustSpeed(0)
+	track:AdjustWeight(1, 0)
+	return track
+end
+
+function AnimDev.destroyPreviewRig()
+	AnimDev.stopPreview(0)
+	local existing = Workspace:FindFirstChild(PREVIEW_RIG_NAME)
+	if existing then
+		existing:Destroy()
+	end
+end
 
 return AnimDev

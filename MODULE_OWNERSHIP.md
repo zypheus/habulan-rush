@@ -52,7 +52,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 
 | Area | Canonical source | Responsibility | Owner |
 |---|---|---|---|
-| Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua` | Original R15 sprint, slide, and dash source sequences | Project Owner |
+| Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua`, `tools/AnimationDev/HRush_AnimPreview.lua` | Data-driven original R15 animation definitions, validation, building, and local preview | Project Owner |
 | Workspace map input | `assets/Map.rbxmx` | Minimal Rojo Workspace map input; Bootstrap currently builds Kalsada | Project Owner |
 
 ## Rules

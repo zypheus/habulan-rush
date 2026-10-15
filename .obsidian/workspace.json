@@ -11,10 +11,14 @@
             "id": "e733822277f7bdaa",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "agent/skills/caveman/SKILL.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "SKILL"
             }
           }
         ]
@@ -185,6 +189,16 @@
   "active": "e733822277f7bdaa",
   "lastOpenFiles": [
     "HabulanRush.rbxlx.lock",
+    "dev-notes/playtests/2026-10-15-animation-batch-a.md",
+    "agent/skills/caveman/SKILL.md",
+    "agent/skills/caveman/README.md",
+    "agent/skills/caveman",
+    "agent/skills",
+    "agent",
+    "dev-notes/playtests/2026-10-15-animation-batch0.md",
+    "tools/AnimationDev/README.md",
+    "tools/AnimationDev/HRush_AnimPreview.lua",
+    "tools/AnimationDev/HRush_AnimDev.lua",
     "src/ServerScriptService/MovementAuthority.server.lua",
     "src/ServerScriptService/MovementAuthority.lua",
     "docs/MOVEMENT_AUDIT.md",
@@ -193,12 +207,6 @@
     "docs",
     "dev-notes/utg-and-scoring-implementation-guide.md",
     "assets/sfx/batch2/Slide whoosh.mp3",
-    "assets/sfx/batch2/Stamina empty.mp3",
-    "assets/sfx/batch2/Footstep.MP3",
-    "assets/sfx/batch2/7b193425-29b7-4ba8-9b1a-1e629a676481.mp3",
-    "assets/sfx/batch2",
-    "assets/sfx/New folder",
-    "assets/sfx/Tag slap.mp3",
     "dev-notes/animation-builders.md",
     "dev-notes/sprint-vfx-trail-design.md",
     "dev-notes/handoffs/2026-10-14-obsidian-setup-complete.md",

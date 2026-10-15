@@ -1,7 +1,7 @@
 # Movement System and Animation Audit
 
 Date: 2026-10-15
-Status: Steps 0 and 1 complete; Step 1 live validation pending
+Status: Steps 0 and 1 complete; animation Batch B implemented; live gameplay validation pending
 Owner: Project Owner
 Task: T09 movement upgrade audit
 
@@ -11,6 +11,8 @@ This audit compares the current Rojo-mapped movement, camera, input, VFX, server
 
 Step 1 was approved by the project owner and implemented on 2026-10-15. It adds configuration, centralized animation metadata, a dedicated server movement state ledger, validated movement requests, rate limits, and passive observation. It does not change movement feel or correct player position.
 
+The project owner amended the animation plan on 2026-10-15. Every movement state now requires a newly authored original R15 animation. Earlier recommendations to reuse sprint pose math or split the existing slide source are superseded. Existing sprint, slide, and dash IDs were allowed only as temporary runtime fallbacks; all three were removed when the Batch A and B IDs were supplied.
+
 ## Executive summary
 
 The current controller is a workable client-predicted foundation, but it is not server-authoritative and it does not yet support the proposed state-driven movement model.
@@ -19,11 +21,61 @@ The current controller is a workable client-predicted foundation, but it is not 
 - Slide is a one-second, constant-speed client sustain. It can start while walking or airborne, has no sprint-speed threshold, no slope response, no steering rate, no early release, and no slide-hop exit.
 - Normal jump, fall, and landing use Roblox defaults or a randomized run-style pack. There is no coyote time, jump buffer, tuned air control, hard-landing penalty, or dedicated original movement animation set.
 - `MovementAuthority` now validates sprint, slide, and dash requests and passively observes speed and displacement. Client prediction still moves the character, and server correction remains disabled until the envelope is proven in Studio.
-- The existing sprint and slide authoring work is useful. `HRush_Sprint` already matches much of the desired silhouette, while the combined `HRush_Slide` clip can guide the new Enter, Loop, and Exit clips.
+- The existing sprint, slide, and dash clips are legacy runtime fallbacks only. Their pose data must not be copied or lightly modified for the new set.
 - Camera effects are spread across SprintVFX, MovementController, TargetLockController, and lobby code. A slide camera effect should not be added until those writers have an explicit priority and restoration contract.
 - Published sprint, slide, and dash animation IDs are active but are not recorded in `ASSET_LOG.md`. This is a release compliance blocker.
 
-Recommended approach: extend the current systems. Add shared movement state and server validation first, then replace one movement behavior at a time. Do not rewrite the working stamina, input bridge, VFX pooling, animation preload, or original pose math without a demonstrated need.
+Recommended approach: keep the working gameplay systems, but author every movement animation from new pose data through the Batch 0 pipeline. Add mechanics one at a time only after approval.
+
+## Map capability audit for proposed mechanics
+
+The audit uses the canonical Rojo inputs: `assets/Map.rbxmx`, `Config.Maps`, and the Kalsada geometry built by `Bootstrap.server.lua`.
+
+| Map | Roll on landing | Vault | Wall climb | Swing bar and zipline |
+|---|---|---|---|---|
+| Kalsada | Supported now for testing. The 150 by 150 street, open court, sidewalks, and spawn ring provide broad flat landing areas. No new map piece is required for the first roll test. | Partially supported now. Four crates are exactly 3.5 studs high and match the proposed starting `VaultMaxHeight`. Four jeepneys are 4 studs high and exceed that starting limit, so they are not valid vault targets without a later approved tuning or geometry change. | Needs new authored routes. The map has 10-stud sari-sari blocks and 14-stud boundary walls, but no parts are tagged `Climbable`, no safe grab volumes exist, and the boundary walls must not become escape routes. Add dedicated climb faces and mantle ledges inside the arena before implementation. | Needs new map pieces. No `SwingBar` or `Zipline` tags, bars, anchors, endpoints, or clear travel corridors exist. Author these as visible traversal lanes before mechanic code. |
+| Binaha | Not currently testable. | Not currently testable. | Not currently testable. | Not currently testable. |
+
+Binaha exists only in configuration and map-vote presentation. No Binaha geometry or loading path is implemented, so all four mechanics require map construction before support can be assessed.
+
+### Proposed Studio authoring for Batch F
+
+This is a map proposal only. No swing or zipline code is approved.
+
+- Swing bar: create one anchored Model with a visible bar, a centered `Pivot` Attachment, a non-colliding `GrabVolume` part, and a `ReleaseDirection` Attachment. Tag the Model `SwingBar`. Keep the full swing arc clear of walls, roofs, spawn pads, and the court.
+- Zipline: create one anchored Model with visible cable geometry, `Start` and `End` Attachments, a non-colliding start `GrabVolume`, and a clear landing zone beyond `End`. Tag the Model `Zipline`. The attachment order defines the fixed path.
+- Place each mechanic first in a low-risk teaching lane, then place any chase-pressure version on an optional route.
+- Size clearances from the final R15 animation silhouette and measured movement speeds before dressing the props.
+
+### Proposed movement transition table
+
+This table is documentation only until each mechanic batch is approved. One future state owner should enforce it. Animation changes occur on accepted state transitions, not independent timers.
+
+| From state | Allowed next states |
+|---|---|
+| Walk | Sprint, Dash, JumpStart, Fall, SlideEnter, Vault, ClimbGrab, SwingGrab, ZipHang |
+| Sprint | Walk, Dash, JumpStart, Fall, SlideEnter, Vault, ClimbGrab, SwingGrab, ZipHang |
+| Dash | Walk, Sprint, Fall, Vault |
+| JumpStart | Fall, Vault, ClimbGrab, SwingGrab, ZipHang |
+| Fall | Land, LandHard, Roll, Vault, ClimbGrab, SwingGrab, ZipHang |
+| Land | Walk, Sprint |
+| LandHard | Walk, Sprint |
+| SlideEnter | SlideLoop, SlideExit, SlideJump, Vault |
+| SlideLoop | SlideExit, SlideJump, Vault |
+| SlideExit | Walk, Sprint, Fall |
+| SlideJump | Fall, Vault, ClimbGrab, SwingGrab, ZipHang |
+| Roll | Walk, Sprint, Fall |
+| Vault | Walk, Sprint, Fall |
+| ClimbGrab | ClimbLoop, ClimbMantle, Fall |
+| ClimbLoop | ClimbMantle, Fall |
+| ClimbMantle | Walk, Sprint, Fall |
+| SwingGrab | SwingLoop, SwingRelease, Fall |
+| SwingLoop | SwingRelease, Fall |
+| SwingRelease | Fall |
+| ZipHang | ZipRelease, Fall |
+| ZipRelease | Fall |
+
+Starting SlideJump, Roll, or Vault cancels JumpStart and Fall tracks immediately. Transition acceptance remains server-authoritative when mechanics are implemented.
 
 ## Canonical source map
 
@@ -42,7 +94,7 @@ Only paths mapped by `default.project.json` are production runtime sources.
 | Match and temporary tag | `src/ServerScriptService/MatchService.server.lua` | Match state, role attributes, bots, and temporary HRP-distance tagging |
 | Planned tag authority | `src/ServerScriptService/TagService.server.lua` | Stub only |
 | Skill authority | `src/ServerScriptService/SkillService.server.lua` | RS_01 and RS_03 approval, cooldowns, hit simulation, and stun |
-| Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua` | Original R15 sprint, combined slide, dash, and pose preview helpers |
+| Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua`, `tools/AnimationDev/HRush_AnimPreview.lua` | Data-driven original R15 animation definitions, validation, building, and local preview |
 | Cosmetic run packs | `src/ReplicatedStorage/Cosmetics/RunStyles.lua`, `src/ServerScriptService/RunStyleService.server.lua` | Randomized idle, walk, run, jump, and fall HumanoidDescription animation IDs |
 
 ## Current movement values and behavior
@@ -102,13 +154,23 @@ The additive sprint FOV implementation is a good pattern, but full state save an
 
 ### Runtime loading and playback
 
-Current IDs are stored in `Config.Movement`, not a `Config.Animations` table:
+The runtime resolver reads `Config.Animations` and accepts only numeric `rbxassetid://` values. The project owner supplied the following published Batch A and B IDs:
 
-| Track | Current ID | Runtime settings | Playback |
-|---|---|---|---|
-| HRush_Sprint | `rbxassetid://92487449831774` | Movement priority, looped | `Play(0.15)` while sprinting, `Stop(0.15)` otherwise |
-| HRush_Slide | `rbxassetid://129414076083716` | Action priority, non-looping | `Play(0.05)`, speed-fitted to `SlideDuration`, `Stop(0.1)` on exit |
-| HRush_Dash | `rbxassetid://126630478624602` | Action priority, non-looping | `Play(0.08)`, cut when the 0.2-second dash ends |
+| Track | Published ID | Live runtime state |
+|---|---|---|
+| HRush_Walk | `rbxassetid://89956272220101` | Metadata only |
+| HRush_Sprint | `rbxassetid://132688446420207` | Active loop while sprinting |
+| HRush_JumpStart | `rbxassetid://115591963738630` | Metadata only |
+| HRush_Fall | `rbxassetid://106234834891508` | Metadata only |
+| HRush_Land | `rbxassetid://83446879560399` | Metadata only |
+| HRush_LandHard | `rbxassetid://93067099789487` | Metadata only |
+| HRush_SlideEnter | `rbxassetid://89876839852879` | Metadata only |
+| HRush_SlideLoop | `rbxassetid://106056699835668` | Active loop for the existing single-state slide |
+| HRush_SlideExit | `rbxassetid://110417300002501` | Metadata only |
+| HRush_SlideJump | `rbxassetid://77860783763073` | Metadata only |
+| HRush_Dash | `rbxassetid://118315275767975` | Active one-shot while dashing |
+
+The old Sprint, combined slide, and Dash fallbacks are removed. Wiring the eight metadata-only clips requires an approved state owner and transition rules. This publication pass does not introduce a timer-driven slide animation state machine.
 
 Tracks are loaded from the local character `Animator`. Owner-played tracks can replicate to other clients, but that behavior has not passed the required two-player test. The loader uses `FindFirstChildOfClass("Animator")` without waiting. If the Animator is late, all tracks remain nil. The delayed retry only covers a failed slide load after an Animator was found.
 
@@ -116,33 +178,31 @@ Sprint playback speed is `Humanoid.WalkSpeed / RunnerSprintSpeed`. It is not cla
 
 The default Roblox Animate controller and RunStyleService may continue playing a Movement-priority run track while HRush_Sprint also plays at Movement priority. Equal-priority tracks can blend instead of producing a clean replacement. This interaction needs a live local and remote observation before animation work proceeds.
 
-There are no marker listeners. Footsteps and dust use traveled distance and timers. No `FootstepL`, `FootstepR`, `SlideStart`, or `LandImpact` markers are authored or configured.
+There are no runtime marker listeners. Footsteps and dust still use traveled distance and timers. Batch A authors `FootstepL` and `FootstepR` in Sprint and `LandImpact` in Land and LandHard. Later placeholders already reserve `RollImpact`, `VaultPlant`, and `VaultClear`.
 
 ### Authoring tool
 
-`HRush_AnimDev.lua` builds three original R15 sequences:
+Batch 0 rebuilt `HRush_AnimDev.lua` around one `AnimationSpecs` table. All 21 requested production animations have their own entry with name, loop flag, priority, duration, keyframes, and markers. Batches A and B fill 11 entries with newly authored original pose data. The other 10 production keyframe arrays remain empty until their assigned batch.
 
-- `HRush_Sprint`: a 0.64-second loop with 24 sampled intervals plus the wrap frame. It already has 18-degree forward lean, strong arm swing, 90-degree elbow carry, torso counter-rotation, head compensation, knee drive, and an airborne stride phase. It is close to the requested enhanced sprint silhouette.
-- `HRush_Slide`: one 1.0-second non-looping clip with an entry at 0.12, glide keys through 0.70, a tuck at 0.85, and a sprint-pose handoff at 1.0. It is not split into Enter, Loop, and Exit assets.
-- `HRush_Dash`: a 0.42-second non-looping original clip. Dash is outside this movement-upgrade scope except where shared state or camera ownership interacts with it.
+The builder now:
 
-The builder sets sequence priority and loop state correctly. It exposes `showAt`, `reset`, `setJointsEnabled`, `hardPose`, and `hardReset`, so individual times can be previewed on an R15 rig. It does not provide a single command that lists and scrubs every animation, and its animation definitions are not all in one uniform data table. Sprint is procedural, while slide and dash use separate key tables.
+- creates the full R15 Pose tree from `HumanoidRootPart` through both hands and feet;
+- supports Root, Waist, Neck, both Shoulders, Elbows, Wrists, Hips, Knees, and Ankles;
+- rejects horizontal Root translation while allowing LowerTorso Y offsets for bob and drop;
+- provides cubic easing constants, pose mirroring, and cycle mirroring with a phase offset;
+- validates loop closure, marker bounds, joint names, keyframe bounds, and adjacent rotation jumps over 120 degrees;
+- uses `AnimationClipProvider:RegisterAnimationClip()` for current local preview;
+- spawns an R15 preview rig and supports normal speed, 0.25 speed, and scrubbed poses.
 
-Missing authored movement assets:
+`HRush_PipelineSelfTest` is development-only. It proves the base pipeline and must never be published.
 
-- HRush_Slide_Enter
-- HRush_Slide_Loop
-- HRush_Slide_Exit
-- HRush_JumpStart
-- HRush_Fall
-- HRush_Land
-- Optional HRush_SlideJump
+The hierarchy was verified against current Roblox documentation and a generated R15 rig. The generated Studio rig uses `AnimationConstraint` joints with the standard Root, Waist, Neck, shoulder, elbow, wrist, hip, knee, and ankle names.
 
-No new IDs should be invented. Step 1 should create empty placeholders in `Config.Animations`; publication and `ASSET_LOG.md` entries happen only after the human publishes original sequences.
+No ID was invented. The 11 Batch A and B IDs came from the project owner. The other 10 entries retain explicit `REPLACE_ME_HRush_*` placeholders, and the old sprint, combined slide, and dash fallbacks are removed.
 
 ### Asset compliance
 
-The active sprint, slide, and dash animation IDs have no rows in `ASSET_LOG.md`. AI_LOG describes their authoring and publication history, but that does not replace the required asset record. The current sprint ID also differs from the older sprint ID recorded in AI_LOG, so provenance must identify the exact active revision.
+All 11 published Batch A and B animations are recorded in `ASSET_LOG.md` as original project-owned assets sourced from `tools/AnimationDev/HRush_AnimDev.lua`.
 
 RunStyleService uses Roblox catalog animation IDs for Elder, Pirate, Toy, and Ninja walk, run, jump, and fall sets. Their competition eligibility and provenance are not recorded in `ASSET_LOG.md`. They should not be treated as approved substitutes for the original movement set.
 
@@ -185,29 +245,23 @@ The first authority implementation should log and correct repeated violations. I
 | Coyote time and jump buffer | Missing | Add around the default jump request. Do not reuse RS_01 `IsAirborne`, which means skill immunity |
 | Air control | Default Roblox behavior | Requires a deliberate movement implementation and multiplayer validation. Avoid per-frame velocity fights with RS_01 |
 | Landing response | Missing for normal jump | Track fall start and landing on the local client for presentation, with server limits only for any speed penalty |
-| Original movement animation set | Partial | Preserve sprint pose math. Split the slide phases, then add jump, fall, and land builders with markers |
+| Original movement animation set | Partial | Batches A and B author Walk, Sprint, Dash, JumpStart, Fall, Land, LandHard, and the four slide states. The remaining 10 clips stay batch-gated |
 | Procedural lean and head look | Missing | Add last, on top of stable authored states. It must not fight target lock, aim camera, or animation Motor transforms |
 | Mobile auto-sprint and safe buttons | Missing | Replace default unnamed touch actions with a deliberate layout and test against Roblox jump and thumbstick zones |
 | Rebindable gamepad | Missing | Move bindings to config or a client binding table only after the final action map is approved |
 | Server speed and displacement checks | Missing | Add a dedicated server movement authority module or an approved owner inside an existing service. Do not put it in the client |
 
-## Recommended build sequence
+## Amended build sequence
 
-The requested ten-step order is viable with these adjustments:
+1. Batch 0, implemented on 2026-10-15: data-driven authoring, validation, placeholder metadata, and preview workflow.
+2. Batch A, implemented on 2026-10-15: newly authored Walk, Sprint, JumpStart, Fall, Land, and LandHard.
+3. Batch B, implemented on 2026-10-15: newly authored SlideEnter, SlideLoop, SlideExit, SlideJump, and Dash.
+4. Batch C: propose and, only after approval, implement roll with a newly authored Roll clip.
+5. Batch D: propose and, only after approval, implement vault with a newly authored Vault clip.
+6. Batch E: author the climb set and implement climb only after map-route and mechanic approval.
+7. Batch F: author swing and zipline sets only after supporting map pieces and mechanic approval.
 
-1. Completed on 2026-10-15: apply the separate approved `SpeedScale` 1.2 balance item. Live 2-player validation is still required before using the effective speeds as the final validation baseline.
-2. Completed on 2026-10-15: added `Config.Animations`, new `Config.Movement` values, a server-owned movement state ledger, request validation, logging, and passive speed/displacement observation. Correction remains disabled.
-3. Step 2: add sprint ramp and reuse SprintVFX after fixing scale normalization and the 90 percent gate. Improve the existing sprint source instead of replacing it.
-4. Step 3: replace slide constant sustain with entry, decay, steering, ground, slope, cooldown-after-exit, and camera state. Preserve existing dust, sound, and HipHeight restoration patterns.
-5. Step 4: split the current slide source into Enter, Loop, and Exit sequences. Drive transitions from the slide state, not independent timers.
-6. Step 5: add early release and slide-hop only after the server state ledger is authoritative.
-7. Step 6: add normal jump buffer, coyote time, air control, JumpStart, and Fall without changing RS_01 skill behavior.
-8. Step 7: add landing height tracking, hard-landing penalty, Land animation, and marker-driven hooks.
-9. Step 8: add procedural lean and head look through one animation polish layer.
-10. Step 9: replace fixed and conflicting input paths with approved keyboard, gamepad, and mobile bindings. Include auto-sprint and safe touch layout.
-11. Step 10: enable correction thresholds after telemetry, then perform a live two-player abuse and remote-animation test.
-
-Vault, mantle, chase catch-up, and sprint stamina redesign remain proposal-only. Existing stamina stays unless separately approved.
+Each batch stops for review. Published IDs are wired only after the project owner supplies them. The matching fallback is then removed and the asset is recorded in `ASSET_LOG.md`.
 
 ## Implemented Step 1 scope
 
@@ -245,7 +299,7 @@ Existing keys that need a migration decision:
 
 ### Config.Animations additions
 
-Create one table for IDs, priorities, loop flags, fade times, safe playback-speed limits, and marker names. Preserve the three real IDs already in use. Add empty ID placeholders for unpublished original animations.
+Batch 0 expanded the table to every requested movement animation. Batch A and B now supply 11 published IDs. The other 10 entries use explicit `REPLACE_ME_HRush_*` values. The Sprint and Dash `FallbackId` fields and `SlideLegacy` entry are removed. Runtime loading accepts only numeric `rbxassetid://` strings, so placeholders never reach `LoadAnimation` or preload.
 
 ### Server scaffold
 
@@ -279,12 +333,56 @@ The project owner approved a dedicated module at `src/ServerScriptService/Moveme
 9. Test death, respawn, tag role change, stun, and round end. Confirm server movement state and cooldowns clear.
 10. Confirm `ServerCorrectionEnabled` is false and no test causes a server position snap.
 
+## Animation Batch 0 validation
+
+- Repository Luau syntax check passed on 2026-10-15.
+- The Rojo build passed on 2026-10-15.
+- A generated R15 rig confirmed the 15 standard joint names and connected body parts.
+- The pipeline self-test built three keyframes, preserved the full hand and foot Pose tree, attached `PipelineMidpoint`, and rejected an empty production placeholder.
+- Validator branch tests detected a loop mismatch, an unflagged rotation jump over 120 degrees, and an out-of-range marker. Restored data validated, and `buildAll()` removed stale HRush sequences.
+- In Studio Play mode, normal preview advanced to 0.150 seconds and 0.25-speed preview advanced to 0.033 seconds over the same sample. Scrub held at 0.250 seconds.
+- Temporary Studio validation objects were removed after the test. Repository files remain canonical.
+
+## Animation Batch A validation
+
+- Repository Luau syntax check passed after authoring and after the scrub preview fix.
+- `validateAll()` passed and `buildAll(false)` produced exactly six production KeyframeSequences.
+- Walk uses seven keyframes over 0.700 seconds. Sprint uses seven keyframes over 0.450 seconds. JumpStart uses five keyframes over 0.200 seconds. Fall uses five keyframes over 0.600 seconds. Land uses five keyframes over 0.250 seconds. LandHard uses seven keyframes over 0.400 seconds.
+- Sprint markers resolved to `FootstepL` at 0.000 and `FootstepR` at 0.225. Land and LandHard resolved `LandImpact` at 0.080 and 0.100.
+- Every Batch A clip passed normal-speed playback, 0.25-speed playback, and midpoint scrubbing in Studio Play mode with full track weight.
+- Visual samples confirmed the Sprint airborne pose at 0.115 and the LandHard deep crouch with a planted hand at 0.160.
+- Scrubbing now forces preview weight to 1 before pausing. This fixes the rest-pose display that occurred when a zero-speed track was paused during its blend-in.
+- The authoring validation ended before publication. The later publication pass wired the six project-owner-supplied Batch A IDs; repository source remains canonical.
+
+## Animation Batch B validation
+
+- Repository Luau syntax check passed after authoring all five table entries.
+- `validateAll()` returned true and `buildAll(false)` produced 11 completed production KeyframeSequences, including all five Batch B clips.
+- Dash uses six keyframes over 0.250 seconds. SlideEnter uses four keyframes over 0.120 seconds. SlideLoop uses five keyframes over 0.450 seconds. SlideExit uses four keyframes over 0.150 seconds. SlideJump uses five keyframes over 0.300 seconds.
+- Every Batch B clip passed normal-speed playback, 0.25-speed playback, and midpoint scrubbing in Studio Play mode with full track weight.
+- The first SlideEnter playback assertion sampled before its standard 0.08-second blend completed. Moving the test sample to 0.096 seconds passed without changing the animation or blend time.
+- Rear and side visual samples of SlideLoop confirmed a reclined torso, one extended leg, one tucked leg, and wide braced arms.
+- SlideEnter ends on the exact SlideLoop opening pose. SlideExit and SlideJump start on the same pose. SlideExit ends on Sprint's opposite contact pose.
+- The authoring validation ended before publication. The later publication pass wired the five project-owner-supplied Batch B IDs; repository source remains canonical.
+
+## Animation Batch A and B publication wiring
+
+- All 11 supplied IDs are present in `Config.Animations` and recorded in `ASSET_LOG.md`.
+- Sprint and Dash no longer use `FallbackId`, and `SlideLegacy` is removed.
+- The existing single-state slide loads and preloads `SlideLoop`. SlideEnter, SlideExit, and SlideJump remain metadata until an approved state-machine change.
+- Repository syntax, notes, and Rojo build checks passed after wiring.
+- A fresh-build Studio probe loaded and played all 11 IDs. Ten assets matched the authored duration, loop flag, priority, and keyframe count.
+- The supplied Fall ID `rbxassetid://106234834891508` repeatedly returned a 0.25-second, Action, non-looping, five-keyframe clip. The authored source is 0.60 seconds, Movement, looping, and five keyframes. The project owner confirmed the ID is correct; recheck this metadata difference when Fall receives a live state owner.
+
 ## Known risks and blockers
 
 - Step 1 has project-owner approval and is implemented. Its live two-player validation remains pending.
 - The implemented `SpeedScale` change affects every speed ceiling and speed-derived distance. Its live 2-player validation remains pending, and it must stay separate from the movement upgrade.
 - Movement authority now has a dedicated canonical module. TagService integration for slide profile and pounce remains future work.
-- Published movement animation provenance is incomplete in `ASSET_LOG.md`.
 - Existing run-style animation IDs also need competition eligibility review.
+- Eleven Batch A and B clips have published IDs. The other 10 production animation entries remain ID and pose placeholders.
+- All 11 published assets load under the experience owner. The confirmed Fall ID metadata differs from its authored source and needs transition testing when Fall becomes live. Local and remote gameplay playback still require two-player evidence.
+- Eight published clips are intentionally metadata-only until an approved client movement-state owner integrates them.
+- Kalsada climb, swing, and zipline routes do not exist. Binaha has no implemented map geometry.
 - No automated gameplay tests, lint, or CI exist. Syntax, Rojo build, and live two-player tests are required for implementation steps.
 - Mobile, gamepad, remote animation replication, slopes, low gaps, and camera ownership all require live Studio evidence.

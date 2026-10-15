@@ -87,43 +87,105 @@ Config.Animations = { -- [SD] movement animation runtime metadata and original-a
 	Markers = {
 		FootstepL = "FootstepL", -- [SD]
 		FootstepR = "FootstepR", -- [SD]
-		SlideStart = "SlideStart", -- [SD]
 		LandImpact = "LandImpact", -- [SD]
+		RollImpact = "RollImpact", -- [SD]
+		VaultPlant = "VaultPlant", -- [SD]
+		VaultClear = "VaultClear", -- [SD]
 	},
+	Walk = {
+		Id = "rbxassetid://89956272220101", Priority = Enum.AnimationPriority.Movement, Looped = true,
+		FadeIn = 0.12, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch A published original
 	Sprint = {
-		Id = "rbxassetid://92487449831774", -- [SD] published original HRush_Sprint
-		Priority = Enum.AnimationPriority.Movement, -- [SD]
-		Looped = true, -- [SD]
-		FadeIn = 0.15, -- [SD]
-		FadeOut = 0.15, -- [SD]
-		SpeedMin = 0.75, -- [SD] Step 2 safe playback range
-		SpeedMax = 1.5, -- [SD] Step 2 safe playback range
-	},
-	SlideLegacy = {
-		Id = "rbxassetid://129414076083716", -- [SD] published original combined HRush_Slide v4
-		Priority = Enum.AnimationPriority.Action, -- [SD]
-		Looped = false, -- [SD]
-		FadeIn = 0.05, -- [SD]
-		FadeOut = 0.10, -- [SD]
-		SpeedMin = 0.75, -- [SD]
-		SpeedMax = 1.5, -- [SD]
+		Id = "rbxassetid://132688446420207", -- [SD] Batch A published original
+		Priority = Enum.AnimationPriority.Movement,
+		Looped = true,
+		FadeIn = 0.15,
+		FadeOut = 0.15,
+		SpeedMin = 0.75,
+		SpeedMax = 1.5,
 	},
 	Dash = {
-		Id = "rbxassetid://126630478624602", -- [SD] published original HRush_Dash
-		Priority = Enum.AnimationPriority.Action, -- [SD]
-		Looped = false, -- [SD]
-		FadeIn = 0.08, -- [SD]
-		FadeOut = 0.10, -- [SD]
-		SpeedMin = 0.75, -- [SD]
-		SpeedMax = 1.5, -- [SD]
+		Id = "rbxassetid://118315275767975", -- [SD] Batch B published original
+		Priority = Enum.AnimationPriority.Action,
+		Looped = false,
+		FadeIn = 0.08,
+		FadeOut = 0.10,
+		SpeedMin = 0.75,
+		SpeedMax = 1.5,
 	},
-	SlideEnter = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 4
-	SlideLoop = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = true, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 4
-	SlideExit = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 4
-	SlideJump = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] optional original for Step 5
-	JumpStart = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 6
-	Fall = { Id = "", Priority = Enum.AnimationPriority.Movement, Looped = true, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 6
-	Land = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 7
+	JumpStart = {
+		Id = "rbxassetid://115591963738630", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch A published original
+	Fall = {
+		Id = "rbxassetid://106234834891508", Priority = Enum.AnimationPriority.Movement, Looped = true,
+		FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch A published original
+	Land = {
+		Id = "rbxassetid://83446879560399", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch A published original
+	LandHard = {
+		Id = "rbxassetid://93067099789487", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch A published original
+	SlideEnter = {
+		Id = "rbxassetid://89876839852879", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch B published original
+	SlideLoop = {
+		Id = "rbxassetid://106056699835668", Priority = Enum.AnimationPriority.Action, Looped = true,
+		FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch B published original
+	SlideExit = {
+		Id = "rbxassetid://110417300002501", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.10, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch B published original
+	SlideJump = {
+		Id = "rbxassetid://77860783763073", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch B published original
+	Roll = {
+		Id = "REPLACE_ME_HRush_Roll", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch C original placeholder
+	Vault = {
+		Id = "REPLACE_ME_HRush_Vault", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch D original placeholder
+	ClimbGrab = {
+		Id = "REPLACE_ME_HRush_ClimbGrab", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch E original placeholder
+	ClimbLoop = {
+		Id = "REPLACE_ME_HRush_ClimbLoop", Priority = Enum.AnimationPriority.Movement, Looped = true,
+		FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch E original placeholder
+	ClimbMantle = {
+		Id = "REPLACE_ME_HRush_ClimbMantle", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch E original placeholder
+	SwingGrab = {
+		Id = "REPLACE_ME_HRush_SwingGrab", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch F original placeholder
+	SwingLoop = {
+		Id = "REPLACE_ME_HRush_SwingLoop", Priority = Enum.AnimationPriority.Movement, Looped = true,
+		FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch F original placeholder
+	SwingRelease = {
+		Id = "REPLACE_ME_HRush_SwingRelease", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch F original placeholder
+	ZipHang = {
+		Id = "REPLACE_ME_HRush_ZipHang", Priority = Enum.AnimationPriority.Movement, Looped = true,
+		FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch F original placeholder
+	ZipRelease = {
+		Id = "REPLACE_ME_HRush_ZipRelease", Priority = Enum.AnimationPriority.Action, Looped = false,
+		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
+	}, -- [SD] Batch F original placeholder
 }
 
 -- ============================================================
@@ -522,7 +584,7 @@ Config.Sfx = {
 		volume = 1.0, -- [SD] tag slap volume 0-1
 	},
 	Movement = {
-		footstep = "rbxassetid://75359803824642", -- [SD] sprint footstep tap (positional, throttled by dust rate)
+		footstep = "rbxassetid://139613878484113", -- [SD] sprint footstep tap (positional, throttled by dust rate)
 		staminaEmpty = "rbxassetid://81474882182684", -- [SD] stamina depletion cue (once per entry)
 		volume = 0.5, -- [SD] movement one-shot volume 0-1
 		pitchMin = 0.95, -- [SD] footstep pitch variation low

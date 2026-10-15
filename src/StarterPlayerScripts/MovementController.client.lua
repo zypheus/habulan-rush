@@ -58,6 +58,17 @@ local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Mv     = Config.Movement   -- shorthand
 local Animations = Config.Animations
 
+local function isUsableAnimationId(id: any): boolean
+	return typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil
+end
+
+local function resolveAnimationId(definition: any): string?
+	if isUsableAnimationId(definition.Id) then
+		return definition.Id
+	end
+	return nil
+end
+
 -- Sibling module (same Rojo sync): routes one-shot sounds into the SFX group.
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 -- Sibling module (same Rojo sync): cosmetic scale and reduced camera flag.
@@ -547,7 +558,7 @@ local function stopSlideAnim()
 		local track: AnimationTrack = slideTrack
 		pcall(function()
 			if track.IsPlaying then
-				track:Stop(Animations.SlideLegacy.FadeOut)
+				track:Stop(Animations.SlideLoop.FadeOut)
 			end
 		end)
 	end
@@ -557,7 +568,7 @@ local function playSlideAnim()
 	if slideTrack then
 		local track: AnimationTrack = slideTrack
 		pcall(function()
-			track:Play(Animations.SlideLegacy.FadeIn, 1, 1) -- snap in; clip length matches SlideDuration
+			track:Play(Animations.SlideLoop.FadeIn, 1, 1)
 			-- Fit AFTER play starts (guarded): a re-published clip never overruns
 			-- or gets cut, and a zero Length can never freeze frame 0.
 			local len = track.Length
@@ -885,12 +896,12 @@ local function performSlide()
 		end
 		if t then
 			pcall(function()
-				t:Play(Animations.SlideLegacy.FadeIn, 1, 1)
+				t:Play(Animations.SlideLoop.FadeIn, 1, 1)
 			end)
 		end
 		if not slideAnimWarned then
 			slideAnimWarned = true
-			warn("[Slide] animation failed to play (" .. tostring(Animations.SlideLegacy.Id) .. ")")
+			warn("[Slide] animation failed to play (" .. tostring(Animations.SlideLoop.Id) .. ")")
 		end
 	end)
 end
@@ -908,8 +919,8 @@ local function loadAnimTracks()
 	if not animator then
 		return
 	end
-	local function tryLoad(id: string, priority: Enum.AnimationPriority, looped: boolean): AnimationTrack?
-		if id == "" then
+	local function tryLoad(id: string?, priority: Enum.AnimationPriority, looped: boolean): AnimationTrack?
+		if id == nil then
 			return nil
 		end
 		local ok, track = pcall(function(): AnimationTrack
@@ -925,13 +936,16 @@ local function loadAnimTracks()
 		end
 		return nil
 	end
-	sprintTrack = tryLoad(Animations.Sprint.Id, Animations.Sprint.Priority, Animations.Sprint.Looped)
-	slideTrack = tryLoad(Animations.SlideLegacy.Id, Animations.SlideLegacy.Priority, Animations.SlideLegacy.Looped)
-	dashTrack = tryLoad(Animations.Dash.Id, Animations.Dash.Priority, Animations.Dash.Looped)
-	if slideTrack == nil then
-		warn("[Slide] failed to load animation " .. tostring(Animations.SlideLegacy.Id))
+	local sprintId = resolveAnimationId(Animations.Sprint)
+	local slideId = resolveAnimationId(Animations.SlideLoop)
+	local dashId = resolveAnimationId(Animations.Dash)
+	sprintTrack = tryLoad(sprintId, Animations.Sprint.Priority, Animations.Sprint.Looped)
+	slideTrack = tryLoad(slideId, Animations.SlideLoop.Priority, Animations.SlideLoop.Looped)
+	dashTrack = tryLoad(dashId, Animations.Dash.Priority, Animations.Dash.Looped)
+	if slideTrack == nil and slideId ~= nil then
+		warn("[Slide] failed to load animation " .. slideId)
 	end
-	if slideTrack == nil and Animations.SlideLegacy.Id ~= "" then
+	if slideTrack == nil and slideId ~= nil then
 		-- Streaming can fail the first load right after spawn. Retry once a
 		-- few seconds later; the guard drops it if a respawn replaced the
 		-- character or the track recovered another way.
@@ -940,9 +954,9 @@ local function loadAnimTracks()
 			if slideTrack ~= nil or Humanoid ~= hum then
 				return
 			end
-			slideTrack = tryLoad(Animations.SlideLegacy.Id, Animations.SlideLegacy.Priority, Animations.SlideLegacy.Looped)
+			slideTrack = tryLoad(slideId, Animations.SlideLoop.Priority, Animations.SlideLoop.Looped)
 			if slideTrack == nil then
-				warn("[Slide] retry failed for animation " .. tostring(Animations.SlideLegacy.Id))
+				warn("[Slide] retry failed for animation " .. slideId)
 			end
 		end)
 	end
@@ -2933,8 +2947,9 @@ LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 task.spawn(function()
 	local ok = pcall(function()
 		local anims: { Animation } = {}
-		for _, id in { Animations.Sprint.Id, Animations.SlideLegacy.Id, Animations.Dash.Id } do
-			if typeof(id) == "string" and id ~= "" then
+		for _, definition in { Animations.Sprint, Animations.SlideLoop, Animations.Dash } do
+			local id = resolveAnimationId(definition)
+			if id then
 				local anim = Instance.new("Animation")
 				anim.AnimationId = id
 				table.insert(anims, anim)
