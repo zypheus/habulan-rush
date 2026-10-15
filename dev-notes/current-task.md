@@ -3,7 +3,7 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: speed-scale-1-2
+task: movement-upgrade-step-1
 updated: 2026-10-15
 source: docs/MOVEMENT_AUDIT.md
 related:
@@ -18,11 +18,10 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
-- Applied the project-owner-approved `Config.Movement.SpeedScale` change from `1.5` to `1.2` on 2026-10-15.
-- Audited every canonical `SpeedScale` consumer. The locked base speeds remain `16`, `21`, and `18`; effective walk, sprint, and Taya speeds are now `19.2`, `25.2`, and `21.6`.
-- Kept SprintVFX local intensity saturation and unclamped sprint animation playback out of this balance-only item. They remain movement Step 2 work.
-
-Movement upgrade Step 0 remains documented in [MOVEMENT_AUDIT](../docs/MOVEMENT_AUDIT.md). Step 1 is not approved.
+- Movement upgrade Step 1 is implemented with project-owner approval.
+- `Config.Movement` now contains the staged movement tuning and server observation limits. Existing movement feel remains unchanged.
+- `Config.Animations` owns the three active movement IDs and empty metadata placeholders for unpublished original movement clips.
+- `MovementAuthority` owns the server movement ledger, request validation, cooldowns, rate limits, and passive speed/displacement observation. Correction is disabled.
 
 ## Completed
 
@@ -37,11 +36,13 @@ Movement upgrade Step 0 remains documented in [MOVEMENT_AUDIT](../docs/MOVEMENT_
 - Audited effective movement values, sprint and slide behavior, normal jump and landing gaps, camera writers, keyboard/gamepad/touch input, server authority, exploit risks, animation playback, and `HRush_AnimDev` authoring.
 - Recorded the adapted movement build sequence, proposed Step 1 scaffold, Studio reproduction checklist, and known blockers in `docs/MOVEMENT_AUDIT.md`.
 - Applied the approved `SpeedScale = 1.2` balance item, audited every canonical consumer, and passed syntax, notes, and Rojo build checks.
+- Implemented movement Step 1 with a dedicated server authority module and thin bootstrap. Syntax and Rojo build checks passed.
 
 ## Next
 
-- Open the newly generated `HabulanRush.rbxlx` and complete the focused two-player Studio checklist for the `1.2` scale.
-- Stop after this balance item and wait for project-owner approval before movement Step 1.
+- Open the newly generated `HabulanRush.rbxlx` and complete the Step 1 two-player Studio checklist.
+- Confirm server attributes and warnings for valid sprint, slide, dash, cooldown, airborne slide, and displacement cases.
+- Stop after Step 1 and wait for project-owner approval before Step 2.
 
 ## Blockers
 
@@ -50,8 +51,8 @@ Movement upgrade Step 0 remains documented in [MOVEMENT_AUDIT](../docs/MOVEMENT_
 - Manual 2-player Studio validation is still required for gameplay work.
 - Asset eligibility was affirmed by the project owner, but exact source/license evidence still needs to be written into `ASSET_LOG.md` before release approval.
 - Active sprint, slide, and dash animation IDs have no `ASSET_LOG.md` entries. The exact active sprint revision needs provenance.
-- Movement upgrade Step 1 adds `[SD]` values and server authority behavior and needs explicit project-owner approval.
-- The server owner and canonical path for movement validation must be approved. `TagService` is still a stub.
+- Movement Step 1 live two-player validation is pending.
+- `TagService` is still a stub, so authoritative slide profile and pounce interaction remain unimplemented.
 - Binaha remains in the map vote by decision, although its map and loading path are not implemented.
 
 ## Approved decisions
@@ -66,8 +67,9 @@ Movement upgrade Step 0 remains documented in [MOVEMENT_AUDIT](../docs/MOVEMENT_
 8. Roblox Studio MCP may support all features, inspection, automation, and tests. Repository source remains canonical.
 9. Slide grants no invulnerability. It lowers the vertical collision and target profile for low gaps. Touch tag remains valid, and pounce uses the reduced slide profile when authoritative hit validation is implemented.
 10. Persist settings later in a dedicated versioned server DataStore with clamped values, `UpdateAsync`, retry/backoff, session caching, leave saves, and shutdown saves. Do this after core authority work.
-11. Movement upgrade Step 0 is approved as a documentation-only audit. No Step 1 implementation is approved yet.
+11. Movement upgrade Steps 0 and 1 are approved. Step 2 is not approved yet.
 12. Keep the approved `SpeedScale` 1.2 balance item separate from the movement upgrade so validation ceilings use a tested baseline.
+13. Dedicated `MovementAuthority` owns server movement validation. `TagService` keeps tag and pounce authority.
 
 ## Validation
 
@@ -75,6 +77,11 @@ Movement upgrade Step 0 remains documented in [MOVEMENT_AUDIT](../docs/MOVEMENT_
 - `scripts/check-notes.ps1`: passed on 2026-10-15 after the final current-task update.
 - Rojo build to `HabulanRush.rbxlx`: passed on 2026-10-15.
 - Read-only Studio probe: connected place was stale at `SpeedScale = 1.5`; new build not live-tested yet.
+- Movement Step 1 Luau syntax check: passed on 2026-10-15.
+- Movement Step 1 notes check: passed on 2026-10-15.
+- Movement Step 1 Rojo build: passed on 2026-10-15.
+- Generated place contains `MovementAuthority`, its bootstrap, and `RequestMovementState`.
+- Movement Step 1 live two-player Studio validation: pending.
 
 ## End-of-item routine
 

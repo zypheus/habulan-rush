@@ -57,8 +57,9 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [x] Implement Dash (12 studs in 0.2s, 6s cooldown, sends `RequestDash`).
   - [x] Implement Slide (1.0s, 3s cooldown, 50% hitbox height; HRush_Slide v4 authored, Studio preview + publish pending).
   - [x] Implement control bindings for PC, Touch/Mobile, and Gamepad.
-  - [x] (2026-10-15) Movement upgrade Step 0 audit completed in `docs/MOVEMENT_AUDIT.md`; no gameplay values, code, animation IDs, or assets changed. Step 1 awaits project-owner approval.
+  - [x] (2026-10-15) Movement upgrade Step 0 audit completed in `docs/MOVEMENT_AUDIT.md`; no gameplay values, code, animation IDs, or assets changed in the audit.
   - [x] (2026-10-15) SpeedScale set to 1.2 with project-owner approval. Locked bases 16/21/18 remain unchanged; effective walk/sprint/Taya speeds are 19.2/25.2/21.6. All canonical consumers were audited; syntax, notes, and Rojo build passed. Live 2-player playtest remains pending.
+  - [x] (2026-10-15) Movement upgrade Step 1 scaffold implemented with project-owner approval: future movement tuning keys, `Config.Animations`, Config-driven jump power, server movement ledger, validated sprint/slide/dash requests, rate limits, and passive speed/displacement observation. Correction remains disabled. Syntax and Rojo build passed; live 2-player validation is pending.
 - [ ] (2026-10-10) **T10 [Code/P0] Taya Timer & Scoreboard Replication**
   - [ ] Implement server-authoritative tenths-of-a-second Taya Time accumulator.
   - [ ] Replicate round timer and player rankings via `StateChanged`.

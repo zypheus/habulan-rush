@@ -1,7 +1,8 @@
 --!strict
 -- ServerScriptService/Bootstrap.server.lua
--- Owner: Programmer A (T08 Barangay Kalsada greybox)
+-- Owner: Project Owner
 -- Responsibility: build the playable arena so the place never loads empty.
+-- Task/spec: T08 arena bootstrap and T09 movement Step 1 Config migration.
 --   Street baseplate (150x150), boundary walls, sidewalks, central basketball
 --   court, sari-sari store cover blocks, 4 vault-height jeepneys (roof <= 4),
 --   4 crate vaults, 2 low gaps for sliding, 8 equidistant spawns (r = 55),
@@ -330,7 +331,7 @@ local function ensureCharacterDefaults()
 	-- T09 tuning relies on WalkSpeed set at runtime, but sane defaults help
 	-- before MovementController attaches (avoids 16-vs-default pop).
 	StarterPlayer.CharacterWalkSpeed = Config.Movement.RunnerWalkSpeed * Config.Movement.SpeedScale
-	StarterPlayer.CharacterJumpPower = 50 -- RM_05: vaults obstacles <= 4 studs
+	StarterPlayer.CharacterJumpPower = Config.Movement.JumpPower -- RM_05: vaults obstacles <= 4 studs
 end
 
 -- ── Boot ─────────────────────────────────────────────────────────────────────

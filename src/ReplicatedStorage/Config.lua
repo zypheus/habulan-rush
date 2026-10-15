@@ -1,6 +1,8 @@
 --!strict
 -- ReplicatedStorage/Config.lua
--- Single source of truth for ALL tunable values in Habulan Rush.
+-- Owner: Project Owner
+-- Responsibility: immutable shared gameplay and presentation tuning.
+-- Task/spec: T09 movement upgrade Step 1, approved 2026-10-15.
 
 local Config = {}
 
@@ -8,6 +10,11 @@ Config.Movement = {
 	RunnerWalkSpeed   = 16, -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
 	RunnerSprintSpeed = 21, -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
 	SpeedScale = 1.2, -- [SD] approved 2026-10-15; multiplies every movement speed and speed-derived distance (1 = locked bases)
+	JumpPower = 50, -- [SD] existing Bootstrap value moved here without behavior change
+	SprintAccelTime = 0.25, -- [SD] Step 2 target, not live until the sprint ramp lands
+	SprintFovBoost = 10, -- [SD] Step 2 target in degrees, not live until camera ownership is updated
+	FovTweenTime = 0.2, -- [SD] Step 2 target in seconds, not live until camera ownership is updated
+	SprintVfxMinSpeedPct = 0.9, -- [SD] Step 2 target share of effective sprint speed
 	StaminaMax         = 100,
 	StaminaDrainRate   = 20,
 	StaminaRegenRate   = 16, -- [SD] was 12; recharges one dash in ~1.9 s with the 0.6 s delay
@@ -20,8 +27,15 @@ Config.Movement = {
 	DashPounceInvulnTime   = 0.15,
 	DashSoundId            = "rbxassetid://115548807322300", -- [SD] dash whoosh (Pixabay Sound Effects, royalty-free, see ASSET_LOG)
 	DashSoundVolume        = 0.7, -- [SD] dash whoosh volume 0-1
-	SlideDuration     = 1.0, -- [SD] matches the HRush_Slide v4 clip length (was 0.6)
-	SlideCooldown     = 3.0,
+	SlideMinSpeedPct  = 0.85, -- [SD] Step 3 entry threshold as a share of effective sprint speed
+	SlideStartMult    = 1.15, -- [SD] Step 3 target; current slide keeps SlideSpeedMult until rewritten
+	SlideEndMult      = 0.45, -- [SD] Step 3 target speed at natural exit
+	SlideDuration     = 1.0, -- [SD] current value retained; within the 0.9 to 1.1 second target
+	SlideSteerRate    = 12, -- [SD] Step 3 target turn cap in degrees per second
+	SlideCooldown     = 3.0, -- [SD] current behavior retained; Step 3 will tune post-exit cooldown
+	SlideJumpKeepPct  = 0.85, -- [SD] Step 5 target retained speed for a slide-hop
+	SlideCameraDip    = 0.65, -- [SD] Step 3 target camera dip in studs
+	SlideFovKick      = 4, -- [SD] Step 3 target FOV kick in degrees
 	SlideHitboxScale  = 0.5,
 	SlideSpeedMult    = 1.25, -- [SD] aggressive escape entry boost; sign-off pending vs spec + pounce band
 	SlideSteerLock    = true, -- [SD] heading fixed at entry; false = MoveDirection steers mid-slide
@@ -33,9 +47,24 @@ Config.Movement = {
 	SlideDustSize     = 0.7, -- [SD] dust particle start size (studs)
 	SlideSoundId      = "rbxassetid://75817307201002", -- [SD] slide whoosh (see ASSET_LOG)
 	SlideSoundVolume  = 0.7, -- [SD] slide whoosh volume 0-1
-	SprintAnimId = "rbxassetid://92487449831774", -- [SD] published HRush_Sprint (loops while sprinting)
-	SlideAnimId  = "rbxassetid://129414076083716", -- [SD] published HRush_Slide v4 (one-shot per slide)
-	DashAnimId   = "rbxassetid://126630478624602", -- [SD] published HRush_Dash (one-shot, cut at the 0.2s move end)
+	CoyoteTime = 0.10, -- [SD] Step 6 target in seconds
+	JumpBufferTime = 0.12, -- [SD] Step 6 target in seconds
+	AirControlPct = 0.40, -- [SD] Step 6 target share of ground control
+	LandBumpMax = 0.35, -- [SD] Step 7 target maximum camera offset in studs
+	HardLandHeight = 12, -- [SD] Step 7 starting fall-height threshold in studs
+	HardLandPenaltyTime = 0.10, -- [SD] Step 7 target speed-penalty duration in seconds
+	ServerSpeedTolerancePct = 0.15, -- [SD] passive horizontal speed tolerance
+	ServerSampleWindow = 0.25, -- [SD] passive displacement observation window in seconds
+	ServerDisplacementSlack = 2.0, -- [SD] per-window physics and replication slack in studs
+	ServerCorrectionViolationThreshold = 4, -- [SD] reserved for Step 10; correction is disabled in Step 1
+	ServerRequestWindow = 1.0, -- [SD] request rate-limit window in seconds
+	ServerRequestRate = 12, -- [SD] maximum movement requests per window
+	ServerCharacterWaitTimeout = 5.0, -- [SD] bounded respawn dependency wait in seconds
+	ServerDirectionMinMagnitude = 0.05, -- [SD] lower bound for dash direction input
+	ServerDirectionMaxMagnitude = 1.1, -- [SD] upper bound for dash direction input
+	ServerLogViolationThreshold = 1, -- [SD] log the first observation or rejected request
+	ServerLogsEnabled = true, -- [SD] Studio telemetry for Steps 1 to 10; disable for release
+	ServerCorrectionEnabled = false, -- [SD] Step 1 observes and logs only
 	TayaSpeed         = 18, -- [LOCKED GDD TM_01]
 	PostTagSpeedBoostMult     = 1.20,
 	PostTagSpeedBoostDuration = 2.0,
@@ -52,6 +81,49 @@ Config.Movement = {
 		TransparencyIn   = 0.2,
 		LightEmission    = 0.7,
 	},
+}
+
+Config.Animations = { -- [SD] movement animation runtime metadata and original-asset placeholders
+	Markers = {
+		FootstepL = "FootstepL", -- [SD]
+		FootstepR = "FootstepR", -- [SD]
+		SlideStart = "SlideStart", -- [SD]
+		LandImpact = "LandImpact", -- [SD]
+	},
+	Sprint = {
+		Id = "rbxassetid://92487449831774", -- [SD] published original HRush_Sprint
+		Priority = Enum.AnimationPriority.Movement, -- [SD]
+		Looped = true, -- [SD]
+		FadeIn = 0.15, -- [SD]
+		FadeOut = 0.15, -- [SD]
+		SpeedMin = 0.75, -- [SD] Step 2 safe playback range
+		SpeedMax = 1.5, -- [SD] Step 2 safe playback range
+	},
+	SlideLegacy = {
+		Id = "rbxassetid://129414076083716", -- [SD] published original combined HRush_Slide v4
+		Priority = Enum.AnimationPriority.Action, -- [SD]
+		Looped = false, -- [SD]
+		FadeIn = 0.05, -- [SD]
+		FadeOut = 0.10, -- [SD]
+		SpeedMin = 0.75, -- [SD]
+		SpeedMax = 1.5, -- [SD]
+	},
+	Dash = {
+		Id = "rbxassetid://126630478624602", -- [SD] published original HRush_Dash
+		Priority = Enum.AnimationPriority.Action, -- [SD]
+		Looped = false, -- [SD]
+		FadeIn = 0.08, -- [SD]
+		FadeOut = 0.10, -- [SD]
+		SpeedMin = 0.75, -- [SD]
+		SpeedMax = 1.5, -- [SD]
+	},
+	SlideEnter = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 4
+	SlideLoop = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = true, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 4
+	SlideExit = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 4
+	SlideJump = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] optional original for Step 5
+	JumpStart = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 6
+	Fall = { Id = "", Priority = Enum.AnimationPriority.Movement, Looped = true, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 6
+	Land = { Id = "", Priority = Enum.AnimationPriority.Action, Looped = false, FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5 }, -- [SD] publish original in Step 7
 }
 
 -- ============================================================

@@ -185,6 +185,8 @@
   "active": "e733822277f7bdaa",
   "lastOpenFiles": [
     "HabulanRush.rbxlx.lock",
+    "src/ServerScriptService/MovementAuthority.server.lua",
+    "src/ServerScriptService/MovementAuthority.lua",
     "docs/MOVEMENT_AUDIT.md",
     "dev-notes/current-task.md",
     "docs/UPGRADE_REPORT.md",
@@ -197,7 +199,6 @@
     "assets/sfx/batch2",
     "assets/sfx/New folder",
     "assets/sfx/Tag slap.mp3",
-    "assets/sfx/UI toggle.mp3",
     "dev-notes/animation-builders.md",
     "dev-notes/sprint-vfx-trail-design.md",
     "dev-notes/handoffs/2026-10-14-obsidian-setup-complete.md",

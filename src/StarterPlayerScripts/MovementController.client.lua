@@ -1,6 +1,8 @@
 --!strict
--- StarterPlayerScripts/MovementController.lua (LocalScript)
--- Owner: Programmer A
+-- StarterPlayerScripts/MovementController.client.lua
+-- Owner: Project Owner
+-- Responsibility: client input, predicted movement, animation, and presentation.
+-- Task/spec: T09 movement upgrade Step 1, approved 2026-10-15.
 -- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
 --
 -- Responsibilities:
@@ -54,6 +56,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Mv     = Config.Movement   -- shorthand
+local Animations = Config.Animations
 
 -- Sibling module (same Rojo sync): routes one-shot sounds into the SFX group.
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
@@ -69,6 +72,7 @@ local HRP: BasePart  -- HumanoidRootPart
 -- ── Remotes ──────────────────────────────────────────────────────────────────
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestDash = Remotes:WaitForChild("RequestDash") :: RemoteEvent
+local RequestMovementState = Remotes:WaitForChild("RequestMovementState") :: RemoteEvent
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent = Remotes:WaitForChild("TagEvent") :: RemoteEvent
 local RequestSkill = Remotes:WaitForChild("RequestSkill") :: RemoteEvent
@@ -206,6 +210,12 @@ local function clamp(v, lo, hi)
 	return math.max(lo, math.min(hi, v))
 end
 
+local function reportMovementState(action: string, active: boolean)
+	if roundLive then
+		RequestMovementState:FireServer(action, active)
+	end
+end
+
 -- ── Speed management ─────────────────────────────────────────────────────────
 -- Spec §3 + F08: Runner walk 16 / sprint 21. Ex-Taya gets +20% on BOTH base
 -- speeds for 2s (PostTagSpeedBoostMult/Duration); stamina rules unchanged.
@@ -316,6 +326,7 @@ local function updateStamina(dt: number)
 	-- this side only finds and fires it, never creates it.
 	if isSprinting ~= lastSprintSent then
 		lastSprintSent = isSprinting
+		reportMovementState("Sprint", isSprinting)
 		local bridge = ReplicatedStorage:FindFirstChild("SprintVFXState")
 		if bridge and bridge:IsA("BindableEvent") then
 			bridge:Fire(isSprinting)
@@ -527,7 +538,7 @@ end
 -- additionally pcall'd so a torn-down Animator can never wedge movement state.
 local function stopSprintAnim()
 	if sprintTrack and sprintTrack.IsPlaying then
-		sprintTrack:Stop(0.15)
+		sprintTrack:Stop(Animations.Sprint.FadeOut)
 	end
 end
 
@@ -536,7 +547,7 @@ local function stopSlideAnim()
 		local track: AnimationTrack = slideTrack
 		pcall(function()
 			if track.IsPlaying then
-				track:Stop(0.1)
+				track:Stop(Animations.SlideLegacy.FadeOut)
 			end
 		end)
 	end
@@ -546,7 +557,7 @@ local function playSlideAnim()
 	if slideTrack then
 		local track: AnimationTrack = slideTrack
 		pcall(function()
-			track:Play(0.05, 1, 1) -- snap in; clip length matches SlideDuration
+			track:Play(Animations.SlideLegacy.FadeIn, 1, 1) -- snap in; clip length matches SlideDuration
 			-- Fit AFTER play starts (guarded): a re-published clip never overruns
 			-- or gets cut, and a zero Length can never freeze frame 0.
 			local len = track.Length
@@ -616,7 +627,7 @@ local function stopDashAnim()
 		local track: AnimationTrack = dashTrack
 		pcall(function()
 			if track.IsPlaying then
-				track:Stop(0.1)
+				track:Stop(Animations.Dash.FadeOut)
 			end
 		end)
 	end
@@ -626,7 +637,7 @@ local function playDashAnim()
 	if dashTrack then
 		local track: AnimationTrack = dashTrack
 		pcall(function()
-			track:Play(0.08, 1, 1)
+			track:Play(Animations.Dash.FadeIn, 1, 1)
 		end)
 	end
 end
@@ -700,10 +711,11 @@ local function performDash()
 	end
 	moveDir = moveDir.Unit
 
-	-- Notify the server of dash direction for future validation. NOTE: no server
-	-- handler consumes RequestDash yet, so cooldown/round gating is client-side
-	-- only; invuln stays client-predicted while the server owns the pounce verdict.
-	RequestDash:FireServer(moveDir)
+	-- Lobby warm-up remains local. Live-round requests are validated and recorded
+	-- by MovementAuthority while this client keeps prediction for responsiveness.
+	if roundLive then
+		RequestDash:FireServer(moveDir)
+	end
 
 	-- VFX: ribbon on during the glide + one-shot particle burst at the heels.
 	startDashFX()
@@ -770,6 +782,7 @@ local function endSlide()
 	-- Restore exact HipHeight captured at slide start (never assume the default).
 	Humanoid.HipHeight = slideHipHeight
 	isSliding = false
+	reportMovementState("Slide", false)
 	stopSlideAnim()
 	applySpeed()
 	pushAttributes(true)
@@ -844,8 +857,9 @@ local function performSlide()
 		end)
 	end
 	pushAttributes(true)
-	-- NOTE: server is NOT notified (slide is client-predicted; tag validation
-	-- uses rewound server positions per TDD §4.3).
+	reportMovementState("Slide", true)
+	-- Step 1 reports the prediction for server validation. The client keeps its
+	-- current behavior until the Step 3 slide state machine is approved.
 	-- Sprint yields for the whole slide so the loop never fights the one-shot.
 	stopSprintAnim()
 	emitSlideDust()
@@ -871,12 +885,12 @@ local function performSlide()
 		end
 		if t then
 			pcall(function()
-				t:Play(0.05, 1, 1)
+				t:Play(Animations.SlideLegacy.FadeIn, 1, 1)
 			end)
 		end
 		if not slideAnimWarned then
 			slideAnimWarned = true
-			warn("[Slide] animation failed to play (" .. tostring(Mv.SlideAnimId) .. ")")
+			warn("[Slide] animation failed to play (" .. tostring(Animations.SlideLegacy.Id) .. ")")
 		end
 	end)
 end
@@ -911,13 +925,13 @@ local function loadAnimTracks()
 		end
 		return nil
 	end
-	sprintTrack = tryLoad(Mv.SprintAnimId, Enum.AnimationPriority.Movement, true)
-	slideTrack = tryLoad(Mv.SlideAnimId, Enum.AnimationPriority.Action, false)
-	dashTrack = tryLoad(Mv.DashAnimId, Enum.AnimationPriority.Action, false)
+	sprintTrack = tryLoad(Animations.Sprint.Id, Animations.Sprint.Priority, Animations.Sprint.Looped)
+	slideTrack = tryLoad(Animations.SlideLegacy.Id, Animations.SlideLegacy.Priority, Animations.SlideLegacy.Looped)
+	dashTrack = tryLoad(Animations.Dash.Id, Animations.Dash.Priority, Animations.Dash.Looped)
 	if slideTrack == nil then
-		warn("[Slide] failed to load SlideAnimId " .. tostring(Mv.SlideAnimId))
+		warn("[Slide] failed to load animation " .. tostring(Animations.SlideLegacy.Id))
 	end
-	if slideTrack == nil and Mv.SlideAnimId ~= "" then
+	if slideTrack == nil and Animations.SlideLegacy.Id ~= "" then
 		-- Streaming can fail the first load right after spawn. Retry once a
 		-- few seconds later; the guard drops it if a respawn replaced the
 		-- character or the track recovered another way.
@@ -926,9 +940,9 @@ local function loadAnimTracks()
 			if slideTrack ~= nil or Humanoid ~= hum then
 				return
 			end
-			slideTrack = tryLoad(Mv.SlideAnimId, Enum.AnimationPriority.Action, false)
+			slideTrack = tryLoad(Animations.SlideLegacy.Id, Animations.SlideLegacy.Priority, Animations.SlideLegacy.Looped)
 			if slideTrack == nil then
-				warn("[Slide] retry failed for SlideAnimId " .. tostring(Mv.SlideAnimId))
+				warn("[Slide] retry failed for animation " .. tostring(Animations.SlideLegacy.Id))
 			end
 		end)
 	end
@@ -941,12 +955,12 @@ local function tickSprintAnim()
 	if isSprinting and not isSliding and Humanoid then
 		if sprintTrack then
 			if not sprintTrack.IsPlaying then
-				sprintTrack:Play(0.15, 1, 1)
+				sprintTrack:Play(Animations.Sprint.FadeIn, 1, 1)
 			end
 			sprintTrack:AdjustSpeed(math.max(0.1, Humanoid.WalkSpeed / Mv.RunnerSprintSpeed))
 		end
 	elseif sprintTrack and sprintTrack.IsPlaying then
-		sprintTrack:Stop(0.15)
+		sprintTrack:Stop(Animations.Sprint.FadeOut)
 	end
 end
 
@@ -2919,7 +2933,7 @@ LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 task.spawn(function()
 	local ok = pcall(function()
 		local anims: { Animation } = {}
-		for _, id in { Mv.SprintAnimId, Mv.SlideAnimId, Mv.DashAnimId } do
+		for _, id in { Animations.Sprint.Id, Animations.SlideLegacy.Id, Animations.Dash.Id } do
 			if typeof(id) == "string" and id ~= "" then
 				local anim = Instance.new("Animation")
 				anim.AnimationId = id

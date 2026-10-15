@@ -1,7 +1,7 @@
 # Movement System and Animation Audit
 
 Date: 2026-10-15
-Status: Step 0 complete, read-only implementation audit
+Status: Steps 0 and 1 complete; Step 1 live validation pending
 Owner: Project Owner
 Task: T09 movement upgrade audit
 
@@ -9,7 +9,7 @@ Task: T09 movement upgrade audit
 
 This audit compares the current Rojo-mapped movement, camera, input, VFX, server, and animation-authoring code with the proposed movement upgrade. No gameplay code, `Config` value, animation ID, or asset changed in Step 0.
 
-Step 1 is not approved by this audit. It must wait for project-owner review. The separate `Config.Movement.SpeedScale` change from 1.5 to 1.2 was implemented on 2026-10-15 so its effects can be measured before new movement validation limits are added.
+Step 1 was approved by the project owner and implemented on 2026-10-15. It adds configuration, centralized animation metadata, a dedicated server movement state ledger, validated movement requests, rate limits, and passive observation. It does not change movement feel or correct player position.
 
 ## Executive summary
 
@@ -18,7 +18,7 @@ The current controller is a workable client-predicted foundation, but it is not 
 - Sprint changes `Humanoid.WalkSpeed` immediately. It has stamina, FOV, VFX, and an original sprint animation, but no acceleration ramp.
 - Slide is a one-second, constant-speed client sustain. It can start while walking or airborne, has no sprint-speed threshold, no slope response, no steering rate, no early release, and no slide-hop exit.
 - Normal jump, fall, and landing use Roblox defaults or a randomized run-style pack. There is no coyote time, jump buffer, tuned air control, hard-landing penalty, or dedicated original movement animation set.
-- The server does not validate sprint, slide, dash, movement speed, or displacement. `RequestDash` has no server listener and there is no slide request remote.
+- `MovementAuthority` now validates sprint, slide, and dash requests and passively observes speed and displacement. Client prediction still moves the character, and server correction remains disabled until the envelope is proven in Studio.
 - The existing sprint and slide authoring work is useful. `HRush_Sprint` already matches much of the desired silhouette, while the combined `HRush_Slide` clip can guide the new Enter, Loop, and Exit clips.
 - Camera effects are spread across SprintVFX, MovementController, TargetLockController, and lobby code. A slide camera effect should not be added until those writers have an explicit priority and restoration contract.
 - Published sprint, slide, and dash animation IDs are active but are not recorded in `ASSET_LOG.md`. This is a release compliance blocker.
@@ -150,9 +150,9 @@ RunStyleService uses Roblox catalog animation IDs for Elder, Pirate, Toy, and Ni
 
 ### Critical
 
-1. Movement speed and position are client-owned. The client writes `WalkSpeed`, `AssemblyLinearVelocity`, and dash `CFrame`; the server has no speed ceiling, state allowance, displacement window, or correction path.
-2. Slide has no request or server ledger. A client can ignore cooldown, remain sliding, choose any speed, fake grounding, or omit the reduced profile with no authoritative consequence.
-3. `RequestDash` exists and is fired, but no server script listens to it. Dash cooldown, distance, stamina cost, and the claimed pounce-invulnerability window are not server-owned.
+1. Movement remains client-predicted. `MovementAuthority` observes speed and displacement but intentionally does not correct position in Step 1.
+2. The server owns a slide request ledger and validates cooldown, grounding, role, match state, and observed speed. The current client slide still uses its legacy behavior until Step 3.
+3. `RequestDash` now has server validation and a cooldown ledger. The client still performs the predicted dash without waiting for approval, and authoritative pounce interaction remains future TagService work.
 
 ### High
 
@@ -196,7 +196,7 @@ The first authority implementation should log and correct repeated violations. I
 The requested ten-step order is viable with these adjustments:
 
 1. Completed on 2026-10-15: apply the separate approved `SpeedScale` 1.2 balance item. Live 2-player validation is still required before using the effective speeds as the final validation baseline.
-2. Step 1: add `Config.Animations`, the new `Config.Movement` values, a server-owned movement state ledger, request validation, logging, and passive speed/displacement observation. Do not correct movement aggressively yet.
+2. Completed on 2026-10-15: added `Config.Animations`, new `Config.Movement` values, a server-owned movement state ledger, request validation, logging, and passive speed/displacement observation. Correction remains disabled.
 3. Step 2: add sprint ramp and reuse SprintVFX after fixing scale normalization and the 90 percent gate. Improve the existing sprint source instead of replacing it.
 4. Step 3: replace slide constant sustain with entry, decay, steering, ground, slope, cooldown-after-exit, and camera state. Preserve existing dust, sound, and HipHeight restoration patterns.
 5. Step 4: split the current slide source into Enter, Loop, and Exit sequences. Drive transitions from the slide state, not independent timers.
@@ -209,9 +209,9 @@ The requested ten-step order is viable with these adjustments:
 
 Vault, mantle, chase catch-up, and sprint stamina redesign remain proposal-only. Existing stamina stays unless separately approved.
 
-## Proposed Step 1 scope for approval
+## Implemented Step 1 scope
 
-Step 1 should be a scaffold only. It should not alter movement feel.
+Step 1 is a scaffold only. It does not alter movement feel.
 
 ### Config.Movement additions
 
@@ -256,28 +256,34 @@ Create one table for IDs, priorities, loop flags, fade times, safe playback-spee
 - Log first violations with a threshold and reason. Start correction only after the allowed envelope is proven in Studio.
 - Clear state on death, respawn, leave, round transition, role change, and stun.
 
-The server owner and exact canonical path must be approved before editing. `TagService` is currently a stub but owns tag and pounce, while a dedicated movement authority module would give movement validation a clearer lifecycle. This is an ownership decision, not an implementation detail to guess.
+Implementation notes:
 
-## Step 0 Studio test checklist
+- `RequestMovementState` accepts only `Sprint` or `Slide` with a boolean active flag. `RequestDash` keeps its finite, bounded direction argument.
+- The server derives role, match membership, character state, grounding, speed limits, cooldowns, and displacement limits from server-visible state and Config.
+- Server attributes expose `HRushMovementState`, `HRushServerSliding`, `HRushServerDashing`, and the observation count for later TagService and Studio inspection.
+- `ServerCorrectionEnabled` is false. Step 1 logs the first violation per reason and never bans or repositions a player.
+- Legacy sprint, slide, dash, and jump behavior remains unchanged. Future tuning keys are present but stay unused until their approved implementation steps.
 
-Step 0 changed documentation only, so no Studio test is required for acceptance. Use this checklist to reproduce the audit before approving Step 1:
+The project owner approved a dedicated module at `src/ServerScriptService/MovementAuthority.lua` with `MovementAuthority.server.lua` as its thin bootstrap. `TagService` remains responsible for tag and pounce authority.
 
-1. Start a two-player Clients and Servers test.
-2. Observe walk, sprint, and Taya speeds at the current 1.2 scale.
-3. Hold L2 while moving the left stick below and above 0.8 magnitude. Confirm whether sprint drops below the threshold.
-4. Attempt slide while walking, while sprinting, while airborne, and on a slope.
-5. During slide, release C, press Space, and change direction. Record which inputs affect the slide.
-6. Watch HRush_Sprint and HRush_Slide from the other client. Check for default run-track blending and animation replication.
-7. Toggle Reduced Camera and verify sprint FOV returns cleanly.
-8. Use target lock, sprint, and RS_03 aim in sequence. Check for FOV or CameraType restoration jumps.
-9. On a phone emulator, inspect the generated sprint, dash, slide, skill, default jump, and thumbstick controls for labels and overlap.
-10. Confirm the server has no `RequestDash` listener and no slide request or speed warning in Server Output.
+## Step 1 Studio test checklist
+
+1. Open the newly generated place and start a two-player Clients and Servers test.
+2. Confirm Server Output has no MovementAuthority startup assertion or runtime error.
+3. Inspect each player for `HRushMovementState`, `HRushServerSliding`, `HRushServerDashing`, and `HRushMovementViolations`.
+4. Sprint as a Runner and confirm the server state changes from `Walk` to `Sprint` and back without changing movement feel.
+5. Slide while sprinting and grounded. Confirm the state changes to `Slide`, then returns to `Walk` on exit.
+6. Attempt a walking or airborne slide. The legacy client may still predict it, but the server must reject the request, log the reason once, and never reposition the player.
+7. Dash once, then attempt another dash before cooldown. Confirm the first records `Dash` and the second records a cooldown violation without changing prediction.
+8. Walk, sprint, collide, jump, and move on slopes normally. Record any false speed or displacement warning.
+9. Test death, respawn, tag role change, stun, and round end. Confirm server movement state and cooldowns clear.
+10. Confirm `ServerCorrectionEnabled` is false and no test causes a server position snap.
 
 ## Known risks and blockers
 
-- Step 1 would add `[SD]` values and authority behavior, so it requires explicit project-owner approval.
+- Step 1 has project-owner approval and is implemented. Its live two-player validation remains pending.
 - The implemented `SpeedScale` change affects every speed ceiling and speed-derived distance. Its live 2-player validation remains pending, and it must stay separate from the movement upgrade.
-- TagService and server movement authority ownership must be decided before implementation.
+- Movement authority now has a dedicated canonical module. TagService integration for slide profile and pounce remains future work.
 - Published movement animation provenance is incomplete in `ASSET_LOG.md`.
 - Existing run-style animation IDs also need competition eligibility review.
 - No automated gameplay tests, lint, or CI exist. Syntax, Rojo build, and live two-player tests are required for implementation steps.

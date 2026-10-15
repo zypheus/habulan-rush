@@ -23,6 +23,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 |---|---|---|---|
 | PartyService | `src/ServerScriptService/PartyService.lua` | Party membership, leader actions, and party locks | Project Owner |
 | MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, roles, timer, scoring, and temporary tag path | Project Owner |
+| MovementAuthority | `src/ServerScriptService/MovementAuthority.lua` | Server movement state, request validation, cooldowns, and passive speed/displacement observation | Project Owner |
+| MovementAuthority bootstrap | `src/ServerScriptService/MovementAuthority.server.lua` | Starts the MovementAuthority lifecycle | Project Owner |
 | TagService | `src/ServerScriptService/TagService.server.lua` | Planned canonical tag, safe-window, pounce, and rewind authority | Project Owner |
 | SkillService | `src/ServerScriptService/SkillService.server.lua` | Skill validation, cooldown ledger, RS_03 hit simulation, and stuns | Project Owner |
 | EventService | `src/ServerScriptService/EventService.server.lua` | Planned round event authority | Project Owner |

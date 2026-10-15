@@ -7,6 +7,12 @@
       "skillPath": "skills/disciplines/camera-systems/SKILL.md",
       "computedHash": "1f44b2163b2100583fe3f82300e759936045393fbefc7c058d3b9a7d1ad7ec85"
     },
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "71b600c88c8d1d36f18c4875db23b53c5d6cb9ba3195e19451d6b1bb67db07c4"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",

@@ -25,6 +25,7 @@
         "RequestPounce":   { "$className": "RemoteEvent" },
         "RequestSkill":    { "$className": "RemoteEvent" },
         "RequestDash":     { "$className": "RemoteEvent" },
+        "RequestMovementState": { "$className": "RemoteEvent" },
         "PickSkill":       { "$className": "RemoteEvent" },
         "ActivateDiskarte":{ "$className": "RemoteEvent" },
         "StateChanged":    { "$className": "RemoteEvent" },
@@ -57,6 +58,12 @@
       },
       "MatchService": {
         "$path": "src/ServerScriptService/MatchService.server.lua"
+      },
+      "MovementAuthority": {
+        "$path": "src/ServerScriptService/MovementAuthority.lua"
+      },
+      "MovementAuthorityBootstrap": {
+        "$path": "src/ServerScriptService/MovementAuthority.server.lua"
       },
       "TagService": {
         "$path": "src/ServerScriptService/TagService.server.lua"
