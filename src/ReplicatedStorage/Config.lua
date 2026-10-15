@@ -7,7 +7,7 @@ local Config = {}
 Config.Movement = {
 	RunnerWalkSpeed   = 16, -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
 	RunnerSprintSpeed = 21, -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
-	SpeedScale = 1.5, -- [SD] multiplies every movement speed and speed-derived distance (1 = locked bases)
+	SpeedScale = 1.2, -- [SD] approved 2026-10-15; multiplies every movement speed and speed-derived distance (1 = locked bases)
 	StaminaMax         = 100,
 	StaminaDrainRate   = 20,
 	StaminaRegenRate   = 16, -- [SD] was 12; recharges one dash in ~1.9 s with the 0.6 s delay

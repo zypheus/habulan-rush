@@ -4,14 +4,15 @@ type: index
 status: approved
 owner: team
 task: none
-updated: 2026-10-14
+updated: 2026-10-15
 source: AGENTS.md
 related:
   - ../AGENTS.md
+  - ./current-task.md
   - ../.gemini/TASK.md
 ---
 
-Start here. This folder holds working notes. The repo stays the single source of truth. New to Obsidian here? Read [obsidian-setup-guide](./obsidian-setup-guide.md) first.
+Start here. This folder holds working notes. The repo stays the single source of truth. Resume work from [current task](./current-task.md). New to Obsidian here? Read [obsidian-setup-guide](./obsidian-setup-guide.md) first.
 
 ## Research guides
 
@@ -39,7 +40,7 @@ Start here. This folder holds working notes. The repo stays the single source of
 
 ## Live tracker
 
-The live task tracker is `.gemini/TASK.md`. There is no second tracker. Obsidian hides dot-folders, so the tracker is edited in the code editor, never in Obsidian. Open it by path: `.gemini/TASK.md`. Architecture notes live next to it at `.gemini/PLANNING.md`.
+The live tracker is [current task](./current-task.md). It is short, Obsidian-visible, and updated after every approved item. `.gemini/TASK.md` is the historical production backlog. Architecture notes remain at `.gemini/PLANNING.md` until a separate architecture cleanup is approved.
 
 ## Subfolders
 - [decisions](./decisions/): one note per decision, with approver and affected values.
@@ -50,7 +51,7 @@ The live task tracker is `.gemini/TASK.md`. There is no second tracker. Obsidian
 
 ## How we work
 
-1. Read `.gemini/TASK.md` and the latest note in [handoffs](./handoffs/).
+1. Read [current task](./current-task.md) and the latest relevant note in [handoffs](./handoffs/).
 2. Edit code under `src/`. Never edit scripts inside Studio.
 3. Rebuild with Rojo and reopen the place before testing.
 4. Test in Studio. Record results in a [playtests](./playtests/) note.

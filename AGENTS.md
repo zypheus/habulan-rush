@@ -1,70 +1,91 @@
 # AGENTS.md
 
-## Overview
-Habulan Rush is a competitive Roblox playground chase game (Filipino "habulan"/tag) built for the Level Up 3.0 Esports Game Dev Challenge. Players draft skills, the tagged player becomes the Taya (chaser), and the lowest cumulative Taya time wins.
+## Project
 
-## Tech Stack
-- Roblox, Luau (all source files start with `--!strict`).
-- Rojo 7.7.1 for build. Installed at `%LOCALAPPDATA%\rojo-bin\rojo.exe` (not on PATH).
-- No package manager, no linter, no formatter, no test framework, no CI yet.
+Habulan Rush is a competitive Roblox playground chase game for the Level Up 3.0 Esports Game Dev Challenge. Players draft skills, the tagged player becomes the Taya, and the lowest cumulative Taya time wins.
 
-## Project Structure
-- `src/ReplicatedStorage/`: `Config.lua` (single source of truth for all values) and `TagRules.lua` (shared tag rules).
-- `src/ServerScriptService/`: Server services (MatchService, TagService, SkillService, EventService, Bootstrap).
-- `src/StarterPlayerScripts/`: Client controllers (Movement, TargetLock, UI, LobbyUI).
-- `assets/`: `Map.rbxmx`, mapped into Workspace by Rojo (build input).
-- `md-doc/`: Markdown design docs (GDD, System Spec, TDD, Balance Workbook, UI/UX Spec).
-- `Habulan_Rush_Docs/`: Same design docs as .docx/.pdf/.xlsx originals.
-- `.agents/skills/`: Installed agent skills. `.gemini/`: PLANNING.md and live TASK.md.
-- Root: `default.project.json` (Rojo), `DESIGN_LOCK.md`, `MODULE_OWNERSHIP.md`, `AI_LOG.md`, `ASSET_LOG.md`.
+Codex is the primary coding agent. Other agents and Roblox Studio MCP may assist, but this repository is the source of truth.
 
-## Commands
-- Build the place (run from the repo root): `rojo build default.project.json -o HabulanRush.rbxlx`
-  If `rojo` is not on PATH, use `%LOCALAPPDATA%\rojo-bin\rojo.exe` in place of `rojo`.
-- Run, test, lint: none automated yet. Testing is manual in Roblox Studio (Test tab -> Clients and Servers -> 2 players). No automated tests or lint exist yet.
+## Start Here
+
+1. Read `dev-notes/current-task.md` for Current, Next, Blockers, Decisions, and Validation.
+2. Read `MODULE_OWNERSHIP.md` before editing a service or controller.
+3. Read only the relevant locked rules and design sections.
+4. Load agent skills from `.agents/skills/` only when the task needs them.
+
+`.gemini/TASK.md` is the historical production backlog. It is not the live resume state.
+
+## Stack and Commands
+
+- Roblox and Luau. New or edited Luau files must start with `--!strict`.
+- Rojo 7.7.1 is installed at `%LOCALAPPDATA%\rojo-bin\rojo.exe` and may not be on PATH.
+- Build from the repository root:
+  `%LOCALAPPDATA%\rojo-bin\rojo.exe build default.project.json -o HabulanRush.rbxlx`
+- Parse Luau syntax: `powershell -ExecutionPolicy Bypass -File scripts/check-syntax.ps1`
+- Check Obsidian notes: `powershell -ExecutionPolicy Bypass -File scripts/check-notes.ps1`
+- Automated gameplay tests, lint, and CI do not exist yet.
+- Manual test: Roblox Studio, Test tab, Clients and Servers, at least 2 players.
+
+## Source Map
+
+- `src/ReplicatedStorage/`: shared `Config`, tag rules, arc math, VFX, cosmetics, and remotes.
+- `src/ServerScriptService/`: match, tag, skill, event, party, run-style, and bootstrap code.
+- `src/StarterPlayerScripts/`: movement, target lock, HUD, lobby, map vote, audio, settings, music, and VFX clients.
+- `assets/`: Rojo place inputs and local source assets.
+- `tools/AnimationDev/`: original R15 animation authoring tools.
+- `md-doc/`: canonical design documents.
+- `dev-notes/`: Obsidian working notes, current task, decisions, playtests, and handoffs.
+- `docs/`: audits and reports for agents and the project owner.
+
+`default.project.json` decides which source files Rojo builds. Do not assume a similarly named file is mapped.
 
 ## Coding Rules
-- Check `MODULE_OWNERSHIP.md` before editing any service. Only the assigned owner merges changes to their module.
-- Every gameplay number comes from `ReplicatedStorage/Config`. Never hardcode a balance value, timing, or skill spec elsewhere. Never write to Config at runtime.
-- Mark Config values `[LOCKED]` (from DESIGN_LOCK.md) or `[SD]` (spec default) in a comment.
-- Split logic from entry point: logic in a `ModuleScript` (`Name.lua`); a thin shim (`Name.server.lua` or `Name.client.lua`) requires it and calls `:Init()` / `:Destroy()`.
-- One service per file. No monolith files.
-- Server owns truth, client owns input. The server validates every tag, pounce, and skill; never trust client aim or position.
-- Client UI reads server-set `Player` attributes (`HRush*`) and `ReplicatedStorage/Remotes` RemoteEvents. Prefix action/attribute names `HRUSH_` / `HR`.
-- Name services, modules, and remotes PascalCase. Locals and functions camelCase.
-- Every file starts with `--!strict` and a header comment giving path, Owner, Responsibility, and task/spec references.
-- Tag debug prints `[ServiceName]`, debug-only (private lobby / debug mode).
-- Any merge must pass a live 2-player test before pushing.
 
-## Skills
-- `roblox-luau`: building or debugging Roblox Luau scripts, services, RemoteEvents, client vs server.
-- `roblox-architecture`: assigning feature ownership, code location, client-server boundaries, startup order.
-- `roblox-networking`: validating RemoteEvent args, rate limits, server-authoritative design, anti-exploit.
-- `roblox-tooling`: configuring Rojo, Wally, Selene, StyLua, Lune, luau-lsp, CI/CD.
-- `game-feel`: adding juice (screen shake, hit-stop, easing, squash and stretch, feedback polish).
-- `camera-systems`: follow cameras, deadzone, look-ahead, smoothing, third-person orbit, camera shake.
-- `level-design`: greybox/blockout, player metrics, pacing, gating, encounter design.
-- `ponytail`: smallest-change lazy senior dev mode on any coding task.
-- `find-skills`: discovering and installing new agent skills.
+- `Config.lua` is the single source of truth for gameplay and presentation values. Never write to it at runtime.
+- Mark values `[LOCKED]` or `[SD]` in comments. Locked changes require project-owner approval.
+- The server owns match state, roles, tags, pounce, skill approval, hits, cooldowns, scoring, and saved data.
+- The client owns input, prediction, camera, UI, audio, and cosmetic VFX. Never trust client aim, position, role, cooldown, or hit claims.
+- Validate remote types, finite numbers, state, role, membership, distance, cooldown, and rate limits on the server.
+- Prefer a ModuleScript for logic and a thin `.server.lua` or `.client.lua` entry point when splitting or creating a system.
+- Use PascalCase for services, modules, and remotes. Use camelCase for locals and functions.
+- New or edited Luau files need a header with path, owner, responsibility, and task/spec reference.
+- Prefix Roblox actions and attributes with `HRUSH_` and `HR` as established by the project.
+- Debug prints must be tagged, gated, and disabled for release.
 
-## Workflow
-- Work in small, reviewed steps. Read `.gemini/TASK.md` first, update it when done.
-- Explain changes in plain English. Run the Rojo build before saying done; testing stays manual in Studio.
-- Log AI work in `AI_LOG.md` and any new assets in `ASSET_LOG.md`.
+## Assets and Competition Rules
+
+- Original assets or assets with explicit competition-safe licenses only.
+- No unauthorized Toolbox models or audio.
+- No monetization or Robux transactions.
+- Log every model, texture, animation, and audio asset in `ASSET_LOG.md` before release use.
+- Keep `AI_LOG.md` current for Form 03.
+
+## Studio and MCP
+
+- Roblox Studio MCP may be used for any feature, inspection, automation, or test.
+- Source edits still happen in this repository. Do not treat Studio script edits as canonical.
+- Do not hand-edit `HabulanRush.rbxlx`; it is generated by Rojo.
+
+## Definition of Done
+
+- The project owner approved the scope and any locked-value change.
+- The assigned owner approved every touched module.
+- Relevant syntax and notes checks pass.
+- The Rojo build passes.
+- A relevant 2-player Studio test passes before pushing gameplay changes.
+- Mobile or gamepad behavior is checked for input, UI, camera, or VFX changes.
+- `dev-notes/current-task.md` records completed work, exact next step, blockers, and validation.
+- `AI_LOG.md` is updated, and `ASSET_LOG.md` is updated when assets are involved.
+- A playtest or handoff note is added when the session produces relevant evidence or unfinished work.
+- The final diff contains only the approved item.
 
 ## Do Not
-- Do not import unauthorized Toolbox models or audio. Original or explicitly competition-licensed assets only; log every one in `ASSET_LOG.md`.
-- Do not add monetization or Robux transactions.
-- Do not hand-edit `HabulanRush.rbxlx`; it is generated by the Rojo build.
-- Do not edit scripts inside Roblox Studio; edit `src/` and rebuild, or the change is lost.
-- Do not change locked values in `DESIGN_LOCK.md` / `Config` without team sign-off.
-- Do not modify files in `.agents/skills/`.
 
-## Docs
-- Design baseline: `md-doc/` (GDD, System Specification, Technical Design Document, Balance Workbook, UI/UX Specification, Art and Audio Bible).
-- Working notes: `dev-notes/00-index.md` (Obsidian vault root, docs only; canonical docs stay in `md-doc/`).
-- Locked rules: `DESIGN_LOCK.md`. Ownership: `MODULE_OWNERSHIP.md`. Architecture: `.gemini/PLANNING.md`. Live tasks: `.gemini/TASK.md`.
-- Compliance: `AI_LOG.md` (Form 03) and `ASSET_LOG.md` (Rule B.6).
+- Do not change game code outside the approved item.
+- Do not change locked values without project-owner sign-off.
+- Do not edit files in `.agents/skills/`.
+- Do not hide missing, untested, or unclear behavior. Record it as a blocker.
 
 ## Writing Style
-Plain, direct sentences. No em dashes, no filler.
+
+Use plain, direct sentences. Do not use em dashes or filler.

@@ -1,5 +1,9 @@
 # Habulan Rush — Master Production Task Tracker
 
+> Historical production backlog. The live Codex and Obsidian resume state is
+> `dev-notes/current-task.md`. Update this file only when a production backlog
+> checkbox or its evidence changes. Do not use it to infer the current session.
+
 Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Production_and_Launch_Plan.md`, `Habulan_Rush_System_Specification.md`, and `Habulan_Rush_Technical_Design_Document.md`.
 
 ---
@@ -31,6 +35,7 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [x] Set network rewind parameters (`RewindDefault = 0.12s`, `RewindMax = 0.20s`).
 - [x] (2026-10-07) **T05 [Management/P0] Module Ownership & Team Assignments**
   - [x] Assign module leads across MatchService, TagService, SkillService, UIController, MovementController. → `MODULE_OWNERSHIP.md`
+  - [x] (2026-10-15) Canonicalized every Rojo-mapped path for the sole-maintainer workflow and removed nine confirmed unmapped duplicate source files.
 - [x] (2026-10-07) **T06 [Management/P0] Asset Sourcing & License Protocol**
   - [x] Establish asset review protocol in `ASSET_LOG.md` to ensure no unlicensed Toolbox models or audio are imported.
 
@@ -52,7 +57,8 @@ Generated from `md-doc/Habulan_Rush_Production_Tracker.md`, `Habulan_Rush_Produc
   - [x] Implement Dash (12 studs in 0.2s, 6s cooldown, sends `RequestDash`).
   - [x] Implement Slide (1.0s, 3s cooldown, 50% hitbox height; HRush_Slide v4 authored, Studio preview + publish pending).
   - [x] Implement control bindings for PC, Touch/Mobile, and Gamepad.
-  - [ ] (2026-10-11) SpeedScale experiment: Config.Movement.SpeedScale routes every speed (walk/sprint/Taya/slide-entry/dash/RS_01/remote-gate/trail-caps/line-drift); locked bases 16/21/18 untouched; currently 1.5 (walk 24, sprint 31.5, Taya 27); team sign-off + 2-player playtest pending.
+  - [x] (2026-10-15) Movement upgrade Step 0 audit completed in `docs/MOVEMENT_AUDIT.md`; no gameplay values, code, animation IDs, or assets changed. Step 1 awaits project-owner approval.
+  - [x] (2026-10-15) SpeedScale set to 1.2 with project-owner approval. Locked bases 16/21/18 remain unchanged; effective walk/sprint/Taya speeds are 19.2/25.2/21.6. All canonical consumers were audited; syntax, notes, and Rojo build passed. Live 2-player playtest remains pending.
 - [ ] (2026-10-10) **T10 [Code/P0] Taya Timer & Scoreboard Replication**
   - [ ] Implement server-authoritative tenths-of-a-second Taya Time accumulator.
   - [ ] Replicate round timer and player rankings via `StateChanged`.
