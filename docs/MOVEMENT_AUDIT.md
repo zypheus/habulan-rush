@@ -1,7 +1,7 @@
 # Movement System and Animation Audit
 
-Date: 2026-10-15
-Status: Steps 0 and 1 complete; animation Batch B implemented; live gameplay validation pending
+Date: 2026-10-16
+Status: Steps 0 and 1 complete; Batch D Vault implemented, published, and wired; two-player validation pending
 Owner: Project Owner
 Task: T09 movement upgrade audit
 
@@ -182,7 +182,7 @@ There are no runtime marker listeners. Footsteps and dust still use traveled dis
 
 ### Authoring tool
 
-Batch 0 rebuilt `HRush_AnimDev.lua` around one `AnimationSpecs` table. All 21 requested production animations have their own entry with name, loop flag, priority, duration, keyframes, and markers. Batches A and B fill 11 entries with newly authored original pose data. The other 10 production keyframe arrays remain empty until their assigned batch.
+Batch 0 rebuilt `HRush_AnimDev.lua` around one `AnimationSpecs` table. All 21 requested production animations have their own entry with name, loop flag, priority, duration, keyframes, and markers. Batches A through D fill 13 entries with newly authored original pose data. The other eight production keyframe arrays remain empty until their assigned batch.
 
 The builder now:
 
@@ -245,7 +245,7 @@ The first authority implementation should log and correct repeated violations. I
 | Coyote time and jump buffer | Missing | Add around the default jump request. Do not reuse RS_01 `IsAirborne`, which means skill immunity |
 | Air control | Default Roblox behavior | Requires a deliberate movement implementation and multiplayer validation. Avoid per-frame velocity fights with RS_01 |
 | Landing response | Missing for normal jump | Track fall start and landing on the local client for presentation, with server limits only for any speed penalty |
-| Original movement animation set | Partial | Batches A and B author Walk, Sprint, Dash, JumpStart, Fall, Land, LandHard, and the four slide states. The remaining 10 clips stay batch-gated |
+| Original movement animation set | Partial | Batches A through D author Walk, Sprint, Dash, JumpStart, Fall, Land, LandHard, the four slide states, Roll, and Vault. The remaining eight clips stay batch-gated |
 | Procedural lean and head look | Missing | Add last, on top of stable authored states. It must not fight target lock, aim camera, or animation Motor transforms |
 | Mobile auto-sprint and safe buttons | Missing | Replace default unnamed touch actions with a deliberate layout and test against Roblox jump and thumbstick zones |
 | Rebindable gamepad | Missing | Move bindings to config or a client binding table only after the final action map is approved |
@@ -256,8 +256,8 @@ The first authority implementation should log and correct repeated violations. I
 1. Batch 0, implemented on 2026-10-15: data-driven authoring, validation, placeholder metadata, and preview workflow.
 2. Batch A, implemented on 2026-10-15: newly authored Walk, Sprint, JumpStart, Fall, Land, and LandHard.
 3. Batch B, implemented on 2026-10-15: newly authored SlideEnter, SlideLoop, SlideExit, SlideJump, and Dash.
-4. Batch C: propose and, only after approval, implement roll with a newly authored Roll clip.
-5. Batch D: propose and, only after approval, implement vault with a newly authored Vault clip.
+4. Batch C, implemented and published on 2026-10-16: landing-input Roll with a newly authored Roll clip. Two-player validation remains pending.
+5. Batch D, implemented and published on 2026-10-16: automatic low-obstacle Vault with a newly authored Vault clip. Published metadata is verified; two-player authority validation remains pending.
 6. Batch E: author the climb set and implement climb only after map-route and mechanic approval.
 7. Batch F: author swing and zipline sets only after supporting map pieces and mechanic approval.
 
@@ -299,7 +299,7 @@ Existing keys that need a migration decision:
 
 ### Config.Animations additions
 
-Batch 0 expanded the table to every requested movement animation. Batch A and B now supply 11 published IDs. The other 10 entries use explicit `REPLACE_ME_HRush_*` values. The Sprint and Dash `FallbackId` fields and `SlideLegacy` entry are removed. Runtime loading accepts only numeric `rbxassetid://` strings, so placeholders never reach `LoadAnimation` or preload.
+Batch 0 expanded the table to every requested movement animation. Batches A through D now supply 13 published IDs. The eight later entries use explicit `REPLACE_ME_HRush_*` values. The Sprint and Dash `FallbackId` fields and `SlideLegacy` entry are removed. Runtime loading accepts only numeric `rbxassetid://` strings, so placeholders never reach `LoadAnimation` or preload.
 
 ### Server scaffold
 
@@ -312,11 +312,11 @@ Batch 0 expanded the table to every requested movement animation. Batch A and B 
 
 Implementation notes:
 
-- `RequestMovementState` accepts only `Sprint` or `Slide` with a boolean active flag. `RequestDash` keeps its finite, bounded direction argument.
+- `RequestMovementState` accepts `Sprint`, `Slide`, `Roll`, or `Vault` with a boolean active flag. Vault adds one finite, bounded horizontal direction; `RequestDash` keeps its separate direction argument.
 - The server derives role, match membership, character state, grounding, speed limits, cooldowns, and displacement limits from server-visible state and Config.
-- Server attributes expose `HRushMovementState`, `HRushServerSliding`, `HRushServerDashing`, and the observation count for later TagService and Studio inspection.
+- Server attributes expose `HRushMovementState`, `HRushServerSliding`, `HRushServerDashing`, `HRushServerRolling`, `HRushServerVaulting`, and the observation count for later TagService and Studio inspection.
 - `ServerCorrectionEnabled` is false. Step 1 logs the first violation per reason and never bans or repositions a player.
-- Legacy sprint, slide, dash, and jump behavior remains unchanged. Future tuning keys are present but stay unused until their approved implementation steps.
+- Roll and Vault are the approved mechanics beyond the scaffold. Other future tuning keys stay unused until their approved implementation steps.
 
 The project owner approved a dedicated module at `src/ServerScriptService/MovementAuthority.lua` with `MovementAuthority.server.lua` as its thin bootstrap. `TagService` remains responsible for tag and pounce authority.
 
@@ -374,15 +374,42 @@ The project owner approved a dedicated module at `src/ServerScriptService/Moveme
 - A fresh-build Studio probe loaded and played all 11 IDs. Ten assets matched the authored duration, loop flag, priority, and keyframe count.
 - The supplied Fall ID `rbxassetid://106234834891508` repeatedly returned a 0.25-second, Action, non-looping, five-keyframe clip. The authored source is 0.60 seconds, Movement, looping, and five keyframes. The project owner confirmed the ID is correct; recheck this metadata difference when Fall receives a live state owner.
 
+## Animation and mechanic Batch C validation
+
+- `Config.Movement` now owns `RollWindow = 0.15`, `RollDuration = 0.45`, and `RollSpeedBonus = 0.10`.
+- The existing slide action starts Roll when pressed during the final configured pre-landing window. Keyboard C, gamepad ButtonR1, and the existing touch slide action share this path, so no new mobile button was added.
+- Roll preserves the accepted horizontal direction and momentum, adds 10 percent of effective Runner sprint speed, lasts 0.45 seconds, and grants no tag or pounce invulnerability.
+- `MovementAuthority` validates match state, role, alive character, stun state, conflicting movement state, request rate, and a server-observed prompt landing. A short pending request closes the client/server `FloorMaterial` replication race without trusting a client landing claim.
+- Client prediction also checks both the Humanoid state transition and grounded `FloorMaterial`, because those signals can settle in either order.
+- Roll cancels on stun, role change, round end, death, respawn, or a new jump or freefall transition. Sprint, Slide, Dash, and skill entry are gated while Roll is active.
+- `HRush_Roll` uses seven keyframes over 0.45 seconds, Action priority, non-looping, and `RollImpact` at 0.14 seconds. Normal, 0.25-speed, and scrubbed preview checks passed.
+- A fresh-build solo client/server test reproduced both landing replication races, verified the fixes, then observed client Roll and server Roll in the same attempt with zero authority violations. The server returned to `Walk` after the configured duration.
+- `Config.Animations.Roll.Id` is `rbxassetid://97323662606589`. Studio loaded and played it with 0.45-second, Action, non-looping metadata.
+- The repository syntax check, Rojo build, and diff whitespace check pass. The required two-player, gamepad, mobile, and published-animation replication checks remain pending.
+
+## Animation and mechanic Batch D validation
+
+- `Config.Movement` owns all Vault values, including the 3.5-stud height cap, 60 percent entry threshold, 90 percent retained speed, 0.40-second duration, probes, clearance, travel cap, and cooldown.
+- Vault contact is automatic, so keyboard, gamepad, and touch share the same path and no mobile button or new remote was added.
+- The client predicts a short upright parabolic root arc. It can enter from walk, sprint, dash, jump or fall, and slide states, but never Roll or an active skill flight. Stun, role change, round end, death, and respawn cancel it.
+- The server validates membership, round state, role, character, stun, skill state, request rate, cooldown, finite direction, direction agreement, recent server-observed speed, knee contact, high-body clearance, obstacle top, 3.5-stud cap, travel cap, and landing ground.
+- Ground-relative probes avoid false rejection from avatar-specific HipHeight. A short server-observed velocity window avoids rejecting legitimate client prediction after it freezes velocity for the scripted arc.
+- `HRush_Vault` uses seven keyframes over 0.40 seconds, Action priority, non-looping, `VaultPlant` at 0.10 seconds, and `VaultClear` at 0.26 seconds. `validateAll()` passed and `buildAll(false)` produced 13 completed production sequences.
+- Normal playback reached 0.171 seconds. Quarter-speed playback reached 0.104 seconds after 0.40 seconds with a 0.400-second track length. Plant, swing, and clear silhouettes were visually reviewed on an AnimationConstraint R15 rig.
+- Fresh runtime testing found and fixed the client controller's Luau 200-register limit, then loaded and attached the controller successfully.
+- A local Kalsada test automatically cleared an exact 3.5-stud crate. The first live-round authority attempt exposed the velocity replication race described above. The final server-acceptance retest and required two-player test remain pending because Studio closed.
+- `Config.Animations.Vault.Id` is `rbxassetid://88476053772200`, supplied by the project owner and recorded in `ASSET_LOG.md`. Studio verified seven keyframes, 0.40-second duration, Action priority, and non-looping metadata. Replication checks remain pending.
+
 ## Known risks and blockers
 
 - Step 1 has project-owner approval and is implemented. Its live two-player validation remains pending.
 - The implemented `SpeedScale` change affects every speed ceiling and speed-derived distance. Its live 2-player validation remains pending, and it must stay separate from the movement upgrade.
 - Movement authority now has a dedicated canonical module. TagService integration for slide profile and pounce remains future work.
 - Existing run-style animation IDs also need competition eligibility review.
-- Eleven Batch A and B clips have published IDs. The other 10 production animation entries remain ID and pose placeholders.
+- Thirteen Batch A through D clips have published IDs. The other eight production entries remain ID and pose placeholders.
 - All 11 published assets load under the experience owner. The confirmed Fall ID metadata differs from its authored source and needs transition testing when Fall becomes live. Local and remote gameplay playback still require two-player evidence.
-- Eight published clips are intentionally metadata-only until an approved client movement-state owner integrates them.
+- Eight published clips are intentionally metadata-only until an approved client movement-state owner integrates them. Roll code and animation are live.
+- The existing codebase has no normal hard-landing penalty. Batch C preserves that behavior; adding one belongs to a separately approved landing step.
 - Kalsada climb, swing, and zipline routes do not exist. Binaha has no implemented map geometry.
 - No automated gameplay tests, lint, or CI exist. Syntax, Rojo build, and live two-player tests are required for implementation steps.
 - Mobile, gamepad, remote animation replication, slopes, low gaps, and camera ownership all require live Studio evidence.

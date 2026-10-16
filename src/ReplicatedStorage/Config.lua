@@ -2,7 +2,7 @@
 -- ReplicatedStorage/Config.lua
 -- Owner: Project Owner
 -- Responsibility: immutable shared gameplay and presentation tuning.
--- Task/spec: T09 movement upgrade Step 1, approved 2026-10-15.
+-- Task/spec: T09 movement upgrade Step 1 and animation Batch D, approved 2026-10-16.
 
 local Config = {}
 
@@ -47,6 +47,24 @@ Config.Movement = {
 	SlideDustSize     = 0.7, -- [SD] dust particle start size (studs)
 	SlideSoundId      = "rbxassetid://75817307201002", -- [SD] slide whoosh (see ASSET_LOG)
 	SlideSoundVolume  = 0.7, -- [SD] slide whoosh volume 0-1
+	RollWindow = 0.15, -- [SD] Batch C approved pre-landing input window in seconds
+	RollDuration = 0.45, -- [SD] Batch C approved state duration matching HRush_Roll
+	RollSpeedBonus = 0.10, -- [SD] Batch C approved bonus as a share of effective Runner sprint speed
+	VaultMaxHeight = 3.5, -- [SD] Batch D approved maximum obstacle height in studs
+	VaultMinSpeedPct = 0.60, -- [SD] Batch D approved entry threshold as a share of effective Runner sprint speed
+	VaultSpeedKeepPct = 0.90, -- [SD] Batch D approved share of entry speed kept on exit
+	VaultDuration = 0.40, -- [SD] Batch D approved state duration matching HRush_Vault
+	VaultCooldown = 0.50, -- [SD] Batch D debounce against immediate retriggers
+	VaultProbeInterval = 0.05, -- [SD] Batch D automatic contact probe interval in seconds
+	VaultProbeDistance = 4.5, -- [SD] Batch D forward obstacle probe distance in studs
+	VaultKneeHeight = 1.0, -- [SD] Batch D knee probe height above the feet in studs
+	VaultWaistHeight = 3.75, -- [SD] Batch D clearance probe height above the feet in studs
+	VaultTopProbeMargin = 1.0, -- [SD] Batch D top and landing ray margin in studs
+	VaultLandingMargin = 1.5, -- [SD] Batch D landing distance beyond the obstacle edge in studs
+	VaultLandingProbeDepth = 8.0, -- [SD] Batch D landing-ground ray depth in studs
+	VaultClearance = 0.5, -- [SD] Batch D root arc clearance above the obstacle in studs
+	VaultMaxTravelDistance = 8.0, -- [SD] Batch D maximum accepted scripted travel in studs
+	VaultDirectionMinDot = 0.5, -- [SD] Batch D minimum agreement between request and observed travel
 	CoyoteTime = 0.10, -- [SD] Step 6 target in seconds
 	JumpBufferTime = 0.12, -- [SD] Step 6 target in seconds
 	AirControlPct = 0.40, -- [SD] Step 6 target share of ground control
@@ -147,13 +165,13 @@ Config.Animations = { -- [SD] movement animation runtime metadata and original-a
 		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
 	}, -- [SD] Batch B published original
 	Roll = {
-		Id = "REPLACE_ME_HRush_Roll", Priority = Enum.AnimationPriority.Action, Looped = false,
+		Id = "rbxassetid://97323662606589", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
-	}, -- [SD] Batch C original placeholder
+	}, -- [SD] Batch C published original
 	Vault = {
-		Id = "REPLACE_ME_HRush_Vault", Priority = Enum.AnimationPriority.Action, Looped = false,
+		Id = "rbxassetid://88476053772200", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
-	}, -- [SD] Batch D original placeholder
+	}, -- [SD] Batch D published original
 	ClimbGrab = {
 		Id = "REPLACE_ME_HRush_ClimbGrab", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,

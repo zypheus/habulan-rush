@@ -2,15 +2,17 @@
 
 This folder is the repository source for original R15 movement animations. HRush_AnimDev.lua owns all animation data, validation, KeyframeSequence building, and local preview.
 
-## Batch A and B status
+## Batch A through D status
 
-- Batches A and B contain 11 newly authored original R15 animations.
+- Batches A through D contain 13 newly authored original R15 animations.
 - Batch B adds Dash, SlideEnter, SlideLoop, SlideExit, and SlideJump.
-- All 11 published IDs supplied by the project owner are wired into `Config.Animations` and recorded in `ASSET_LOG.md`.
-- The other 10 production animation entries remain placeholders with empty keyframe arrays.
+- Batch C adds Roll, a 0.45-second forward somersault with a sprint-ready recovery and `RollImpact` at 0.14 seconds.
+- Batch D adds Vault, a 0.40-second planted-hand swing with `VaultPlant` at 0.10 seconds and `VaultClear` at 0.26 seconds.
+- All 13 published IDs supplied by the project owner are wired into `Config.Animations` and recorded in `ASSET_LOG.md`.
+- The other eight unpublished production entries still have empty keyframe arrays.
 - HRush_PipelineSelfTest is development-only. Never publish it or add it to Config.Animations.
 - Legacy sprint, combined slide, and dash fallback IDs have been removed.
-- Current runtime playback uses Sprint, Dash, and SlideLoop. The other published clips require approved movement-state integration before they become live tracks.
+- Current runtime playback uses Sprint, Dash, SlideLoop, Roll, and Vault. The other published clips require approved movement-state integration before they become live tracks.
 
 | Clip | Authoring summary |
 |---|---|
@@ -25,6 +27,8 @@ This folder is the repository source for original R15 movement animations. HRush
 | HRush_SlideLoop | 0.45-second closed hold loop with a reclined torso, one extended leg, one tucked leg, wide braced arms, and subtle weight drift |
 | HRush_SlideExit | 0.15-second brace, rise, leg exchange, and direct handoff into the opposite sprint contact pose |
 | HRush_SlideJump | 0.30-second slide preload, launch, compact airborne tuck, and release toward the fall silhouette |
+| HRush_Roll | 0.45-second tucked forward somersault with a clear full-body rotation, `RollImpact` at 0.14 seconds, and direct recovery into Sprint's opening pose |
+| HRush_Vault | 0.40-second hand plant and tucked leg swing with `VaultPlant` at 0.10 seconds, `VaultClear` at 0.26 seconds, and direct Sprint recovery |
 
 ## Verified R15 hierarchy
 
@@ -112,9 +116,29 @@ preview() spawns a standard R15 rig, builds the KeyframeSequence, registers it t
 - [ ] Test the intended avatar proportions for ground clipping and arm or leg intersections.
 - [ ] After IDs are wired, verify local and remote replication with two players and confirm the legacy combined slide does not also play.
 
+## Batch C Studio review checklist
+
+- [ ] `validateAll()` prints OK for Roll and `buildAll(false)` creates `HRush_Roll`.
+- [ ] Preview Roll at normal speed, 0.25 speed, and scrub at 0.14, 0.22, 0.38, and 0.449 seconds.
+- [ ] Confirm the tuck reads clearly from the gameplay camera and both side angles.
+- [ ] Confirm the root completes one forward rotation without horizontal root translation.
+- [ ] Confirm the recovery hands directly into Sprint without a neutral-pose pop.
+- [ ] Test the intended avatar proportions for ground clipping and limb intersections.
+- [ ] After the real ID is wired, verify local and remote replication with two players.
+
+## Batch D Studio review checklist
+
+- [x] `validateAll()` prints OK for Vault and `buildAll(false)` creates `HRush_Vault` within 13 completed sequences.
+- [x] Preview Vault at normal speed, 0.25 speed, and sampled plant, swing, and clear poses.
+- [x] Confirm `VaultPlant` is 0.10 seconds and `VaultClear` is 0.26 seconds.
+- [x] Confirm the first and last poses hand off cleanly from and back to Sprint.
+- [x] Publish under the experience owner and replace `REPLACE_ME_HRush_Vault` with `rbxassetid://88476053772200`.
+- [x] Verify seven-keyframe, 0.40-second, Action, non-looping published metadata.
+- [ ] Verify local or remote playback.
+
 ## Build and publish a completed batch
 
-Batches A and B are published and wired. Repeat this workflow for later approved batches.
+Batches A through D are published and wired.
 
 1. Run require(workspace.AnimationDevelopment.HRush_AnimDev).validateAll() and fix every INVALID result in the batch.
 2. Run require(workspace.AnimationDevelopment.HRush_AnimDev).buildAll(false).

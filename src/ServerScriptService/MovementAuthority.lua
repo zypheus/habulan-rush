@@ -2,11 +2,12 @@
 -- ServerScriptService/MovementAuthority.lua
 -- Owner: Project Owner
 -- Responsibility: server movement request validation, state ledger, and passive observation.
--- Task/spec: T09 movement upgrade Step 1, approved 2026-10-15.
+-- Task/spec: T09 movement upgrade Step 1 and animation Batch D, approved 2026-10-16.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 type Ledger = {
 	state: string,
@@ -14,6 +15,15 @@ type Ledger = {
 	dashReadyAt: number,
 	slideUntil: number,
 	slideReadyAt: number,
+	rollUntil: number,
+	rollAllowedSpeed: number,
+	rollRequestUntil: number,
+	vaultUntil: number,
+	vaultReadyAt: number,
+	vaultAllowedSpeed: number,
+	recentVelocity: Vector3,
+	recentVelocityAt: number,
+	lastAirborneAt: number,
 	boostUntil: number,
 	requestWindowStartedAt: number,
 	requestCount: number,
@@ -49,6 +59,8 @@ local function setState(player: Player, ledger: Ledger, state: string)
 	player:SetAttribute("HRushMovementState", state)
 	player:SetAttribute("HRushServerSliding", state == "Slide")
 	player:SetAttribute("HRushServerDashing", state == "Dash")
+	player:SetAttribute("HRushServerRolling", state == "Roll")
+	player:SetAttribute("HRushServerVaulting", state == "Vault")
 end
 
 local function resetLedger(player: Player, ledger: Ledger)
@@ -56,6 +68,15 @@ local function resetLedger(player: Player, ledger: Ledger)
 	ledger.dashReadyAt = 0
 	ledger.slideUntil = 0
 	ledger.slideReadyAt = 0
+	ledger.rollUntil = 0
+	ledger.rollAllowedSpeed = 0
+	ledger.rollRequestUntil = 0
+	ledger.vaultUntil = 0
+	ledger.vaultReadyAt = 0
+	ledger.vaultAllowedSpeed = 0
+	ledger.recentVelocity = Vector3.zero
+	ledger.recentVelocityAt = 0
+	ledger.lastAirborneAt = -math.huge
 	ledger.boostUntil = 0
 	ledger.lastPosition = nil
 	ledger.lastSampleAt = os.clock()
@@ -121,6 +142,12 @@ local function allowedSpeed(player: Player, ledger: Ledger, now: number): number
 	if ledger.state == "Dash" and now < ledger.dashUntil then
 		return movement.DashDistance * movement.SpeedScale / movement.DashDuration
 	end
+	if ledger.state == "Roll" and now < ledger.rollUntil then
+		return ledger.rollAllowedSpeed
+	end
+	if ledger.state == "Vault" and now < ledger.vaultUntil then
+		return ledger.vaultAllowedSpeed
+	end
 
 	local speed: number
 	if ledger.state == "Slide" and now < ledger.slideUntil then
@@ -151,7 +178,94 @@ local function validateCommon(player: Player, ledger: Ledger): (Humanoid?, BaseP
 	return humanoid, root
 end
 
-local function handleMovementState(player: Player, action: unknown, active: unknown)
+local function beginRoll(player: Player, ledger: Ledger, root: BasePart, role: string, now: number)
+	local baseSpeed = roleSpeed(player, role == "Runner")
+	if now < ledger.boostUntil and role == "Runner" then
+		baseSpeed *= movement.PostTagSpeedBoostMult
+	end
+	local carriedSpeed = math.min(
+		horizontalSpeed(root),
+		baseSpeed * (1 + movement.ServerSpeedTolerancePct)
+	)
+	local walkSpeed = roleSpeed(player, false)
+	local bonus = movement.RunnerSprintSpeed * movement.SpeedScale * movement.RollSpeedBonus
+	ledger.rollRequestUntil = 0
+	ledger.rollAllowedSpeed = math.max(walkSpeed, carriedSpeed) + bonus
+	ledger.rollUntil = now + movement.RollDuration
+	setState(player, ledger, "Roll")
+end
+
+local function findVaultTravel(character: Model, humanoid: Humanoid, root: BasePart, direction: Vector3): number?
+	local rootToFeet = root.Size.Y * 0.5 + humanoid.HipHeight
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	params.IgnoreWater = true
+	params.RespectCanCollide = true
+	local groundHit = Workspace:Raycast(root.Position, Vector3.new(0, -movement.VaultLandingProbeDepth, 0), params)
+	if groundHit == nil then
+		return nil
+	end
+	local footY = groundHit.Position.Y
+
+	local kneeOrigin = Vector3.new(root.Position.X, footY + movement.VaultKneeHeight, root.Position.Z)
+	local kneeHit = Workspace:Raycast(kneeOrigin, direction * movement.VaultProbeDistance, params)
+	if kneeHit == nil or not kneeHit.Instance:IsA("BasePart") then
+		return nil
+	end
+	local obstacle = kneeHit.Instance :: BasePart
+
+	local waistOrigin = Vector3.new(root.Position.X, footY + movement.VaultWaistHeight, root.Position.Z)
+	if Workspace:Raycast(waistOrigin, direction * movement.VaultMaxTravelDistance, params) ~= nil then
+		return nil
+	end
+
+	local topOrigin = Vector3.new(
+		kneeHit.Position.X,
+		footY + movement.VaultMaxHeight + movement.VaultTopProbeMargin,
+		kneeHit.Position.Z
+	)
+	local topHit = Workspace:Raycast(
+		topOrigin,
+		Vector3.new(0, -(movement.VaultMaxHeight + movement.VaultTopProbeMargin * 2), 0),
+		params
+	)
+	if topHit == nil or topHit.Instance ~= obstacle then
+		return nil
+	end
+	local obstacleHeight = topHit.Position.Y - footY
+	if obstacleHeight <= 0 or obstacleHeight > movement.VaultMaxHeight then
+		return nil
+	end
+
+	local half = obstacle.Size * 0.5
+	local cf = obstacle.CFrame
+	local extent = math.abs(direction:Dot(cf.RightVector)) * half.X
+		+ math.abs(direction:Dot(cf.UpVector)) * half.Y
+		+ math.abs(direction:Dot(cf.LookVector)) * half.Z
+	local farEdge = (obstacle.Position - root.Position):Dot(direction) + extent
+	local travel = farEdge + movement.VaultLandingMargin
+	if travel <= 0 or travel > movement.VaultMaxTravelDistance then
+		return nil
+	end
+
+	local landingOrigin = Vector3.new(
+		root.Position.X + direction.X * travel,
+		footY + movement.VaultMaxHeight + movement.VaultTopProbeMargin,
+		root.Position.Z + direction.Z * travel
+	)
+	local landingHit = Workspace:Raycast(
+		landingOrigin,
+		Vector3.new(0, -movement.VaultLandingProbeDepth, 0),
+		params
+	)
+	if landingHit == nil then
+		return nil
+	end
+	return travel
+end
+
+local function handleMovementState(player: Player, action: unknown, active: unknown, directionValue: unknown)
 	local ledger = ledgers[player]
 	if ledger == nil then
 		return
@@ -164,13 +278,24 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 		recordViolation(player, ledger, "request_schema", "movement state")
 		return
 	end
-	if action ~= "Sprint" and action ~= "Slide" then
+	if action ~= "Sprint" and action ~= "Slide" and action ~= "Roll" and action ~= "Vault" then
 		recordViolation(player, ledger, "request_action", action)
 		return
 	end
 
 	if not active then
+		if action == "Roll" then
+			ledger.rollRequestUntil = 0
+		end
 		if ledger.state == action then
+			if action == "Roll" then
+				ledger.rollUntil = 0
+				ledger.rollAllowedSpeed = 0
+			end
+			if action == "Vault" then
+				ledger.vaultUntil = 0
+				ledger.vaultAllowedSpeed = 0
+			end
 			setState(player, ledger, "Walk")
 		end
 		return
@@ -191,7 +316,102 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 			recordViolation(player, ledger, "sprint_role", tostring(role))
 			return
 		end
+		if ledger.state == "Roll" or ledger.state == "Vault" then
+			recordViolation(player, ledger, "sprint_state", ledger.state)
+			return
+		end
 		setState(player, ledger, "Sprint")
+		return
+	end
+
+	if action == "Roll" then
+		if player:GetAttribute("IsAirborne") == true then
+			recordViolation(player, ledger, "roll_state", "skill_airborne")
+			return
+		end
+		if ledger.state == "Slide" or ledger.state == "Dash" or ledger.state == "Roll" or ledger.state == "Vault" then
+			recordViolation(player, ledger, "roll_state", ledger.state)
+			return
+		end
+		if humanoid.FloorMaterial == Enum.Material.Air then
+			-- Character ownership can make the client's confirmed landing arrive
+			-- before FloorMaterial replicates to the server. Hold the request, then
+			-- let the server's own observer accept only a prompt landing.
+			ledger.rollRequestUntil = now + movement.RollWindow + movement.ServerSampleWindow
+			return
+		end
+		local sinceAirborne = now - ledger.lastAirborneAt
+		if sinceAirborne > movement.RollWindow + movement.ServerSampleWindow then
+			recordViolation(player, ledger, "roll_window", string.format("%.3f", sinceAirborne))
+			return
+		end
+		beginRoll(player, ledger, root, role, now)
+		return
+	end
+
+	if action == "Vault" then
+		if not finiteVector(directionValue) then
+			recordViolation(player, ledger, "vault_direction", "not finite Vector3")
+			return
+		end
+		local directionInput = directionValue :: Vector3
+		local flatDirection = Vector3.new(directionInput.X, 0, directionInput.Z)
+		local magnitude = flatDirection.Magnitude
+		if magnitude < movement.ServerDirectionMinMagnitude or magnitude > movement.ServerDirectionMaxMagnitude then
+			recordViolation(player, ledger, "vault_direction", string.format("magnitude %.2f", magnitude))
+			return
+		end
+		if math.abs(directionInput.Y) > movement.ServerDirectionMinMagnitude then
+			recordViolation(player, ledger, "vault_direction", string.format("vertical %.2f", directionInput.Y))
+			return
+		end
+		if player:GetAttribute("IsAirborne") == true or ledger.state == "Roll" or ledger.state == "Vault" then
+			recordViolation(player, ledger, "vault_state", ledger.state)
+			return
+		end
+		if now < ledger.vaultReadyAt then
+			recordViolation(player, ledger, "vault_cooldown", string.format("%.2f", ledger.vaultReadyAt - now))
+			return
+		end
+
+		local observedVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 0, root.AssemblyLinearVelocity.Z)
+		if now - ledger.recentVelocityAt <= movement.ServerSampleWindow
+			and ledger.recentVelocity.Magnitude > observedVelocity.Magnitude
+		then
+			observedVelocity = ledger.recentVelocity
+		end
+		local minimumSpeed = movement.RunnerSprintSpeed * movement.SpeedScale * movement.VaultMinSpeedPct
+		if observedVelocity.Magnitude < minimumSpeed * (1 - movement.ServerSpeedTolerancePct) then
+			recordViolation(player, ledger, "vault_speed", string.format("%.2f < %.2f", observedVelocity.Magnitude, minimumSpeed))
+			return
+		end
+		local direction = flatDirection.Unit
+		if observedVelocity.Unit:Dot(direction) < movement.VaultDirectionMinDot then
+			recordViolation(player, ledger, "vault_direction", "opposes observed travel")
+			return
+		end
+		local character = player.Character
+		if character == nil then
+			return
+		end
+		local travel = findVaultTravel(character, humanoid, root, direction)
+		if travel == nil then
+			recordViolation(player, ledger, "vault_obstacle", "no valid low obstacle and landing")
+			return
+		end
+
+		local priorLimit = allowedSpeed(player, ledger, now)
+		local carriedSpeed = math.min(
+			observedVelocity.Magnitude,
+			priorLimit * (1 + movement.ServerSpeedTolerancePct)
+		)
+		ledger.vaultAllowedSpeed = math.max(
+			carriedSpeed * movement.VaultSpeedKeepPct,
+			travel / movement.VaultDuration
+		)
+		ledger.vaultReadyAt = now + movement.VaultCooldown
+		ledger.vaultUntil = now + movement.VaultDuration
+		setState(player, ledger, "Vault")
 		return
 	end
 
@@ -204,6 +424,10 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 		return
 	end
 	if role == "Runner" and ledger.state ~= "Sprint" then
+		recordViolation(player, ledger, "slide_state", ledger.state)
+		return
+	end
+	if ledger.state == "Roll" or ledger.state == "Dash" or ledger.state == "Vault" then
 		recordViolation(player, ledger, "slide_state", ledger.state)
 		return
 	end
@@ -250,6 +474,10 @@ local function handleDash(player: Player, direction: unknown)
 		recordViolation(player, ledger, "dash_cooldown", string.format("%.2f", ledger.dashReadyAt - now))
 		return
 	end
+	if ledger.state == "Roll" or ledger.state == "Vault" then
+		recordViolation(player, ledger, "dash_state", ledger.state)
+		return
+	end
 
 	ledger.dashReadyAt = now + movement.DashCooldown
 	ledger.dashUntil = now + movement.DashDuration
@@ -261,6 +489,27 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 		setState(player, ledger, "Walk")
 	elseif ledger.state == "Slide" and now >= ledger.slideUntil then
 		setState(player, ledger, "Walk")
+	elseif ledger.state == "Roll" and now >= ledger.rollUntil then
+		ledger.rollAllowedSpeed = 0
+		setState(player, ledger, "Walk")
+	elseif ledger.state == "Vault" and now >= ledger.vaultUntil then
+		ledger.vaultAllowedSpeed = 0
+		setState(player, ledger, "Walk")
+	end
+
+	local humanoid, root = liveCharacter(player)
+	if root ~= nil then
+		local velocity = root.AssemblyLinearVelocity
+		local flatVelocity = Vector3.new(velocity.X, 0, velocity.Z)
+		if flatVelocity.Magnitude >= ledger.recentVelocity.Magnitude
+			or now - ledger.recentVelocityAt > movement.ServerSampleWindow
+		then
+			ledger.recentVelocity = flatVelocity
+			ledger.recentVelocityAt = now
+		end
+	end
+	if humanoid ~= nil and humanoid.FloorMaterial == Enum.Material.Air then
+		ledger.lastAirborneAt = now
 	end
 
 	if not isLiveParticipant(player)
@@ -272,7 +521,24 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 		return
 	end
 
-	local _, root = liveCharacter(player)
+	if ledger.rollRequestUntil > 0 then
+		if now > ledger.rollRequestUntil then
+			ledger.rollRequestUntil = 0
+		elseif humanoid ~= nil
+			and root ~= nil
+			and humanoid.FloorMaterial ~= Enum.Material.Air
+			and player:GetAttribute("HRushStunned") ~= true
+			and (ledger.state == "Walk" or ledger.state == "Sprint")
+		then
+			local role = player:GetAttribute("HRushRole")
+			if role == "Runner" or role == "Taya" then
+				beginRoll(player, ledger, root, role, now)
+			else
+				ledger.rollRequestUntil = 0
+			end
+		end
+	end
+
 	if root == nil or root.Anchored then
 		ledger.lastPosition = nil
 		ledger.lastSampleAt = now
@@ -332,6 +598,15 @@ local function attachPlayer(player: Player)
 		dashReadyAt = 0,
 		slideUntil = 0,
 		slideReadyAt = 0,
+		rollUntil = 0,
+		rollAllowedSpeed = 0,
+		rollRequestUntil = 0,
+		vaultUntil = 0,
+		vaultReadyAt = 0,
+		vaultAllowedSpeed = 0,
+		recentVelocity = Vector3.zero,
+		recentVelocityAt = 0,
+		lastAirborneAt = -math.huge,
 		boostUntil = 0,
 		requestWindowStartedAt = now,
 		requestCount = 0,
@@ -394,6 +669,15 @@ local function validateConfig()
 	assert(movement.ServerRequestWindow > 0 and movement.ServerRequestRate > 0, "Movement request limit must be positive")
 	assert(movement.ServerLogViolationThreshold >= 1, "Movement log threshold must be at least one")
 	assert(movement.SlideEndMult <= movement.SlideStartMult, "Slide end speed must not exceed its start speed")
+	assert(movement.RollWindow > 0, "Roll input window must be positive")
+	assert(movement.RollDuration > 0, "Roll duration must be positive")
+	assert(movement.RollSpeedBonus >= 0 and movement.RollSpeedBonus <= 1, "Roll speed bonus must be between 0 and 1")
+	assert(movement.VaultMaxHeight > 0, "Vault maximum height must be positive")
+	assert(movement.VaultMinSpeedPct > 0 and movement.VaultMinSpeedPct <= 1, "Vault minimum speed must be a percentage")
+	assert(movement.VaultSpeedKeepPct > 0 and movement.VaultSpeedKeepPct <= 1, "Vault retained speed must be a percentage")
+	assert(movement.VaultDuration > 0 and movement.VaultCooldown >= movement.VaultDuration, "Vault timing is invalid")
+	assert(movement.VaultWaistHeight > movement.VaultMaxHeight, "Vault waist probe must clear valid obstacles")
+	assert(movement.VaultProbeDistance > 0 and movement.VaultProbeDistance <= movement.VaultMaxTravelDistance, "Vault probe distance is invalid")
 	assert(movement.ServerCorrectionEnabled == false, "Step 1 must remain observation-only")
 end
 
