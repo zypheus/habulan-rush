@@ -2,15 +2,24 @@
 -- ReplicatedStorage/Config.lua
 -- Owner: Project Owner
 -- Responsibility: immutable shared gameplay and presentation tuning.
--- Task/spec: T09 movement upgrade Step 1 and animation Batch D, approved 2026-10-16.
+-- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: movement upgrade Part 2 landing owner and chest-level Vault, approved 2026-10-16.
 
 local Config = {}
 
 Config.Movement = {
 	RunnerWalkSpeed   = 16, -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
 	RunnerSprintSpeed = 21, -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
+	TayaSprintSpeed = 21, -- [LOCKED] Project-owner pounce sprint revision, 2026-10-16
 	SpeedScale = 1.2, -- [SD] approved 2026-10-15; multiplies every movement speed and speed-derived distance (1 = locked bases)
 	JumpPower = 50, -- [SD] existing Bootstrap value moved here without behavior change
+	FallGravityMult = 1.6, -- [SD] Part 1 total gravity multiplier while falling
+	TerminalFallSpeed = 100, -- [SD] Part 1 cap, above the measured 71.94 studs/s tallest-map drop
+	AirSpeedCapMult = 1.15, -- [SD] Part 1 cap relative to effective Runner sprint speed
+	FallGravityDebugMin = 1.0, -- [SD] Studio-only HRushDebugFallGravityMult lower bound
+	FallGravityDebugMax = 3.0, -- [SD] Studio-only HRushDebugFallGravityMult upper bound
+	AirControlDebugMin = 0.0, -- [SD] Studio-only HRushDebugAirControlPct lower bound
+	AirControlDebugMax = 1.0, -- [SD] Studio-only HRushDebugAirControlPct upper bound
 	SprintAccelTime = 0.25, -- [SD] Step 2 target, not live until the sprint ramp lands
 	SprintFovBoost = 10, -- [SD] Step 2 target in degrees, not live until camera ownership is updated
 	FovTweenTime = 0.2, -- [SD] Step 2 target in seconds, not live until camera ownership is updated
@@ -50,27 +59,42 @@ Config.Movement = {
 	RollWindow = 0.15, -- [SD] Batch C approved pre-landing input window in seconds
 	RollDuration = 0.45, -- [SD] Batch C approved state duration matching HRush_Roll
 	RollSpeedBonus = 0.10, -- [SD] Batch C approved bonus as a share of effective Runner sprint speed
-	VaultMaxHeight = 3.5, -- [SD] Batch D approved maximum obstacle height in studs
-	VaultMinSpeedPct = 0.60, -- [SD] Batch D approved entry threshold as a share of effective Runner sprint speed
-	VaultSpeedKeepPct = 0.90, -- [SD] Batch D approved share of entry speed kept on exit
+	VaultMinH = 1.5, -- [SD] Part 2 minimum obstacle top above the character's current feet
+	VaultMaxH = 3.5, -- [SD] Part 2 maximum obstacle top above the character's current feet
+	VaultMaxAboveGround = 7.0, -- [SD] Part 2 absolute obstacle-top cap above ground below the character
+	VaultMinDrop = 1.5, -- [SD] Part 2 minimum drop from obstacle top to the landing side
+	VaultMinSpeedPct = 0.80, -- [SD] Part 2 entry threshold as a share of effective Runner sprint speed
+	VaultSpeedVariantPct = 0.90, -- [SD] Part 2 SpeedVault threshold as a share of effective Runner sprint speed
+	VaultSpeedKeepPct = 0.95, -- [SD] Part 2 share of entry speed kept on exit
 	VaultDuration = 0.40, -- [SD] Batch D approved state duration matching HRush_Vault
-	VaultCooldown = 0.50, -- [SD] Batch D debounce against immediate retriggers
+	VaultCooldown = 0.25, -- [SD] Part 2 debounce against immediate retriggers
 	VaultProbeInterval = 0.05, -- [SD] Batch D automatic contact probe interval in seconds
 	VaultProbeDistance = 4.5, -- [SD] Batch D forward obstacle probe distance in studs
 	VaultKneeHeight = 1.0, -- [SD] Batch D knee probe height above the feet in studs
-	VaultWaistHeight = 3.75, -- [SD] Batch D clearance probe height above the feet in studs
+	VaultWaistHeight = 2.5, -- [SD] Part 2 waist probe height above the current feet in studs
+	VaultChestHeight = 3.75, -- [SD] Part 2 chest probe height above the current feet in studs
+	VaultSpeedMaxDepth = 2.0, -- [SD] Part 2 maximum obstacle depth for SpeedVault
+	VaultMaxDepth = 5.0, -- [SD] Part 2 maximum obstacle depth for any Vault
+	VaultGeometryTolerance = 0.10, -- [SD] Part 2 contact-settling tolerance for height, depth, and drop rays
+	VaultGroundProbeDepth = 20.0, -- [SD] Part 2 ground-below ray depth for airborne absolute-cap checks
+	VaultCollisionBoxScale = 0.75, -- [SD] Part 2 root blockcast scale during the scripted arc
+	VaultLandingNormalMin = 0.50, -- [SD] Part 2 minimum upward normal for an arc-end landing contact
+	VaultLandingCollisionAlpha = 0.85, -- [SD] Part 2 earliest arc fraction that can settle on landing ground
+	VaultBoundaryLogCooldown = 1.0, -- [SD] Part 2 throttle for repeated mantle-boundary diagnostics
+	VaultTopInset = 0.10, -- [SD] Part 2 inward offset for the obstacle top-surface ray
 	VaultTopProbeMargin = 1.0, -- [SD] Batch D top and landing ray margin in studs
 	VaultLandingMargin = 1.5, -- [SD] Batch D landing distance beyond the obstacle edge in studs
-	VaultLandingProbeDepth = 8.0, -- [SD] Batch D landing-ground ray depth in studs
+	VaultLandingProbeDepth = 20.0, -- [SD] Part 2 landing-side ray depth in studs
 	VaultClearance = 0.5, -- [SD] Batch D root arc clearance above the obstacle in studs
 	VaultMaxTravelDistance = 8.0, -- [SD] Batch D maximum accepted scripted travel in studs
 	VaultDirectionMinDot = 0.5, -- [SD] Batch D minimum agreement between request and observed travel
-	CoyoteTime = 0.10, -- [SD] Step 6 target in seconds
-	JumpBufferTime = 0.12, -- [SD] Step 6 target in seconds
-	AirControlPct = 0.40, -- [SD] Step 6 target share of ground control
+	CoyoteTime = 0.10, -- [SD] Part 1 live ledge-exit grace in seconds
+	JumpBufferTime = 0.12, -- [SD] Part 1 live pre-landing input grace in seconds
+	AirControlPct = 0.0, -- [SD] Part 2 committed takeoff direction; Studio override can compare 0.0 to 1.0
 	LandBumpMax = 0.35, -- [SD] Step 7 target maximum camera offset in studs
-	HardLandHeight = 12, -- [SD] Step 7 starting fall-height threshold in studs
-	HardLandPenaltyTime = 0.10, -- [SD] Step 7 target speed-penalty duration in seconds
+	HardLandHeight = 12, -- [SD] Part 2 hard-landing fall-height threshold in studs
+	HardLandPenaltyTime = 0.10, -- [SD] Part 2 hard-landing speed-penalty duration in seconds
+	HardLandSpeedMult = 0.85, -- [SD] Part 2 hard-landing speed multiplier
 	ServerSpeedTolerancePct = 0.15, -- [SD] passive horizontal speed tolerance
 	ServerSampleWindow = 0.25, -- [SD] passive displacement observation window in seconds
 	ServerDisplacementSlack = 2.0, -- [SD] per-window physics and replication slack in studs
@@ -81,6 +105,8 @@ Config.Movement = {
 	ServerDirectionMinMagnitude = 0.05, -- [SD] lower bound for dash direction input
 	ServerDirectionMaxMagnitude = 1.1, -- [SD] upper bound for dash direction input
 	ServerLogViolationThreshold = 1, -- [SD] log the first observation or rejected request
+	ServerTakeoffObservationTime = 0.35, -- [SD] Part 1 replication window for vertical takeoff samples
+	ServerMaxAirTime = 2.0, -- [SD] Part 1 normal-air limit before tolerance; scripted skills and Vault are exempt
 	ServerLogsEnabled = true, -- [SD] Studio telemetry for Steps 1 to 10; disable for release
 	ServerCorrectionEnabled = false, -- [SD] Step 1 observes and logs only
 	TayaSpeed         = 18, -- [LOCKED GDD TM_01]
@@ -324,19 +350,79 @@ Config.SprintVFX = {
 }
 
 Config.Tag = {
-	TouchTagRange       = 3,
 	SafeWindowDuration  = 2.0,
 	LockDelayDuration   = 1.0,
-	PounceWindupTime    = 0.35,
-	PounceLungeDistance = 14,
-	PounceLungeSpeed    = 45,
-	PounceHitRadius     = 4,
-	PounceMissStunTime  = 1.0,
-	PounceCooldown      = 3.0,
 	RewindBufferDuration = 0.5,
 	RewindDefault        = 0.12,
 	RewindMax            = 0.20,
 	CloseChaseDistance  = 10,
+}
+
+Config.Pounce = { -- [LOCKED] Project-owner revision, 2026-10-17: moving ground/air activation; pounce-only tags including bots
+	Enabled = true,
+	WindupTime = 0.07,
+	HitRecovery = 0.15,
+	MissRecovery = 0.28,
+	HitCooldown = 0.8, -- [LOCKED] reduced at project-owner request, 2026-10-17
+	MissCooldown = 1.05, -- [LOCKED] reduced at project-owner request, 2026-10-17
+	MaxAirTime = 0.70,
+	ForwardSpeed = 55,
+	UpwardSpeed = 13,
+	AirControl = 0.12,
+	HitboxSize = Vector3.new(5, 5, 6),
+	MaxTagAngle = 40,
+	AimAssistDistance = 14,
+	AimAssistAngle = 18,
+	AimAssistStrength = 0.10,
+	MinAirTime = 0.10, -- [SD] exclude the launch frame from landing detection
+	GroundTolerance = 0.12, -- [SD] server ground-ray tolerance for client-owned R15 rigs
+	MinForwardDot = 0.5, -- [SD] moving within 60 degrees of character facing
+	MinMoveSpeed = 1, -- [SD] minimum server-observed horizontal movement; sprint and ground contact are not required
+	BotAttemptRange = 12, -- [SD] AI begins a validated pounce within this range
+	MaxSteerAngle = 30, -- [SD] steering input cone relative to launch
+	SteerRate = 0.8, -- [SD] frame-independent heading blend
+	AnimationFade = 0.06, -- [SD]
+	TagPoseTime = 0.10, -- [SD] minimum confirmed contact pose
+	RequestInterval = 0.08, -- [SD] packet guard independent of gameplay cooldown
+	ReplyTimeout = 1.2, -- [SD]
+	HitboxOffset = Vector3.new(0, 0.65, -3), -- [SD] hands/upper-torso region
+	StandingTargetOffset = 0.5, -- [SD]
+	SlidingTargetOffset = -1.1, -- [SD] lowered target profile
+	MaxHitDistance = 9, -- [SD] broad distance guard; box and cone remain mandatory
+	TravelSlack = 4, -- [SD] server-observed replication slack in studs
+	MaxRise = 4, -- [SD] vertical envelope for the small 13 studs/s impulse
+	WallProbeSize = Vector3.new(1.5, 1.5, 1.5), -- [SD]
+	WallLookAhead = 2, -- [SD]
+	WallMaxNormalY = 0.35, -- [SD]
+	RecoverySpeedMult = 0.35, -- [SD] heavier committed recovery instead of full sprint
+	Camera = { -- [SD] additive presentation, after existing camera owners
+		CollisionPadding = 0.05,
+		WindupFov = 3, LaunchFov = 8, AirFov = 6, ImpactFov = 10,
+		WindupOffset = Vector3.new(0, -0.05, 0.3),
+		LaunchOffset = Vector3.new(0, 0.15, 0.8), AirOffset = Vector3.new(0, 0.12, 0.55),
+		NearPush = 0.3, NearDistance = 7,
+		ImpactPush = 0.25, ImpactPosition = Vector3.new(0.04, 0.06, 0.03),
+		ImpactAngles = Vector3.new(1.5, 0.8, 1), ImpactDecay = 25, ImpactFrequency = 85,
+		LandDip = 0.13, LandPitch = 1.5, LandDecay = 18, SmoothRate = 28,
+		LaunchHold = 0.08,
+	},
+	Feedback = { -- [SD] original primitive geometry and ribbons; no third-party assets
+		DustColor = Color3.fromRGB(185, 166, 140), WindColor = Color3.fromRGB(170, 232, 255),
+		ImpactColor = Color3.fromRGB(255, 231, 115),
+		WindupCount = 4, LaunchCount = 10, HitCount = 16, LandCount = 6, MissCount = 12,
+		Lifetime = 0.24, DustSize = 0.14, DustRadius = 2, ImpactRadius = 3,
+		StreakCount = 4, StreakLength = 1.2, StreakThickness = 0.035, FlashSize = 0.6,
+		RingSegments = 16, RingThickness = 0.06, RingRadius = 2,
+		TrailLifetime = 0.14, TrailMinSpeed = 25, SoundVolume = 0.8,
+	},
+	Debug = false, -- [SD] Development visualization; off for release
+	Animations = {
+		Windup = "rbxassetid://112019342280579",
+		Leap = "rbxassetid://94945585012531",
+		Tag = "rbxassetid://88403484239291",
+		Recovery = "rbxassetid://115358409009409",
+	},
+	Sounds = { Windup = "", Launch = "", AirRush = "", TagImpact = "", Landing = "", MissLanding = "" }, -- [SD] Original audio hooks
 }
 
 Config.Taya = {

@@ -1,7 +1,8 @@
 --!strict
 -- ServerScriptService/SkillService.server.lua
--- Owner: Programmer B (T18 slice, RS_01 Escape + RS_03 Stun)
+-- Owner: Project Owner
 -- Responsibility: validate skill casts (RequestSkill), keep the server-side
+-- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
 --                 cooldown ledger, then split the reply: SkillApproved goes
 --                 ONLY to the requesting player, SkillVFX goes to ALL players
 --                 for visuals. Denies are silent.
@@ -387,6 +388,7 @@ local function handleTsinelas(caster: Player, sk: any, skillId: string, dir: unk
 end
 
 RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, dir: unknown, aimPoint: unknown)
+	if player:GetAttribute("HRushPouncing") == true then return end
 	if typeof(skillId) ~= "string" then
 		return
 	end
@@ -486,6 +488,7 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, di
 	-- Backstop timer clears it if the landing report never arrives.
 	player:SetAttribute("IsAirborne", true)
 	airborneUntil[player] = now + sk.params.windup + sk.params.airtime + 1.0
+	player:SetAttribute("HRushSkillBusyUntil", airborneUntil[player] + sk.params.landingRecovery)
 	task.delay(sk.params.windup + sk.params.airtime + 1.0, function()
 		if player.Parent and player:GetAttribute("IsAirborne") == true then
 			player:SetAttribute("IsAirborne", false) -- landing report lost: self-heal
@@ -517,6 +520,7 @@ SkillLanded.OnServerEvent:Connect(function(player: Player, skillId: unknown)
 	end
 	if player:GetAttribute("IsAirborne") == true then
 		player:SetAttribute("IsAirborne", false)
+		player:SetAttribute("HRushSkillBusyUntil", os.clock() + Config.Skills.RS_01.params.landingRecovery)
 		airborneUntil[player] = nil
 		debugPrint("landing reported by " .. player.Name .. " (" .. skillId .. "), IsAirborne=false") -- TODO: remove before submission
 	end

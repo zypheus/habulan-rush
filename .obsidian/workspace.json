@@ -79,7 +79,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "364f378486c67087",
@@ -183,6 +184,11 @@
   },
   "active": "e733822277f7bdaa",
   "lastOpenFiles": [
+    "dev-notes/playtests/2026-10-16-pounce-tag.md",
+    "tools/PounceDev/README.md",
+    "tools/PounceDev/ServerFixture.server.lua",
+    "tools/PounceDev/ClientFixture.client.lua",
+    "tools/PounceDev",
     "HabulanRush.rbxlx.lock",
     "agent/skills/caveman/SKILL.md",
     "dev-notes/playtests/2026-10-15-animation-batch-a.md",
@@ -195,13 +201,10 @@
     "tools/AnimationDev/HRush_AnimPreview.lua",
     "tools/AnimationDev/HRush_AnimDev.lua",
     "src/ServerScriptService/MovementAuthority.server.lua",
-    "src/ServerScriptService/MovementAuthority.lua",
     "docs/MOVEMENT_AUDIT.md",
     "dev-notes/current-task.md",
     "docs/UPGRADE_REPORT.md",
-    "docs",
     "dev-notes/utg-and-scoring-implementation-guide.md",
-    "assets/sfx/batch2/Slide whoosh.mp3",
     "dev-notes/animation-builders.md",
     "dev-notes/sprint-vfx-trail-design.md",
     "dev-notes/handoffs/2026-10-14-obsidian-setup-complete.md",
@@ -217,7 +220,6 @@
     "dev-notes/templates/handoff-template.md",
     "dev-notes/templates/decision-template.md",
     "dev-notes/templates/bug-template.md",
-    "dev-notes/templates/agent-task-prompt-template.md",
-    "dev-notes/00-index.md"
+    "dev-notes/templates/agent-task-prompt-template.md"
   ]
 }

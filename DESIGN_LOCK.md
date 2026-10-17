@@ -8,6 +8,25 @@ These values are the single source of truth; they must match `ReplicatedStorage.
 
 ## Confirmed Findings (HIGH severity)
 
+### Reduced pounce cooldowns and airborne fix, 2026-10-17
+
+The owner requested shorter pounce cooldowns and a fix for midair activation. Hit cooldown is now 0.8 seconds and miss cooldown is 1.05 seconds, both measured from launch. These supersede the earlier 1.6/2.1 values. Airborne movement eligibility and launch direction use existing horizontal momentum because the normal air controller clears Humanoid.MoveDirection. Stationary jumps without horizontal movement do not qualify. Recovery timings and incompatible-state gates remain unchanged.
+
+### Approved pounce-only tagging revision, 2026-10-17
+
+This owner-approved revision supersedes the grounded/sprint-only activation restriction below and TM_08 touch tagging. Pounce requires forward movement and may start while walking, sprinting, or normally jumping. Standing still does not qualify. Only a successful validated pounce hit transfers Taya between participants, including bots. Bot Tayas use the same pounce cooldown and hit rules. Touch alone never tags. Existing incompatible-ability, stun, recovery, safe-window and cooldown rules remain.
+
+
+### Approved pounce revision, 2026-10-16
+
+The project owner approved the pasted Pounce / Tag request and explicitly approved replacing the old locked pounce timings and adding faster Taya sprint. This revision supersedes the original TM_01 sprint restriction and TM_04 through TM_07 pounce values. `Config.Pounce` is the runtime source of truth.
+
+- Taya base walk remains 18. Held sprint is 21 base, or 25.2 studs/s after the existing 1.2 movement scale. Taya has no sprint stamina drain.
+- Pounce windup is 0.07 seconds. Hit/miss recovery is 0.15/0.28 seconds; launch-based cooldown is 1.6/2.1 seconds.
+- Pounce velocity is 55 horizontal and 13 upward studs/s, with 0.12 steering and a 0.70-second flight limit. These are final world-space velocities, not multiplied by the normal movement scale.
+- Server spatial hitbox is 5 by 5 by 6 studs with a 40-degree forward cone. Initial soft assistance is limited to 14 studs, 18 degrees, and strength 0.10.
+- Pounce is Taya-only, grounded, and requires forward sprint. Each accepted attempt can commit one tag. Existing safe windows and dash pounce immunity still apply.
+
 | # | Finding | Confirmed Default | Status |
 |---|---------|-------------------|--------|
 | F01 | Skill Draft frequency | **Draft runs before every round** (adds 24 s; target match = 9.0 min) | ✅ Confirmed |

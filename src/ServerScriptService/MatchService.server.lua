@@ -1,7 +1,8 @@
 --!strict
 -- ServerScriptService/MatchService.server.lua   (v1.1 - queue + bot fill + lobby/match separation)
--- Owner: Programmer A (T07)
+-- Owner: Project Owner
 -- Responsibility: State machine (MS_01->MS_06), shuffle bag, scoring,
+-- Task/spec: pounce-only tags for players and bots, approved 2026-10-17.
 --                 phase timers, disconnect handling, PLAY queue and test bots.
 --
 -- NEW IN v1.1
@@ -24,9 +25,13 @@ local Workspace         = game:GetService("Workspace")
 local RunService        = game:GetService("RunService")
 
 local Config       = require(ReplicatedStorage:WaitForChild("Config"))
+local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
 local Remotes      = ReplicatedStorage:WaitForChild("Remotes")
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent     = Remotes:WaitForChild("TagEvent") :: RemoteEvent
+local CommitPounceTag = Instance.new("BindableFunction")
+CommitPounceTag.Name = "HRUSH_CommitPounceTag"
+CommitPounceTag.Parent = ServerScriptService
 
 local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
 
@@ -92,7 +97,6 @@ local MAX_PLAYERS: number = MATCH.MaxPlayers or 8
 local SEARCH_TIMEOUT: number = MATCH.SearchTimeout or 10
 local BOT_FILL_TARGET: number = MATCH.BotFillTarget or 8 -- total participants after bot fill
 local ALLOW_BOTS: boolean = (MATCH.AllowBots == nil) and true or MATCH.AllowBots -- set false for release
-local TAG_RANGE: number = (Config.Tag.TouchTagRange or 3) + 1.5 -- centre-to-centre studs (HRP distance is larger than hand reach)
 local TAG_IMMUNITY: number = Config.Tag.SafeWindowDuration or 2 -- Safe Window: ex-Taya cannot be re-tagged for this long
 local ARENA_RADIUS: number = (Config.Maps and Config.Maps.Kalsada and Config.Maps.Kalsada.greybox and Config.Maps.Kalsada.greybox.spawnRadius) or 55
 
@@ -255,6 +259,10 @@ local function broadcastState(targetPlayer: Player?, optionalTimer: number?)
 	local targets = targetPlayer and { targetPlayer } or Players:GetPlayers()
 	ReplicatedStorage:SetAttribute("HRushMatchState", matchState)
 	ReplicatedStorage:SetAttribute("HRushRoundState", matchState)
+	for _, bot in bots do
+		bot:SetAttribute("HRushInMatch", true)
+		bot:SetAttribute("HRushState", matchState)
+	end
 
 	for _, p in ipairs(targets) do
 		local isIn = inMatch[p] == true
@@ -290,6 +298,7 @@ local function transferTaya(from: Instance, to: Instance)
 	playerRoles[to] = "Taya"
 	currentTaya = to
 	immuneUntil[from] = os.clock() + TAG_IMMUNITY
+	from:SetAttribute("HRushTagSafeUntil", Workspace:GetServerTimeNow() + TAG_IMMUNITY)
 	from:SetAttribute("HRushRole", "Runner")
 	to:SetAttribute("HRushRole", "Taya")
 	broadcastState(nil)
@@ -306,6 +315,21 @@ local function transferTaya(from: Instance, to: Instance)
 		end
 	end
 	print(string.format("[MatchService] Tag transfer: %s tagged %s (new Taya)", from.Name, to.Name))
+end
+
+CommitPounceTag.OnInvoke = function(tagger: Instance, target: Instance): boolean
+	if matchState ~= "MS_04" or currentTaya ~= tagger or playerRoles[tagger] ~= "Taya" then return false end
+	if tagger:GetAttribute("HRushPouncing") ~= true or tagger:GetAttribute("HRushPounceState") ~= "Airborne" then return false end
+	if tagger == target or not table.find(getParticipants(), target) or playerRoles[target] ~= "Runner" then return false end
+	if (immuneUntil[target] or 0) > os.clock() then return false end
+	local taggerRoot, targetRoot = getRoot(tagger), getRoot(target)
+	local targetCharacter = if target:IsA("Player") then target.Character else target :: Model
+	local targetHumanoid = targetCharacter and targetCharacter:FindFirstChildOfClass("Humanoid")
+	if not taggerRoot or not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then return false end
+	if (targetRoot.Position - taggerRoot.Position).Magnitude > Config.Pounce.MaxHitDistance then return false end
+	if TagRules.isUntouchable(targetCharacter :: Model) then return false end
+	transferTaya(tagger, target)
+	return true
 end
 
 -- ============================================================
@@ -371,7 +395,7 @@ local function updateBots(now: number)
 	for _, bot in ipairs(bots) do
 		local hum = bot:FindFirstChildOfClass("Humanoid")
 		local root = bot.PrimaryPart
-		if bot.Parent and hum and root then
+		if bot.Parent and hum and hum.Health > 0 and root and bot:GetAttribute("HRushPouncing") ~= true then
 			if playerRoles[bot] == "Taya" then
 				local best: Instance? = nil
 				local bestDist = math.huge
@@ -393,8 +417,9 @@ local function updateBots(now: number)
 					if br then
 						hum:MoveTo(br.Position)
 					end
-					if bestDist <= TAG_RANGE and (immuneUntil[bot] or 0) < now then
-						transferTaya(bot, best)
+					if bestDist <= Config.Pounce.BotAttemptRange then
+						local request = ServerScriptService:FindFirstChild("HRUSH_RequestBotPounce")
+						if request and request:IsA("BindableEvent") then request:Fire(bot) end
 					end
 				end
 			else
@@ -584,63 +609,11 @@ QueueEvent.OnServerEvent:Connect(function(player, action)
 	end
 end)
 
--- Tag requests from the Taya's client. Validated on the server (sender must be the Taya, in range).
--- Payload: { targetId = UserId } for players, or { targetBot = "Bot_Juan" } for bots.
-TagEvent.OnServerEvent:Connect(function(player, payload)
-	if matchState ~= "MS_04" or typeof(payload) ~= "table" then return end
-	if currentTaya ~= player or playerRoles[player] ~= "Taya" then return end
-
-	local target: Instance? = nil
-	if payload.targetId then
-		target = Players:GetPlayerByUserId(payload.targetId)
-	elseif typeof(payload.targetBot) == "string" then
-		target = botsFolderRef:FindFirstChild(payload.targetBot)
-	end
-
-	if not target or playerRoles[target] ~= "Runner" then return end
-	if (immuneUntil[target] or 0) > os.clock() then return end
-
-	local a, b = getRoot(player), getRoot(target)
-	if a and b and (a.Position - b.Position).Magnitude > TAG_RANGE * 3 then return end
-
-	transferTaya(player, target)
-end)
+-- TagEvent is server-to-client only. Only a validated TagService pounce commits a tag.
 
 -- ============================================================
 -- MATCH LOOP (MS_01 -> MS_06)
 -- ============================================================
--- TEMPORARY server-side touch tag for a real-player Taya (bots tag inside updateBots).
--- TagService (T11) is still a stub; when it is implemented, delete this and have TagService
--- call the transfer logic instead.
-local function checkPlayerTouchTag(now: number)
-	local taya = currentTaya
-	if not taya or not taya:IsA("Player") or playerRoles[taya] ~= "Taya" then
-		return
-	end
-	local tr = getRoot(taya)
-	if not tr then
-		return
-	end
-
-	local best: Instance? = nil
-	local bestDist = TAG_RANGE
-	for _, other in ipairs(getParticipants()) do
-		if other ~= taya and playerRoles[other] == "Runner" and (immuneUntil[other] or 0) < now then
-			local r = getRoot(other)
-			if r then
-				local d = (r.Position - tr.Position).Magnitude
-				if d <= bestDist then
-					bestDist = d
-					best = other
-				end
-			end
-		end
-	end
-	if best then
-		transferTaya(taya, best)
-	end
-end
-
 -- Waits for a phase and publishes its end time so the client loading screen can show an accurate countdown.
 local function waitPhase(seconds: number)
 	ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", workspace:GetServerTimeNow() + seconds)
@@ -974,7 +947,6 @@ local function runMatch()
 					taya:SetAttribute("HRushTayaTime", math.floor(tayaTimeThisRound[taya] * 10) / 10)
 				end
 
-				checkPlayerTouchTag(now)
 
 				if #bots > 0 and now - lastBotThink >= 0.25 then
 					lastBotThink = now

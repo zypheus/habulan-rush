@@ -1,7 +1,8 @@
 --!strict
--- StarterPlayerScripts/UIController.lua
--- Owner: UI Dev (T05)
+-- StarterPlayerScripts/UIController.client.lua
+-- Owner: Project Owner
 -- Responsibility: HUD (role banner, countdown, scoreboard, stamina bar),
+-- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
 --                 skill bar, Diskarte meter, clutch callouts, recap screens,
 --                 and spectator camera UI.
 -- See UI/UX Specification and Config.Match / Config.Events.
@@ -102,6 +103,35 @@ gui.IgnoreGuiInset = true
 gui.DisplayOrder = 10
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = PlayerGui
+
+-- Pounce uses the HUD's existing palette and attribute bridge.
+do
+	local pounceChip = Instance.new("TextLabel")
+	pounceChip.Name = "PounceChip"
+	pounceChip.AnchorPoint = Vector2.new(0.5, 1)
+	pounceChip.Position = UDim2.fromScale(0.5, 0.96)
+	pounceChip.Size = UDim2.fromOffset(124, 32)
+	pounceChip.BackgroundColor3 = HUD_NAVY
+	pounceChip.BackgroundTransparency = 0.25
+	pounceChip.BorderSizePixel = 0
+	pounceChip.Font = Enum.Font.GothamBold
+	pounceChip.TextSize = 12
+	pounceChip.TextColor3 = HUD_LIME
+	pounceChip.Parent = gui
+	corner(pounceChip, 6)
+	local function updatePounce()
+		pounceChip.Visible = LocalPlayer:GetAttribute("HRushRole") == "Taya" and LocalPlayer:GetAttribute("HRushState") == "MS_04"
+		local cooldown = LocalPlayer:GetAttribute("HRushPounceCD")
+		local state = LocalPlayer:GetAttribute("HRushLocalPounceState")
+		pounceChip.Text = if state == "Ready" then "POUNCE  READY"
+			elseif typeof(cooldown) == "number" and cooldown > 0 then string.format("POUNCE  %.1f", cooldown)
+			else "POUNCE"
+	end
+	for _, attribute in { "HRushRole", "HRushState", "HRushPounceCD", "HRushLocalPounceState" } do
+		LocalPlayer:GetAttributeChangedSignal(attribute):Connect(updatePounce)
+	end
+	updatePounce()
+end
 
 -- ── Bottom-left cluster: stamina bar + dash chip ──────────────────────────────
 local cluster = Instance.new("Frame")
