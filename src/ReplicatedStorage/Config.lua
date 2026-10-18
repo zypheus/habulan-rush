@@ -159,21 +159,21 @@ Config.Animations = { -- [SD] movement animation runtime metadata and original-a
 		SpeedMax = 1.5,
 	},
 	JumpStart = {
-		Id = "rbxassetid://115591963738630", Priority = Enum.AnimationPriority.Action, Looped = false,
+		Id = "rbxassetid://74307357863566", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
-	}, -- [SD] Batch A published original
+	}, -- [SD] project-owner replacement 2026-10-18, supersedes the Batch A ID
 	Fall = {
-		Id = "rbxassetid://106234834891508", Priority = Enum.AnimationPriority.Movement, Looped = true,
+		Id = "rbxassetid://84863749801510", Priority = Enum.AnimationPriority.Movement, Looped = true,
 		FadeIn = 0.10, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,
-	}, -- [SD] Batch A published original
+	}, -- [SD] project-owner replacement 2026-10-18, supersedes the Batch A ID
 	Land = {
-		Id = "rbxassetid://83446879560399", Priority = Enum.AnimationPriority.Action, Looped = false,
+		Id = "rbxassetid://88319270506819", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
-	}, -- [SD] Batch A published original
+	}, -- [SD] project-owner replacement 2026-10-18, supersedes the Batch A ID
 	LandHard = {
-		Id = "rbxassetid://93067099789487", Priority = Enum.AnimationPriority.Action, Looped = false,
+		Id = "rbxassetid://104821646839230", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
-	}, -- [SD] Batch A published original
+	}, -- [SD] project-owner replacement 2026-10-18, supersedes the Batch A ID
 	SlideEnter = {
 		Id = "rbxassetid://89876839852879", Priority = Enum.AnimationPriority.Action, Looped = false,
 		FadeIn = 0.08, FadeOut = 0.10, SpeedMin = 0.75, SpeedMax = 1.5,

@@ -467,10 +467,10 @@ The runtime resolver reads `Config.Animations` and accepts only numeric `rbxasse
 |---|---|---|
 | HRush_Walk | `rbxassetid://89956272220101` | Metadata only |
 | HRush_Sprint | `rbxassetid://74829353930740` | Active loop while sprinting (owner replacement 2026-10-18) |
-| HRush_JumpStart | `rbxassetid://115591963738630` | Metadata only |
-| HRush_Fall | `rbxassetid://106234834891508` | Metadata only |
-| HRush_Land | `rbxassetid://83446879560399` | Active Soft landing one-shot |
-| HRush_LandHard | `rbxassetid://93067099789487` | Active Hard landing one-shot |
+| HRush_JumpStart | `rbxassetid://74307357863566` | Metadata only (owner replacement 2026-10-18) |
+| HRush_Fall | `rbxassetid://84863749801510` | Metadata only (owner replacement 2026-10-18) |
+| HRush_Land | `rbxassetid://88319270506819` | Active Soft landing one-shot (owner replacement 2026-10-18) |
+| HRush_LandHard | `rbxassetid://104821646839230` | Active Hard landing one-shot (owner replacement 2026-10-18) |
 | HRush_SlideEnter | `rbxassetid://89876839852879` | Metadata only |
 | HRush_SlideLoop | `rbxassetid://106056699835668` | Active loop for the existing single-state slide |
 | HRush_SlideExit | `rbxassetid://110417300002501` | Metadata only |
@@ -679,7 +679,7 @@ The project owner approved a dedicated module at `src/ServerScriptService/Moveme
 - The existing single-state slide loads and preloads `SlideLoop`. SlideEnter, SlideExit, and SlideJump remain metadata until an approved state-machine change.
 - Repository syntax, notes, and Rojo build checks passed after wiring.
 - A fresh-build Studio probe loaded and played all 11 IDs. Ten assets matched the authored duration, loop flag, priority, and keyframe count.
-- The supplied Fall ID `rbxassetid://106234834891508` repeatedly returned a 0.25-second, Action, non-looping, five-keyframe clip. The authored source is 0.60 seconds, Movement, looping, and five keyframes. The project owner confirmed the ID is correct; recheck this metadata difference when Fall receives a live state owner.
+- The supplied Fall ID `rbxassetid://106234834891508` repeatedly returned a 0.25-second, Action, non-looping, five-keyframe clip. The authored source is 0.60 seconds, Movement, looping, and five keyframes. The project owner confirmed the ID is correct; recheck this metadata difference when Fall receives a live state owner. This ID was replaced on 2026-10-18 by `rbxassetid://84863749801510`; the observation is kept for history.
 
 ## Animation and mechanic Batch C validation
 
