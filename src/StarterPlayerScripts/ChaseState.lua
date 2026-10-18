@@ -2,11 +2,11 @@
 -- StarterPlayerScripts/ChaseState.lua (ModuleScript)
 -- Owner: Project Owner
 -- Responsibility: Phase 3 client chase awareness state: resolves the active
--- Taya (players and Workspace.Bots), tracks distance, closing speed, and
+-- Taya (players), tracks distance, closing speed, and
 -- on-screen visibility, and one smoothed chase intensity shared by the
 -- camera FOV channel and the chase HUD. Presentation only; no authority, no
 -- camera writes, no remotes.
--- Task/spec: camera overhaul Phase 3, approved 2026-10-18.
+-- Task/spec: test bots removed; camera overhaul Phase 3 approved 2026-10-18.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -56,8 +56,6 @@ local function rootOf(candidate: Instance): BasePart?
 	local model: Model? = nil
 	if candidate:IsA("Player") then
 		model = candidate.Character
-	elseif candidate:IsA("Model") then
-		model = candidate
 	end
 	if model == nil then
 		return nil
@@ -73,9 +71,6 @@ local function rootOf(candidate: Instance): BasePart?
 	return nil
 end
 
--- The Taya can be a player or a bot model carrying the same role attribute
--- (bots are identified exactly like PounceController does: Workspace.Bots
--- children with IsBot and the match-running attributes).
 local function resolveTaya(): (Instance?, BasePart?)
 	for _, p in Players:GetPlayers() do
 		if p ~= localPlayer
@@ -84,20 +79,6 @@ local function resolveTaya(): (Instance?, BasePart?)
 			local root = rootOf(p)
 			if root ~= nil then
 				return p, root
-			end
-		end
-	end
-	local bots = Workspace:FindFirstChild("Bots")
-	if bots ~= nil then
-		for _, bot in bots:GetChildren() do
-			if bot:IsA("Model")
-				and bot:GetAttribute("IsBot") == true
-				and bot:GetAttribute("HRushRole") == "Taya"
-				and bot:GetAttribute("HRushInMatch") == true then
-				local root = rootOf(bot)
-				if root ~= nil then
-					return bot, root
-				end
 			end
 		end
 	end

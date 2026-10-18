@@ -152,15 +152,9 @@ local function assistedDirection(base: Vector3, origin: Vector3): Vector3
 	local bestDistance = Pounce.AimAssistDistance
 	local threshold = math.cos(math.rad(Pounce.AimAssistAngle))
 	local candidates: { Instance } = Players:GetPlayers() :: { Instance }
-	local bots = Workspace:FindFirstChild("Bots")
-	if bots then
-		for _, bot in bots:GetChildren() do
-			if bot:IsA("Model") and bot:GetAttribute("IsBot") == true then table.insert(candidates, bot) end
-		end
-	end
 	for _, player in candidates do
 		if player ~= localPlayer and player:GetAttribute("HRushRole") == "Runner" and player:GetAttribute("HRushInMatch") == true then
-			local targetCharacter = if player:IsA("Player") then player.Character else player :: Model
+			local targetCharacter = player.Character
 			local targetRoot = targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart")
 			local targetHumanoid = targetCharacter and targetCharacter:FindFirstChildOfClass("Humanoid")
 			local safeUntil = player:GetAttribute("HRushTagSafeUntil")
@@ -324,8 +318,6 @@ function PounceController.start()
 		local kind = payload.kind
 		if payload.actorId ~= localPlayer.UserId then
 			local actor: Instance? = if typeof(payload.actorId) == "number" then Players:GetPlayerByUserId(payload.actorId) else nil
-			if not actor and typeof(payload.actor) == "Instance" and payload.actor:IsA("Model")
-				and payload.actor:GetAttribute("IsBot") == true then actor = payload.actor end
 			if not actor then return end
 			if kind == "Approved" then Effects.emit(actor, "Windup")
 			elseif kind == "Launch" then Effects.emit(actor, "Launch")
@@ -377,13 +369,11 @@ function PounceController.start()
 			activeRoot.AssemblyLinearVelocity = direction * Pounce.ForwardSpeed + Vector3.new(0, velocity.Y, 0)
 			local params = RaycastParams.new()
 			params.FilterType = Enum.RaycastFilterType.Exclude
-			local exclude: { Instance } = { character :: Model }
-			for _, other in Players:GetPlayers() do
-				if other.Character then table.insert(exclude, other.Character) end
-			end
-			local bots = Workspace:FindFirstChild("Bots")
-			if bots then table.insert(exclude, bots) end
-			params.FilterDescendantsInstances = exclude
+		local exclude: { Instance } = { character :: Model }
+		for _, other in Players:GetPlayers() do
+			if other.Character then table.insert(exclude, other.Character) end
+		end
+		params.FilterDescendantsInstances = exclude
 			params.RespectCanCollide = true
 			local wall = Workspace:Blockcast(activeRoot.CFrame, Pounce.WallProbeSize, direction * Pounce.WallLookAhead, params)
 			if wall and math.abs(wall.Normal.Y) < Pounce.WallMaxNormalY then

@@ -2,7 +2,7 @@
 -- ServerScriptService/TagService.server.lua
 -- Owner: Project Owner
 -- Responsibility: authoritative pounce lifecycle, spatial hit validation, and one-hit ledger.
--- Task/spec: moving ground/air pounce; only pounce tags, including bots, approved 2026-10-17.
+-- Task/spec: moving ground/air pounce, players only (test bots removed); approved 2026-10-18.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,7 +21,6 @@ type Attempt = {
 	id: number, state: string, character: Model, launchAt: number, direction: Vector3, seenAir: boolean,
 	origin: Vector3, previous: Vector3, travel: number, resolved: boolean, hit: boolean,
 	contactAt: number, recoveryUntil: number, landingSent: boolean,
-	botTrack: AnimationTrack?, botSpeed: number?, botAutoRotate: boolean?,
 }
 type Ledger = { lastId: number, readyAt: number, lastRequestAt: number, active: Attempt? }
 local ledgers: { [Instance]: Ledger } = {}
@@ -41,7 +40,7 @@ local function getLedger(player: Instance): Ledger
 end
 
 local function getRig(player: Instance): (Model?, Humanoid?, BasePart?)
-	local character = if player:IsA("Player") then player.Character else (if player:IsA("Model") then player else nil)
+	local character = if player:IsA("Player") then player.Character else nil
 	if not character then return nil, nil, nil end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local root = character:FindFirstChild("HumanoidRootPart")
@@ -73,58 +72,16 @@ local function notify(player: Instance, kind: string, id: number, readyIn: numbe
 		end
 	end
 	local remaining = readyIn or 0
-	local payload = { actorId = if player:IsA("Player") then player.UserId else 0, actor = player, kind = kind, id = id, readyIn = remaining,
-		readyAtServer = Workspace:GetServerTimeNow() + remaining, targetId = if target and target:IsA("Player") then target.UserId else 0, position = position }
+	local payload = { actorId = player.UserId, actor = player, kind = kind, id = id, readyIn = remaining,
+		readyAtServer = Workspace:GetServerTimeNow() + remaining, targetId = if target then target.UserId else 0, position = position }
 	if kind == "Denied" then
-		if player:IsA("Player") then PounceEvent:FireClient(player, payload) end
+		PounceEvent:FireClient(player, payload)
 	else PounceEvent:FireAllClients(payload) end
 end
 
 local function setState(player: Instance, state: string, active: boolean)
 	player:SetAttribute("HRushPouncing", active)
 	player:SetAttribute("HRushPounceState", state)
-end
-
-local function stopBotPose(attempt: Attempt)
-	local track = attempt.botTrack
-	if track then
-		track:Stop(Pounce.AnimationFade)
-		task.delay(Pounce.AnimationFade, function() track:Destroy() end)
-		attempt.botTrack = nil
-	end
-end
-
-local function playBotPose(attempt: Attempt, name: string)
-	if attempt.botSpeed == nil then return end
-	stopBotPose(attempt)
-	local humanoid = attempt.character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then animator = Instance.new("Animator"); animator.Parent = humanoid end
-	local animation = Instance.new("Animation")
-	animation.AnimationId = Pounce.Animations[name]
-	local ok, track = pcall(function() return (animator :: Animator):LoadAnimation(animation) end)
-	animation:Destroy()
-	if ok then
-		attempt.botTrack = track
-		track.Priority = Enum.AnimationPriority.Action
-		track.Looped = false
-		track:Play(Pounce.AnimationFade)
-	end
-end
-
-local function restoreBot(attempt: Attempt)
-	stopBotPose(attempt)
-	local humanoid = attempt.character:FindFirstChildOfClass("Humanoid")
-	if humanoid and attempt.botSpeed ~= nil then
-		humanoid.WalkSpeed = attempt.botSpeed
-		humanoid.AutoRotate = attempt.botAutoRotate == true
-		local root = attempt.character:FindFirstChild("HumanoidRootPart")
-		if root and root:IsA("BasePart") then
-			local velocity = root.AssemblyLinearVelocity
-			root.AssemblyLinearVelocity = Vector3.new(0, velocity.Y, 0)
-		end
-	end
 end
 
 local function finish(player: Instance, ledger: Ledger, attempt: Attempt, hit: boolean, target: Instance?)
@@ -136,19 +93,12 @@ local function finish(player: Instance, ledger: Ledger, attempt: Attempt, hit: b
 	attempt.state = if hit then "Contact" else "Landing"
 	ledger.readyAt = math.max(ledger.readyAt, attempt.launchAt + (if hit then Pounce.HitCooldown else Pounce.MissCooldown))
 	setState(player, attempt.state, true)
-	if attempt.botSpeed ~= nil then
-		local _, humanoid, root = getRig(player)
-		if humanoid then humanoid.WalkSpeed = attempt.botSpeed * Pounce.RecoverySpeedMult end
-		if root then root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0) end
-		playBotPose(attempt, if hit then "Tag" else "Recovery")
-	end
 	notify(player, if hit then "Hit" else "Miss", attempt.id, math.max(0, ledger.readyAt - os.clock()), target)
 	log(string.format("%s id=%d %s", player.Name, attempt.id, if hit then "hit" else "miss"))
 end
 
 local function cancel(player: Instance, ledger: Ledger, attempt: Attempt)
 	if ledger.active ~= attempt then return end
-	restoreBot(attempt)
 	ledger.active = nil
 	ledger.readyAt = math.max(ledger.readyAt, attempt.launchAt + Pounce.MissCooldown)
 	setState(player, "Cooldown", false)
@@ -191,14 +141,11 @@ local function requestPounce(player: Instance, id: unknown)
 	end
 	local velocity = root.AssemblyLinearVelocity
 	local horizontal = Vector3.new(velocity.X, 0, velocity.Z)
-	local humanoid = character:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local attempt: Attempt = {
 		id = id, state = "Windup", character = character,
 		launchAt = now + Pounce.WindupTime, direction = horizontal.Unit, seenAir = false,
 		origin = root.Position, previous = root.Position, travel = 0, resolved = false, hit = false,
 		contactAt = 0, recoveryUntil = 0, landingSent = false,
-		botTrack = nil, botSpeed = if player:IsA("Model") then humanoid.WalkSpeed else nil,
-		botAutoRotate = if player:IsA("Model") then humanoid.AutoRotate else nil,
 	}
 	ledger.active = attempt
 	ledger.readyAt = attempt.launchAt + Pounce.HitCooldown
@@ -206,21 +153,9 @@ local function requestPounce(player: Instance, id: unknown)
 	player:SetAttribute("HRushPounceId", id)
 	notify(player, "Approved", id)
 	log(string.format("%s id=%d approved", player.Name, id))
-	if player:IsA("Model") then
-		humanoid.AutoRotate = false
-		playBotPose(attempt, "Windup")
-	end
 end
 
 RequestPounce.OnServerEvent:Connect(requestPounce)
-local requestBot = Instance.new("BindableEvent")
-requestBot.Name = "HRUSH_RequestBotPounce"
-requestBot.Parent = ServerScriptService
-requestBot.Event:Connect(function(bot: Instance)
-	local bots = Workspace:FindFirstChild("Bots")
-	if not bots or not bot:IsA("Model") or bot.Parent ~= bots or bot:GetAttribute("IsBot") ~= true then return end
-	requestPounce(bot, getLedger(bot).lastId + 1)
-end)
 
 local function queryTarget(player: Instance, attempt: Attempt, root: BasePart): Instance?
 	local box = CFrame.lookAt(root.Position, root.Position + attempt.direction) * CFrame.new(Pounce.HitboxOffset)
@@ -230,15 +165,12 @@ local function queryTarget(player: Instance, attempt: Attempt, root: BasePart): 
 	for _, candidate in Players:GetPlayers() do
 		if candidate ~= player and candidate.Character then table.insert(characters, candidate.Character) end
 	end
-	local bots = Workspace:FindFirstChild("Bots")
-	if bots then table.insert(characters, bots) end
 	overlap.FilterDescendantsInstances = characters
 	local closest: Instance? = nil
 	local best = math.huge
 	for _, part in Workspace:GetPartBoundsInBox(box, Pounce.HitboxSize, overlap) do
 		local model = part:FindFirstAncestorOfClass("Model")
 		local target: Instance? = model and Players:GetPlayerFromCharacter(model)
-		if not target and model and model.Parent == bots and model:GetAttribute("IsBot") == true then target = model end
 		if target and target ~= player and target:GetAttribute("HRushInMatch") == true and target:GetAttribute("HRushRole") == "Runner" then
 			local humanoid = model:FindFirstChildOfClass("Humanoid")
 			local targetRoot = model:FindFirstChild("HumanoidRootPart")
@@ -285,8 +217,6 @@ local function validTravel(attempt: Attempt, root: BasePart, now: number): (bool
 	for _, other in Players:GetPlayers() do
 		if other.Character then table.insert(filter, other.Character) end
 	end
-	local bots = Workspace:FindFirstChild("Bots")
-	if bots then table.insert(filter, bots) end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = filter
@@ -300,7 +230,6 @@ RunService.Heartbeat:Connect(function()
 	local now = os.clock()
 	for player, ledger in ledgers do
 		if not player:IsDescendantOf(game) then
-			if ledger.active then restoreBot(ledger.active) end
 			ledgers[player] = nil
 			continue
 		end
@@ -323,11 +252,9 @@ RunService.Heartbeat:Connect(function()
 				end
 				if attempt.state == "Landing" then
 					attempt.state = "Recovery"
-					playBotPose(attempt, "Recovery")
 					attempt.recoveryUntil = now + (if attempt.hit then Pounce.HitRecovery else Pounce.MissRecovery)
 					setState(player, "Recovery", true)
 				elseif attempt.state == "Recovery" and now >= attempt.recoveryUntil then
-					restoreBot(attempt)
 					ledger.active = nil
 					setState(player, "Cooldown", false)
 				end
@@ -336,16 +263,7 @@ RunService.Heartbeat:Connect(function()
 					setState(player, "Launching", true)
 					attempt.state = "Airborne"
 					setState(player, "Airborne", true)
-					if attempt.botSpeed ~= nil then
-						humanoid.WalkSpeed = 0
-						humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-						root.AssemblyLinearVelocity = attempt.direction * Pounce.ForwardSpeed + Vector3.yAxis * Pounce.UpwardSpeed
-						playBotPose(attempt, "Leap")
-					end
 					notify(player, "Launch", attempt.id)
-				end
-				if attempt.botSpeed ~= nil then
-					root.AssemblyLinearVelocity = attempt.direction * Pounce.ForwardSpeed + Vector3.yAxis * root.AssemblyLinearVelocity.Y
 				end
 				local onGround = grounded(character :: Model, humanoid, root)
 				if not onGround then attempt.seenAir = true end

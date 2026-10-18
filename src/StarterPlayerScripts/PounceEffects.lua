@@ -2,7 +2,7 @@
 -- StarterPlayerScripts/PounceEffects.lua
 -- Owner: Project Owner
 -- Responsibility: original pounce dust, ribbons, impact rings, and configured audio for all clients.
--- Task/spec: player and bot pounce feedback, approved 2026-10-17.
+-- Task/spec: player pounce feedback (test bots removed), approved 2026-10-18.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

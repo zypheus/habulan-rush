@@ -375,7 +375,6 @@ Config.Pounce = { -- [LOCKED] Project-owner revision, 2026-10-17: moving ground/
 	GroundTolerance = 0.12, -- [SD] server ground-ray tolerance for client-owned R15 rigs
 	MinForwardDot = 0.5, -- [SD] moving within 60 degrees of character facing
 	MinMoveSpeed = 1, -- [SD] minimum server-observed horizontal movement; sprint and ground contact are not required
-	BotAttemptRange = 12, -- [SD] AI begins a validated pounce within this range
 	MaxSteerAngle = 30, -- [SD] steering input cone relative to launch
 	SteerRate = 0.8, -- [SD] frame-independent heading blend
 	AnimationFade = 0.06, -- [SD]
@@ -495,9 +494,7 @@ Config.Match = {
 	BarangayRushEnd = 50,
 	EventWarningTime = 2.5,
 	SearchTimeout = 10,
-	BotFillTarget = 8,
 	TeamSize      = 4,
-	AllowBots     = true,
 }
 
 Config.Events = {

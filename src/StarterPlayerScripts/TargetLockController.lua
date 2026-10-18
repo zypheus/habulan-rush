@@ -2,14 +2,14 @@
 -- Client-only aim helper. Server tag and pounce checks must never trust it.
 -- TAYA-ONLY: the lock is a Taya tool. Runners cannot acquire or cycle, and a
 -- lock breaks the moment a tag transfer turns the local Taya into a Runner.
--- Integration attributes, set by the server on Player or Bot:
+-- Integration attributes, set by the server on Players:
 -- HRushRole: "Taya" for Taya; "Runner" for Runner.
 -- IsTaya: true for Taya; false or absent for a Runner (legacy / fallback).
 -- LockDelayUntil: server timestamp; T12 blocks acquisition until it expires.
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
 -- IsDashing / IsHidden: target flags that break locks (Stage E).
 -- RS_02 client effects can require this module and call :BreakLock("DecoySwap").
--- Supports targeting both human Players and Bot Models in Workspace.Bots.
+-- Targets are human Players only (test bots removed).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -51,7 +51,7 @@ local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
 local CYCLE_ACTION = "HRUSH_TargetLockCycle"
 
 type Candidate = {
-	target: Instance,       -- Player or Model
+	target: Instance,       -- Player
 	name: string,
 	character: Model,
 	root: BasePart,
@@ -539,34 +539,6 @@ local function refreshCandidates()
 				root = otherRoot,
 				aimPart = part,
 			})
-		end
-	end
-
-	-- 2. Scan Bots in Workspace.Bots (testing / solo / match fill)
-	local botsFolder = Workspace:FindFirstChild("Bots")
-	if botsFolder then
-		for _, bot in ipairs(botsFolder:GetChildren()) do
-			if bot:IsA("Model") and passesRole(bot) then
-				local botRoot = livingRoot(bot)
-				if not botRoot then
-					continue
-				end
-				local part = aimPart(bot)
-				if not part or (botRoot.Position - root.Position).Magnitude > Settings.AcquireRange then
-					continue
-				end
-				rayParams.FilterDescendantsInstances = { character, bot }
-				local direction = part.Position + Settings.AimPointOffset - head.Position
-				if Workspace:Raycast(head.Position, direction, rayParams) == nil then
-					table.insert(candidates, {
-						target = bot,
-						name = bot.Name,
-						character = bot,
-						root = botRoot,
-						aimPart = part,
-					})
-				end
-			end
 		end
 	end
 end

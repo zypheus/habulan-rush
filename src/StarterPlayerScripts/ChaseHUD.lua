@@ -182,17 +182,6 @@ local function rescan()
 			consider(other, other.Character)
 		end
 	end
-	local bots = Workspace:FindFirstChild("Bots")
-	if bots ~= nil then
-		for _, bot in bots:GetChildren() do
-			if bot:IsA("Model")
-				and bot:GetAttribute("IsBot") == true
-				and bot:GetAttribute("HRushRole") == "Runner"
-				and bot:GetAttribute("HRushInMatch") == true then
-				consider(bot, bot)
-			end
-		end
-	end
 
 	if bestTarget == nil or bestRoot == nil then
 		return

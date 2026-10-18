@@ -1,22 +1,26 @@
 --!strict
--- ServerScriptService/MatchService.server.lua   (v1.1 - queue + bot fill + lobby/match separation)
+-- ServerScriptService/MatchService.server.lua   (v1.2 - queue + lobby/match separation, bots removed)
 -- Owner: Project Owner
 -- Responsibility: State machine (MS_01->MS_06), shuffle bag, scoring,
--- Task/spec: pounce-only tags for players and bots, approved 2026-10-17.
---                 phase timers, disconnect handling, PLAY queue and test bots.
+-- Task/spec: test bots removed (server, TagService bridge, and client scans); approved 2026-10-18.
+--                 phase timers, disconnect handling, and PLAY queue.
 --
--- NEW IN v1.1
+-- CHANGED IN v1.2
+--   * Test bots are deleted everywhere: no fill, no AI, no bot votes, and no
+--     client Workspace.Bots scans. Matches contain queueing players only.
+--   * A search that times out starts the match with whatever queued (even one
+--     player, a tag sandbox). Config.Match.MinPlayers is no longer read here.
+--
+-- KEPT IN v1.1
 --   * Match no longer auto-starts. A player must press FIND MATCH (client fires
---     Remotes.QueueEvent "Play"). A 10 s search begins; if the lobby is not full
---     when it ends, bots fill the match (testing). Set Config.Match.AllowBots=false to disable.
+--     Remotes.QueueEvent "Play"). A 10 s search begins.
 --   * Only players who queued take part in a match ("inMatch"). Everyone else stays in lobby.
 --   * Per-player attributes drive the client UI:
 --       HRushInMatch (bool)        -> lobby UI hidden / match HUD (stamina, dash, role) shown
 --       HRushQueue   (string)      -> "Idle" | "Searching" | "InMatch" | "Busy"
 --       HRushSearchEndsAt (number) -> workspace:GetServerTimeNow() when search ends
 --       HRushState   (string)      -> "MS_01" for anyone not in the match, real state otherwise
---   * Bots are Models in Workspace.Bots (attribute IsBot=true). Roles/scores are keyed by Instance
---     (Player or bot Model), so everything below treats them as "participants".
+--   * Participants are Players only; roles/scores are keyed by Player Instance.
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -92,16 +96,13 @@ end
 
 local IS_STUDIO = RunService:IsStudio()
 local MATCH = Config.Match
-local MIN_PLAYERS = IS_STUDIO and 1 or MATCH.MinPlayers
 local MAX_PLAYERS: number = MATCH.MaxPlayers or 8
 local SEARCH_TIMEOUT: number = MATCH.SearchTimeout or 10
-local BOT_FILL_TARGET: number = MATCH.BotFillTarget or 8 -- total participants after bot fill
-local ALLOW_BOTS: boolean = (MATCH.AllowBots == nil) and true or MATCH.AllowBots -- set false for release
 local TAG_IMMUNITY: number = Config.Tag.SafeWindowDuration or 2 -- Safe Window: ex-Taya cannot be re-tagged for this long
 local ARENA_RADIUS: number = (Config.Maps and Config.Maps.Kalsada and Config.Maps.Kalsada.greybox and Config.Maps.Kalsada.greybox.spawnRadius) or 55
 
 -- ============================================================
--- HELPERS (participants = Player or bot Model)
+-- HELPERS (participants = Player)
 -- ============================================================
 local function isPresent(inst: Instance): boolean
 	return inst:IsDescendantOf(Players) or inst:IsDescendantOf(Workspace)
@@ -204,17 +205,7 @@ local roundActive = false
 
 local queued: { [Player]: boolean } = {}   -- pressed FIND MATCH, waiting for search to finish
 local inMatch: { [Player]: boolean } = {}  -- real players taking part in the current match
-local bots: { Model } = {}
 local searchEndsAt: number? = nil
-
-local botsFolder = Workspace:FindFirstChild("Bots")
-if not botsFolder then
-	local f = Instance.new("Folder")
-	f.Name = "Bots"
-	f.Parent = Workspace
-	botsFolder = f
-end
-local botsFolderRef = botsFolder :: Instance
 
 local function getParticipants(): { Instance }
 	local list: { Instance } = {}
@@ -223,15 +214,10 @@ local function getParticipants(): { Instance }
 			table.insert(list, p)
 		end
 	end
-	for _, b in ipairs(bots) do
-		if b.Parent then
-			table.insert(list, b)
-		end
-	end
 	return list
 end
 
-local function realParticipantCount(): number
+local function participantCount(): number
 	local n = 0
 	for p in pairs(inMatch) do
 		if p:IsDescendantOf(Players) then
@@ -259,10 +245,6 @@ local function broadcastState(targetPlayer: Player?, optionalTimer: number?)
 	local targets = targetPlayer and { targetPlayer } or Players:GetPlayers()
 	ReplicatedStorage:SetAttribute("HRushMatchState", matchState)
 	ReplicatedStorage:SetAttribute("HRushRoundState", matchState)
-	for _, bot in bots do
-		bot:SetAttribute("HRushInMatch", true)
-		bot:SetAttribute("HRushState", matchState)
-	end
 
 	for _, p in ipairs(targets) do
 		local isIn = inMatch[p] == true
@@ -304,10 +286,9 @@ local function transferTaya(from: Instance, to: Instance)
 	broadcastState(nil)
 
 	-- MovementController listens for { taggerId, targetId } to give the ex-Taya the +20% boost (F08).
-	-- Bots have no UserId, so they are sent as 0.
 	local payload = {
-		taggerId = from:IsA("Player") and from.UserId or 0,
-		targetId = to:IsA("Player") and to.UserId or 0,
+		taggerId = from.UserId,
+		targetId = to.UserId,
 	}
 	for p in pairs(inMatch) do
 		if p:IsDescendantOf(Players) then
@@ -333,121 +314,6 @@ CommitPounceTag.OnInvoke = function(tagger: Instance, target: Instance): boolean
 end
 
 -- ============================================================
--- BOTS (testing only)
--- ============================================================
-local BOT_NAMES = { "Bot_Juan", "Bot_Maria", "Bot_Pedro", "Bot_Ana", "Bot_Lito", "Bot_Cora", "Bot_Dodong" }
-
--- The rig is built ONCE (a web call that can take seconds) and cloned per bot,
--- so spawning bots at match start is instant. It is also pre-built at server start.
-local botTemplate: Model? = nil
-local function getBotTemplate(): Model?
-	if botTemplate then
-		return botTemplate
-	end
-	local ok, model = pcall(function()
-		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
-	end)
-	if ok and model then
-		botTemplate = model
-	else
-		warn("[MatchService] Failed to create bot template: " .. tostring(model))
-	end
-	return botTemplate
-end
-
-if ALLOW_BOTS then
-	task.spawn(getBotTemplate)
-end
-
-local function spawnBots(count: number)
-	local template = getBotTemplate()
-	if not template then
-		return
-	end
-	for i = 1, count do
-		local model = template:Clone()
-		model.Name = BOT_NAMES[i] or ("Bot_" .. i)
-		model:SetAttribute("IsBot", true)
-		local hum = model:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.DisplayName = model.Name
-		end
-		model.Parent = botsFolderRef
-		pcall(function()
-			local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
-			hrp:SetNetworkOwner(nil)
-		end)
-		table.insert(bots, model)
-	end
-	print(string.format("[MatchService] Spawned %d bot(s).", #bots))
-end
-
-local function clearBots()
-	for _, b in ipairs(bots) do
-		b:Destroy()
-	end
-	bots = {}
-end
-
-local wanderUntil: { [Model]: number } = {}
-
-local function updateBots(now: number)
-	for _, bot in ipairs(bots) do
-		local hum = bot:FindFirstChildOfClass("Humanoid")
-		local root = bot.PrimaryPart
-		if bot.Parent and hum and hum.Health > 0 and root and bot:GetAttribute("HRushPouncing") ~= true then
-			if playerRoles[bot] == "Taya" then
-				local best: Instance? = nil
-				local bestDist = math.huge
-				for _, other in ipairs(getParticipants()) do
-					if other ~= bot and playerRoles[other] == "Runner" and (immuneUntil[other] or 0) < now then
-						local r = getRoot(other)
-						if r then
-							local d = (r.Position - root.Position).Magnitude
-							if d < bestDist then
-								bestDist = d
-								best = other
-							end
-						end
-					end
-				end
-				if best then
-					local br = getRoot(best)
-					hum.WalkSpeed = Config.Movement.TayaSpeed * Config.Movement.SpeedScale
-					if br then
-						hum:MoveTo(br.Position)
-					end
-					if bestDist <= Config.Pounce.BotAttemptRange then
-						local request = ServerScriptService:FindFirstChild("HRUSH_RequestBotPounce")
-						if request and request:IsA("BindableEvent") then request:Fire(bot) end
-					end
-				end
-			else
-				hum.WalkSpeed = Config.Movement.RunnerWalkSpeed * Config.Movement.SpeedScale
-				local tayaRoot = currentTaya and getRoot(currentTaya)
-				if tayaRoot and (tayaRoot.Position - root.Position).Magnitude < 28 then
-					-- flee from Taya, clamped to the arena
-					local away = (root.Position - tayaRoot.Position) * Vector3.new(1, 0, 1)
-					local dir = away.Magnitude > 0.1 and away.Unit or Vector3.new(1, 0, 0)
-					local target = root.Position + dir * 18
-					local flat = Vector3.new(target.X, 0, target.Z)
-					if flat.Magnitude > ARENA_RADIUS then
-						flat = flat.Unit * ARENA_RADIUS
-						target = Vector3.new(flat.X, root.Position.Y, flat.Z)
-					end
-					hum:MoveTo(target)
-				elseif (wanderUntil[bot] or 0) < now then
-					local ang = math.random() * math.pi * 2
-					local rad = math.random() * ARENA_RADIUS * 0.8
-					hum:MoveTo(Vector3.new(math.cos(ang) * rad, root.Position.Y, math.sin(ang) * rad))
-					wanderUntil[bot] = now + 3
-				end
-			end
-		end
-	end
-end
-
--- ============================================================
 -- TELEPORT
 -- ============================================================
 local function teleportToSpawns(list: { Instance })
@@ -463,8 +329,6 @@ local function teleportToSpawns(list: { Instance })
 					char = inst.CharacterAdded:Wait()
 				end
 				model = char
-			elseif inst:IsA("Model") then
-				model = inst
 			end
 
 			if model then
@@ -638,7 +502,6 @@ local function returnToLobby()
 	playerRoles = {}
 	immuneUntil = {}
 	inMatch = {}
-	clearBots()
 
 	for _, p in ipairs(Players:GetPlayers()) do
 		if not queued[p] then
@@ -687,12 +550,6 @@ local function runMapVote(): string
 				name = p.DisplayName or p.Name,
 				isBot = false,
 			})
-		elseif p:IsA("Model") then
-			table.insert(participantList, {
-				id = p.Name,
-				name = p.Name,
-				isBot = true,
-			})
 		end
 	end
 
@@ -735,30 +592,6 @@ local function runMapVote(): string
 			end
 		end
 	end)
-
-	-- Bots cast votes over time (0.6s to duration * 0.65s)
-	for _, b in ipairs(bots) do
-		task.spawn(function()
-			local delaySec = math.random(6, math.floor(duration * 6.5)) / 10
-			task.wait(delaySec)
-			if matchState ~= "MS_VOTE" then return end
-			local choice = pool[math.random(1, #pool)]
-			votes[choice] = (votes[choice] or 0) + 1
-			voterChoices[b.Name] = choice
-
-			local updatePayload = {
-				type = "Update",
-				votes = votes,
-				voterId = b.Name,
-				map = choice,
-			}
-			for target in pairs(inMatch) do
-				if target:IsDescendantOf(Players) then
-					MapVoteEvent:FireClient(target, updatePayload)
-				end
-			end
-		end)
-	end
 
 	local voteStart = os.clock()
 	while (os.clock() - voteStart) < duration do
@@ -829,7 +662,6 @@ local function runMatch()
 		-- ===== SEARCH PHASE =====
 		searchEndsAt = workspace:GetServerTimeNow() + SEARCH_TIMEOUT
 		local searchStart = os.clock()
-		local botsNeeded = 0
 		local aborted = false
 
 		while true do
@@ -845,17 +677,10 @@ local function runMatch()
 			if q >= MAX_PLAYERS then
 				break
 			end
+			-- Bots no longer fill the match: the search ends and the match
+			-- starts with whatever queued, even a single player (tag sandbox).
 			if os.clock() - searchStart >= SEARCH_TIMEOUT then
-				if ALLOW_BOTS then
-					botsNeeded = math.max(0, BOT_FILL_TARGET - q)
-					break
-				elseif q >= MIN_PLAYERS then
-					break
-				else
-					-- not enough real players and no bots: keep searching
-					searchStart = os.clock()
-					searchEndsAt = workspace:GetServerTimeNow() + SEARCH_TIMEOUT
-				end
+				break
 			end
 		end
 		searchEndsAt = nil
@@ -872,10 +697,6 @@ local function runMatch()
 			end
 		end
 		queued = {}
-		if botsNeeded > 0 then
-			print(string.format("[MatchService] Search timed out. Filling with %d bot(s).", botsNeeded))
-			spawnBots(botsNeeded)
-		end
 
 		-- ===== MAP VOTE PHASE =====
 		matchState = "MS_VOTE"
@@ -910,7 +731,7 @@ local function runMatch()
 			-- MS_03 COUNTDOWN
 			matchState = "MS_03"
 			local participants = getParticipants()
-			if realParticipantCount() == 0 then
+			if participantCount() == 0 then
 				print("[MatchService] No real players left; aborting match.")
 				abort = true
 				break
@@ -934,7 +755,6 @@ local function runMatch()
 			ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", workspace:GetServerTimeNow() + roundDuration)
 
 			local startTime = os.clock()
-			local lastBotThink = 0.0
 
 			while (os.clock() - startTime) < roundDuration do
 				task.wait(0.1)
@@ -947,14 +767,8 @@ local function runMatch()
 					taya:SetAttribute("HRushTayaTime", math.floor(tayaTimeThisRound[taya] * 10) / 10)
 				end
 
-
-				if #bots > 0 and now - lastBotThink >= 0.25 then
-					lastBotThink = now
-					updateBots(now)
-				end
-
-				if realParticipantCount() == 0 then
-					print("[MatchService] All real players left during Round Live; aborting match.")
+				if participantCount() == 0 then
+					print("[MatchService] All players left during Round Live; aborting match.")
 					abort = true
 					break
 				end
@@ -1061,4 +875,4 @@ local function runMatch()
 end
 
 task.defer(runMatch)
-print("[MatchService] MatchService v1.1 initialized (queue + bot fill + ShuffleBag Taya selection).")
+print("[MatchService] MatchService v1.2 initialized (queue + ShuffleBag Taya selection, bots removed).")
