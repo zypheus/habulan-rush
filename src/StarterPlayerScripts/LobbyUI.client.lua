@@ -1420,20 +1420,26 @@ end
 -- Every control writes ClientSettings only. Audio, VFX, and gameplay read
 -- the model live, so changes apply with no rejoin. Replaces the old
 -- visual-only Music/SFX toggles, which never did anything.
-local settingsPanel = createPanel("Settings", "SETTINGS", 520, 640)
+local settingsPanel = createPanel("Settings", "SETTINGS", 520, 812)
 local settingsStep = SharedConfig.Settings.SliderStep
 do
-	local c = settingsPanel.Content -- 464 x 522
+	local c = settingsPanel.Content -- 464 x 694
 
 	local settingsRows: { [string]: any } = {}
 	local rowCards: { [string]: Instance } = {}
-	local rowOrder = { "master", "music", "sfx", "vfx", "reducedCamera" }
+	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "reducedCamera", "invertCameraY" }
 	local rowTitles: { [string]: string } = {
 		master = "Master Volume",
 		music = "Music Volume",
 		sfx = "SFX Volume",
 		vfx = "VFX Intensity",
+		cameraSensitivity = "Camera Look Speed",
 		reducedCamera = "Reduced Camera Effects",
+		invertCameraY = "Invert Camera Y",
+	}
+	local toggleKeys: { [string]: boolean } = {
+		reducedCamera = true,
+		invertCameraY = true,
 	}
 
 	local function valueFromX(track: Frame, x: number): number
@@ -1463,17 +1469,25 @@ do
 		valueLabel.Text = tostring(math.floor(v + 0.5))
 	end
 
-	local function refreshReduced()
-		local row = settingsRows.reducedCamera
+	local function refreshToggle(key: string)
+		local row = settingsRows[key]
 		if row == nil then
 			return
 		end
-		local on = ClientSettings.get("reducedCamera") == true
+		local on = ClientSettings.get(key) == true
 		tween(row.track, INFO_FAST, { BackgroundColor3 = on and COLORS.Lime or COLORS.SlateEdge })
 		tween(row.knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = on and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 18, 0.5, 0),
 			BackgroundColor3 = on and COLORS.Navy or COLORS.TextDim,
 		})
+	end
+
+	local function refreshRow(key: string)
+		if toggleKeys[key] then
+			refreshToggle(key)
+		else
+			refreshSlider(key)
+		end
 	end
 
 	local dragKey: string? = nil
@@ -1546,21 +1560,14 @@ do
 		refreshSlider(key)
 	end
 
-	for i, key in rowOrder do
-		if key ~= "reducedCamera" then
-			createSliderRow(i, key)
-		end
-	end
-
-	-- Reduced camera toggle row (same card size, wired to the model).
-	do
-		local row = createCard(c, 0, 4 * 84, 464, 76)
-		rowCards.reducedCamera = row
-		stroke(row, COLORS.Lime, 2, 1)
+	local function createToggleRow(index: number, key: string, subtitle: string)
+		local row = createCard(c, 0, (index - 1) * 84, 464, 76)
+		rowCards[key] = row
+		stroke(row, COLORS.Lime, 2, 1) -- focus ring, shown for the selected row
 		createLabel({
 			Position = UDim2.fromOffset(20, 6),
 			Size = UDim2.fromOffset(360, 24),
-			Text = rowTitles.reducedCamera,
+			Text = rowTitles[key],
 			FontFace = FONTS.Bold,
 			TextSize = 18,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1568,7 +1575,7 @@ do
 		createLabel({
 			Position = UDim2.fromOffset(20, 32),
 			Size = UDim2.fromOffset(360, 20),
-			Text = "No FOV kicks, shake, or aim camera.",
+			Text = subtitle,
 			FontFace = FONTS.SemiBold,
 			TextSize = 13,
 			TextColor3 = COLORS.TextDim,
@@ -1588,21 +1595,31 @@ do
 			BackgroundColor3 = COLORS.TextDim,
 		}, track)
 		corner(knob, FULL)
-		settingsRows.reducedCamera = { track = track, knob = knob }
+		settingsRows[key] = { track = track, knob = knob }
 		track.Activated:Connect(function()
 			UIAudio.playUi("toggle")
-			ClientSettings.set("reducedCamera", not (ClientSettings.get("reducedCamera") == true))
+			ClientSettings.set(key, not (ClientSettings.get(key) == true))
 		end)
-		refreshReduced()
+		refreshToggle(key)
 	end
 
-	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, 5 * 84 + 8, 464, 56, function()
+	for i, key in rowOrder do
+		if not toggleKeys[key] then
+			createSliderRow(i, key)
+		end
+	end
+
+	-- Camera and reduced-camera toggle rows (camera look, reduced effects).
+	createToggleRow(6, "reducedCamera", "No FOV kicks, shake, or aim camera.")
+	createToggleRow(7, "invertCameraY", "Push up to look down.")
+
+	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, #rowOrder * 84 + 8, 464, 56, function()
 		UIAudio.playUi("click")
 		ClientSettings.reset()
 	end, 16)
 
 	createLabel({
-		Position = UDim2.fromOffset(0, 5 * 84 + 72),
+		Position = UDim2.fromOffset(0, #rowOrder * 84 + 72),
 		Size = UDim2.new(1, 0, 0, 24),
 		Text = "H opens settings anywhere. DPad moves, Left and Right adjust.",
 		FontFace = FONTS.SemiBold,
@@ -1615,11 +1632,7 @@ do
 		if typeof(key) ~= "string" then
 			return
 		end
-		if key == "reducedCamera" then
-			refreshReduced()
-		else
-			refreshSlider(key)
-		end
+		refreshRow(key)
 	end)
 
 	-- Gamepad focus: DPad moves between rows, Left/Right adjusts. Thumbsticks
@@ -1659,11 +1672,7 @@ do
 		focused = 1
 		refreshFocus()
 		for _, key in rowOrder do
-			if key == "reducedCamera" then
-				refreshReduced()
-			else
-				refreshSlider(key)
-			end
+			refreshRow(key)
 		end
 		openedEvent:Fire()
 	end
@@ -1718,7 +1727,7 @@ do
 		elseif kc == Enum.KeyCode.DPadLeft or kc == Enum.KeyCode.DPadRight then
 			local key = rowOrder[focused]
 			local dir = if kc == Enum.KeyCode.DPadRight then 1 else -1
-			if key == "reducedCamera" then
+			if toggleKeys[key] then
 				ClientSettings.set(key, not (ClientSettings.get(key) == true))
 			else
 				local v = ClientSettings.get(key)

@@ -21,9 +21,9 @@ Config.Movement = {
 	AirControlDebugMin = 0.0, -- [SD] Studio-only HRushDebugAirControlPct lower bound
 	AirControlDebugMax = 1.0, -- [SD] Studio-only HRushDebugAirControlPct upper bound
 	SprintAccelTime = 0.25, -- [SD] Step 2 target, not live until the sprint ramp lands
-	SprintFovBoost = 10, -- [SD] Step 2 target in degrees, not live until camera ownership is updated
-	FovTweenTime = 0.2, -- [SD] Step 2 target in seconds, not live until camera ownership is updated
-	SprintVfxMinSpeedPct = 0.9, -- [SD] Step 2 target share of effective sprint speed
+	SprintFovBoost = 10, -- [SD] reserved; Phase 2 sprint FOV lives in Config.Camera.Effects.Sprint
+	FovTweenTime = 0.2, -- [SD] reserved; Phase 2 sprint FOV easing lives in Config.Camera.Effects.Sprint
+	SprintVfxMinSpeedPct = 0.9, -- [SD] share of effective sprint speed that starts the sprint camera widen
 	StaminaMax         = 100,
 	StaminaDrainRate   = 20,
 	StaminaRegenRate   = 16, -- [SD] was 12; recharges one dash in ~1.9 s with the 0.6 s delay
@@ -239,14 +239,11 @@ Config.Animations = { -- [SD] movement animation runtime metadata and original-a
 -- effect. Pooled instances, hard caps, zero per-frame work when idle.
 Config.SprintVFX = {
 	Enabled = true, -- [SD] master switch
-	ReducedEffects = false, -- [SD] no FOV change, halved counts (T33 setting drives later)
+	ReducedEffects = false, -- [SD] halved counts; camera FOV is owned by Config.Camera.Effects now
 	Quality = "Auto", -- [SD] Low/Medium/High; Auto picks Low on touch-only devices
 	TayaEffect = false, -- [SD] reserved chase variant; not built
 	RiseRate = 3.0, -- [SD] intensity units per second rising
 	FallRate = 4.5, -- [SD] intensity units per second falling
-	FovDelta = 5, -- [SD] FOV widen at full intensity (deg)
-	FovInTime = 0.25, -- [SD] FOV ease in (s)
-	FovOutTime = 0.3, -- [SD] FOV ease out (s)
 	MaxInstances = 52, -- [SD] hard Instance cap for this feature (14 local + 21 pool + 15 remote = 50, plus 2 spare)
 	-- Color palette [SD]
 	Colors = {
@@ -405,6 +402,8 @@ Config.Pounce = { -- [LOCKED] Project-owner revision, 2026-10-17: moving ground/
 		ImpactAngles = Vector3.new(1.5, 0.8, 1), ImpactDecay = 25, ImpactFrequency = 85,
 		LandDip = 0.13, LandPitch = 1.5, LandDecay = 18, SmoothRate = 28,
 		LaunchHold = 0.08,
+		FirstPersonFovScale = 0.6, -- [SD] Phase 4 pounce FOV layer scale in first person
+		FirstPersonOffsetScale = 0.35, -- [SD] Phase 4 pounce positional layer scale in first person
 	},
 	Feedback = { -- [SD] original primitive geometry and ribbons; no third-party assets
 		DustColor = Color3.fromRGB(185, 166, 140), WindColor = Color3.fromRGB(170, 232, 255),
@@ -638,6 +637,186 @@ Config.MapVote = {
 }
 
 -- ============================================================
+-- CAMERA (client presentation; CameraDirector Phase 1 + 2, 2026-10-18)
+-- ============================================================
+-- Base in-match third-person shoulder camera plus the Phase 2 movement
+-- effects (sprint, falling, landing, dash, slide, vault, roll) and the
+-- Phase 3 chase awareness set (role camera profiles, Runner look-back,
+-- chase proximity FOV, chaser indicator, Taya tag-target marker, and
+-- tag-transfer feedback). PounceCamera, the TargetLock assist, the skill
+-- shake, and the RS_03 aim camera stay additive layers on top. CameraDirector
+-- yields to aim and TargetLock and suspends its FOV channel while the RS_01
+-- skill tween is active (HRushSkillFov attribute), so every layer composes
+-- without fighting.
+-- Phase 4 adds FirstPerson: an optional second view mode inside the same
+-- director. Third person stays the default and keeps its exact behavior;
+-- first person swaps the base pose for a capsule-anchored eye pose behind a
+-- short switch blend, uses a lighter effect set, and turns the body with a
+-- manual eased yaw while AutoRotate is off. Mode switches defer while
+-- scripted movement or a camera takeover owns the frame.
+Config.Camera = {
+	Enabled = true, -- [SD] master switch for director ownership
+	ThirdPersonDistance = 10, -- [SD] studs behind the focus point
+	ShoulderOffset = 1.5, -- [SD] studs toward the open side
+	CameraHeight = 1.5, -- [SD] focus height above the HumanoidRootPart
+	PitchMin = -80, -- [SD] look limit down (degrees)
+	PitchMax = 80, -- [SD] look limit up (degrees)
+	BaseFov = 70, -- [SD] base FOV; matches the current match FOV
+	MouseDegPerPixel = 0.12, -- [SD] look degrees per mouse pixel at 100 percent
+	GamepadLookDegPerSec = 260, -- [SD] full-stick look speed
+	GamepadDeadzone = 0.12, -- [SD] right-stick deadzone
+	TouchLookDegPerPixel = 0.25, -- [SD] touch drag look degrees per pixel
+	TouchMinScreenXScale = 0.5, -- [SD] touch look only starts on the right half
+	CollisionPadding = 0.4, -- [SD] keep the camera off surfaces (studs)
+	CollisionReturnRate = 6, -- [SD] ease-out rate after an obstruction clears
+	TakeoverTime = 0.2, -- [SD] positional blend after aim, lock, or respawn
+	ShoulderSwapTime = 0.15, -- [SD] seconds to cross the shoulder
+	ShoulderSwapKey = Enum.KeyCode.V, -- [SD] free key verified 2026-10-17
+	ShoulderSwapGamepad = Enum.KeyCode.ButtonL3, -- [SD] free; R3 cycles lock
+	SensitivityScaleMax = 2.0, -- [SD] look scale at 100 percent
+	SensitivityScaleMin = 0.25, -- [SD] floor; 0 percent still turns slowly
+	Debug = false, -- [SD] tagged director prints
+	Effects = { -- [SD] Phase 2 movement camera effects; magnitudes scale with the player setting, device profile, and reduced camera
+		MaxFovBoostTotal = 12, -- [SD] cap on the summed movement FOV boost (deg)
+		MaxPositionOffset = 1.5, -- [SD] cap on the summed camera offset (studs)
+		MaxRotationDegrees = 6, -- [SD] cap on the summed view tilt (deg)
+		FovCatchupRate = 40, -- [SD] max FOV move per second after yields and skill kicks (deg/s)
+		ScaleSmoothTime = 0.4, -- [SD] ease time for intensity, device, and reduced changes (s)
+		Sprint = {
+			RunnerFov = 7, -- [SD] full-sprint FOV widen, Runner (deg)
+			TayaFov = 5, -- [SD] full-sprint FOV widen, Taya (deg)
+			PullBack = 0.6, -- [SD] full-sprint camera pull back (studs)
+			AttackTime = 0.25, -- [SD] FOV ease in (s)
+			ReleaseTime = 0.3, -- [SD] FOV ease out (s)
+		},
+		Fall = {
+			Fov = 3, -- [SD] FOV widen at full fall speed (deg)
+			PullBack = 0.3, -- [SD] camera pull back at full fall speed (studs)
+			SpeedMin = 12, -- [SD] downward speed where the fall effect starts (studs/s)
+			SpeedMax = 45, -- [SD] downward speed for full fall strength (studs/s)
+			AttackTime = 0.2, -- [SD] strength ease in (s)
+			ReleaseTime = 0.35, -- [SD] strength ease out (s)
+		},
+		Landing = {
+			SoftDip = 0.12, -- [SD] Soft landing camera dip (studs)
+			HardDip = 0.38, -- [SD] Hard landing camera dip (studs)
+			HardPitch = 1.5, -- [SD] Hard landing downward view tilt (deg)
+			ShakeAmp = 0.06, -- [SD] Hard landing positional shake amplitude (studs)
+			ShakeTime = 0.11, -- [SD] Hard landing shake duration (s)
+			AttackTime = 0.05, -- [SD] dip attack (s)
+			RecoveryTime = 0.18, -- [SD] dip recovery (s)
+		},
+		Dash = {
+			Fov = 5, -- [SD] FOV widen at the dash envelope peak (deg)
+			PullIn = 0.7, -- [SD] camera pull in toward the character (studs)
+			AttackTime = 0.08, -- [SD] envelope ease in (s)
+			ReleaseTime = 0.25, -- [SD] envelope ease out (s)
+		},
+		Slide = {
+			Dip = 0.6, -- [SD] camera lower while sliding (studs)
+			Fov = 4, -- [SD] FOV widen while sliding (deg)
+			Pitch = 3.5, -- [SD] downward view tilt while sliding (deg)
+			AttackTime = 0.12, -- [SD] ease in (s)
+			ReleaseTime = 0.15, -- [SD] ease out (s)
+		},
+		Vault = {
+			PlantPullIn = 0.45, -- [SD] plant-phase pull in (studs)
+			PlantPitch = 2.5, -- [SD] plant-phase downward view tilt (deg)
+			ClearFov = 3, -- [SD] clear-phase FOV widen (deg)
+			AirScale = 0.6, -- [SD] AirVault magnitude scale
+			PlantEnd = 0.6, -- [SD] plant bump ends at this fraction of the vault duration
+			ClearStart = 0.3, -- [SD] clear bump starts at this fraction of the vault duration
+		},
+		Roll = {
+			Dip = 0.18, -- [SD] camera lower while rolling (studs)
+			Fov = 2, -- [SD] FOV widen while rolling (deg)
+			AttackTime = 0.08, -- [SD] ease in (s)
+			ReleaseTime = 0.15, -- [SD] ease out (s)
+		},
+		Device = { -- [SD] effect scale by preferred input device
+			Touch = 0.75,
+			Gamepad = 0.9,
+			Default = 1.0,
+		},
+	},
+	RoleProfiles = { -- [SD] Phase 3 role camera identity; eased on a role change
+		BlendTime = 0.3, -- [SD] seconds to ease between the role profiles
+		Runner = {
+			Fov = 72, -- [SD] base FOV for the Runner (wider awareness)
+			Distance = 10.25, -- [SD] studs behind the focus point
+		},
+		Taya = {
+			Fov = 68, -- [SD] base FOV for the Taya (tighter focus)
+			Distance = 9.25, -- [SD] studs behind the focus point
+		},
+	},
+	LookBack = { -- [SD] Phase 3 Runner hold-to-look-back
+		Enabled = true, -- [SD] master switch
+		Angle = 160, -- [SD] orbit yaw swing from the current look direction (deg)
+		BlendTime = 0.15, -- [SD] swing ease in and out (s)
+		Key = Enum.KeyCode.B, -- [SD] free key verified 2026-10-18
+		GamepadKey = Enum.KeyCode.ButtonL1, -- [SD] free; R3 lock, L3 shoulder, L2 sprint
+	},
+	Chase = { -- [SD] Phase 3 proximity tension response (Runner, Taya closing in)
+		MaxDistance = 20, -- [SD] distance where the response is zero (studs)
+		MinDistance = 2, -- [SD] distance where the response is full (studs)
+		MaxFov = 3, -- [SD] full-intensity FOV widen (deg)
+		RiseTime = 0.35, -- [SD] ease in while the Taya closes (s)
+		FallTime = 0.6, -- [SD] ease out when the distance opens (s)
+		ClosingGain = 0.12, -- [SD] extra intensity per stud/s of approach
+		ClosingMax = 0.35, -- [SD] cap on the closing-speed bonus
+		VisibleModifier = 0.8, -- [SD] intensity multiplier while the Taya is on screen
+		ClosingSmoothTime = 0.25, -- [SD] closing-speed smoothing (s)
+	},
+	ChaserIndicator = { -- [SD] Phase 3 Runner edge chevron toward a near Taya
+		Enabled = true, -- [SD] master switch
+		MaxDistance = 14, -- [SD] show range (studs)
+		VisibleMargin = 0.06, -- [SD] hidden once the Taya is inside this viewport margin (fraction)
+		EdgePadding = 56, -- [SD] keep the chevron this far inside the screen edges (px)
+	},
+	TagMarker = { -- [SD] Phase 3 Taya advisory tag-target marker
+		Enabled = true, -- [SD] master switch
+		MaxDistance = 18, -- [SD] show range for the nearest eligible target (studs)
+		ScanInterval = 0.15, -- [SD] candidate and line-of-sight refresh (s)
+	},
+	TagTransfer = { -- [SD] Phase 3 camera feedback on a local role change
+		ToTayaFov = -1.5, -- [SD] FOV tighten when becoming the Taya (deg)
+		ToRunnerFov = 2, -- [SD] FOV widen when escaping (deg)
+		ShakeAmp = 0.07, -- [SD] positional shake amplitude (studs)
+		AttackTime = 0.06, -- [SD] pop attack (s)
+		ReleaseTime = 0.35, -- [SD] pop release (s)
+	},
+	FirstPerson = { -- [SD] Phase 4 optional first-person view; second mode of the same director
+		Enabled = true, -- [SD] master switch for the first-person mode
+		CameraHeight = 1.6, -- [SD] eye height above the HumanoidRootPart (studs)
+		ForwardOffset = 0.12, -- [SD] eye offset toward the look direction (studs)
+		BaseFov = 72, -- [SD] first-person base FOV; role profiles stay third-person only
+		SwitchTime = 0.2, -- [SD] pose blend between the view modes (s)
+		YawAlignTime = 0.12, -- [SD] body yaw ease toward the camera yaw (s)
+		ToggleKey = Enum.KeyCode.Z, -- [SD] free key verified 2026-10-18
+		ToggleGamepad = Enum.KeyCode.DPadUp, -- [SD] free; DPadRight cycles lock, DPad nav is settings-only
+		Effects = { -- [SD] lighter first-person effect set; offsets stay inside the capsule, no pull-backs
+			SprintFov = 4, -- [SD] full-sprint FOV widen (deg)
+			FallFov = 3, -- [SD] FOV widen at full fall speed (deg)
+			DashFov = 5, -- [SD] FOV widen at the dash envelope peak (deg)
+			SlideFov = 4, -- [SD] FOV widen while sliding (deg)
+			SlideDip = 0.85, -- [SD] camera lower while sliding (studs)
+			SlidePitch = 3, -- [SD] downward view tilt while sliding (deg)
+			VaultFov = 3, -- [SD] clear-phase FOV widen (deg)
+			VaultDip = 0.4, -- [SD] plant-phase camera lower (studs)
+			VaultPitch = 5, -- [SD] plant-phase downward view tilt (deg)
+			RollDip = 0.12, -- [SD] camera lower while rolling (studs)
+			JumpPitch = 1, -- [SD] downward view tilt at jump start (deg)
+			JumpPitchTime = 0.25, -- [SD] jump pitch ease out (s)
+			LandSoftDip = 0.22, -- [SD] soft landing camera dip (studs)
+			LandHardDip = 0.55, -- [SD] hard landing camera dip (studs)
+			LandHardPitch = 0.8, -- [SD] hard landing downward view tilt (deg)
+			LandShakeAmp = 0.05, -- [SD] hard landing positional shake amplitude (studs)
+		},
+	},
+}
+
+-- ============================================================
 -- SETTINGS (client presentation only; never gameplay)
 -- ============================================================
 -- Defaults, ranges, and steps live here. Player choices live in
@@ -648,6 +827,12 @@ Config.Settings = {
 	SfxDefault = 100, -- [SD] SFX volume 0-100
 	VfxDefault = 100, -- [SD] cosmetic VFX intensity percent 0-100
 	ReducedCameraDefault = false, -- [SD] reduced camera effects off
+	CameraSensitivityDefault = 50, -- [SD] camera look speed percent 0-100 (50 = neutral)
+	InvertCameraYDefault = false, -- [SD] inverted vertical camera look off
+	CameraEffectsDefault = 100, -- [SD] camera effects intensity percent 0-100
+	LookBackDefault = true, -- [SD] Runner hold-to-look-back on
+	ChaserIndicatorDefault = true, -- [SD] chaser edge indicator on
+	CameraViewModeDefault = "ThirdPerson", -- [SD] Phase 4 starting view mode (first person is opt-in)
 	VolumeCurve = 2, -- [SD] loudness curve power for slider mapping
 	SliderStep = 5, -- [SD] slider snap step for keyboard and gamepad
 	TelegraphFloor = 0.35, -- [SD] minimum visibility kept for telegraph effects

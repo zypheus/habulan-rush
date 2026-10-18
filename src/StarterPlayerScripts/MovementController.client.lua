@@ -1459,6 +1459,7 @@ local function startSkillFOV()
 	end
 	skillFOVBase = cam.FieldOfView
 	skillFOVOn = true
+	LocalPlayer:SetAttribute("HRushSkillFov", true)
 	-- fovTime lives in the vfx table (the Stage A crash was reading it from
 	-- params; always take the tween seconds from vfx like stopSkillFOV does).
 	local fx = Config.Skills.RS_01.vfx
@@ -1473,6 +1474,7 @@ local function stopSkillFOV(withShake: boolean)
 	local cam = Workspace.CurrentCamera
 	local p = skillParams()
 	skillFOVOn = false
+	LocalPlayer:SetAttribute("HRushSkillFov", false)
 	if cam ~= nil and skillFOVBase ~= nil and p ~= nil then
 		TweenService:Create(
 			cam,
@@ -3327,6 +3329,7 @@ function vault.onCharacterAdded(char: Model)
 	skillPeakY = 0.0
 	skillApprovedActive = false -- respawn drops any prior approval
 	skillFOVOn = false
+	LocalPlayer:SetAttribute("HRushSkillFov", false)
 	if skillPreviewRing then
 		skillPreviewRing:Destroy()
 		skillPreviewRing = nil
@@ -3460,6 +3463,7 @@ function vault.onCharacterAdded(char: Model)
 		skillRecoveryLeft = 0
 		skillPending = false
 		skillFOVOn = false
+		LocalPlayer:SetAttribute("HRushSkillFov", false)
 		reportLanded() -- death mid-jump still clears server IsAirborne
 		if dashConn then
 			dashConn:Disconnect()

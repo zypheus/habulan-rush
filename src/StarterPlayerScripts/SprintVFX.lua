@@ -39,10 +39,6 @@ local active = false -- last sprint state from the MovementController bridge
 local intensity = 0.0 -- smoothed 0 to 1
 local startedAt = 0.0 -- os.clock of the current sprint start (Step 4 dust edge)
 
--- FOV state: only our own applied delta is tracked, so RS_01 kicks and the
--- aim camera capture compose instead of overwriting in both orders.
-local fovApplied = 0.0
-
 -- Speed line pool (Step 3): fixed neon streaks, preallocated, reused.
 type Streak = {
 	part: BasePart,
@@ -183,7 +179,6 @@ end
 -- declared here once and each later definition assigns (function X) instead
 -- of creating a second local. This keeps the main loop readable at the top
 -- without moving large blocks.
-local updateFov: (number) -> ()
 local updateLines: (number) -> ()
 local updateTrails: () -> ()
 local updateDust: (number) -> ()
@@ -208,7 +203,6 @@ local function tick(dt: number)
 	end
 	-- TODO: remove before submission (diagnosis only: while the bridge says
 	-- sprinting, the loop stays up even suppressed so the dump keeps printing)
-	updateFov(dt)
 	updateLines(dt)
 	updateTrails()
 	updateDust(dt)
@@ -513,41 +507,6 @@ local function ensureLoop()
 	loopConn = RunService.Heartbeat:Connect(tick)
 end
 
--- FOV widen driven only by intensity through our own delta. Adding and
--- removing just the difference means concurrent RS_01 kicks and aim camera
--- captures keep working; nothing is ever overwritten.
-function updateFov(dt: number)
-	local cfg = Config.SprintVFX
-	local want = 0.0
-	-- Player reduced-camera toggle joins the Config override: either one eases
-	-- the widening back to zero, live, with no snap.
-	if not cfg.ReducedEffects and not VfxScale.reducedCamera() then
-		want = cfg.FovDelta * intensity
-	end
-	if want == fovApplied then
-		return
-	end
-	local dur = if want > fovApplied then cfg.FovInTime else cfg.FovOutTime
-	local k = 3 / math.max(dur, 0.01)
-	local nextFov = fovApplied + (want - fovApplied) * (1 - math.exp(-k * dt))
-	if math.abs(nextFov - want) < 0.05 then
-		nextFov = want
-	end
-	local cam = Workspace.CurrentCamera
-	if cam ~= nil then
-		cam.FieldOfView += (nextFov - fovApplied)
-	end
-	fovApplied = nextFov
-end
-
-local function removeFov()
-	local cam = Workspace.CurrentCamera
-	if cam ~= nil and fovApplied ~= 0 then
-		cam.FieldOfView -= fovApplied
-	end
-	fovApplied = 0
-end
-
 -- Travel facing: real motion first, character facing as fallback.
 local function facingDir(): Vector3
 	if Humanoid then
@@ -787,7 +746,6 @@ local function trackCharacter(char: Model)
 	spawnAcc = 0
 	lastFoot = nil
 	footTimer = 0
-	removeFov()
 	active = false
 	intensity = 0
 	lastTrailIntensity = nil
@@ -882,7 +840,6 @@ function SprintVFX:Destroy()
 	lastTrailOn = nil
 	lastFirstPerson = nil
 	spawnAcc = 0
-	removeFov()
 	if vfxFolder ~= nil then
 		vfxFolder:Destroy()
 		vfxFolder = nil

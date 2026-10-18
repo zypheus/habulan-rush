@@ -1,8 +1,11 @@
 --!strict
 -- StarterPlayerScripts/PounceCamera.lua
 -- Owner: Project Owner
--- Responsibility: additive, client-only third-person camera response for pounce.
--- Task/spec: project-owner Pounce / Tag request, 2026-10-16.
+-- Responsibility: additive, client-only camera response for pounce, scaled
+-- down while the Phase 4 first-person view mode is active so the base pose
+-- stays inside the capsule.
+-- Task/spec: project-owner Pounce / Tag request, 2026-10-16;
+-- camera overhaul Phase 4 first-person scaling, 2026-10-18.
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -25,6 +28,20 @@ local lastCamera: Camera? = nil
 local lastTransform = CFrame.identity
 local lastAppliedFrame: CFrame? = nil
 local nearTarget = false
+
+-- Phase 4: lazy view-mode read. The director module resolves on first use so
+-- load order never matters; until it exists the third-person scales apply.
+local director: any = nil
+
+local function firstPerson(): boolean
+	if director == nil then
+		local found = script.Parent:FindFirstChild("CameraDirector")
+		if found ~= nil and found:IsA("ModuleScript") then
+			director = require(found)
+		end
+	end
+	return director ~= nil and director.getViewMode() == "FirstPerson"
+end
 
 local function removeOffset()
 	local camera = lastCamera
@@ -64,6 +81,13 @@ local function update(dt: number)
 		desiredFov = 0
 		desiredOffset = Vector3.zero
 		angles = Vector3.zero
+	end
+	if firstPerson() then
+		-- First person keeps the punch but at reduced reach: FOV scaled one
+		-- way, positional and angular layers the other.
+		desiredFov *= settings.FirstPersonFovScale
+		desiredOffset *= settings.FirstPersonOffsetScale
+		angles *= settings.FirstPersonOffsetScale
 	end
 	local alpha = 1 - math.exp(-dt * settings.SmoothRate)
 	fovDelta += (desiredFov - fovDelta) * alpha

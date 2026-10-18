@@ -53,6 +53,11 @@ Primary coding agent: **Codex**, only for the currently approved item
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |
 | MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client match-state music playback and fades | Project Owner |
 | VfxScale | `src/StarterPlayerScripts/VfxScale.lua` | Client cosmetic intensity and telegraph floor | Project Owner |
+| CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | In-match base third-person shoulder camera: pose, look input, collision, shoulder swap, cursor state, saved-state handoff around aim and target lock, the centralized movement camera effects (sprint, falling, landing, dash, slide, vault, roll), and the Phase 3 chase awareness set (role profiles, hold-to-look-back with movement assist, chase FOV, tag-transfer feedback) | Project Owner |
+| CameraDirector bootstrap | `src/StarterPlayerScripts/CameraDirector.client.lua` | Starts CameraDirector once | Project Owner |
+| ChaseState | `src/StarterPlayerScripts/ChaseState.lua` | Client-only chase awareness state: active Taya resolution (players and bots), distance, closing speed, visibility, and one smoothed chase intensity shared by camera and HUD | Project Owner |
+| ChaseHUD | `src/StarterPlayerScripts/ChaseHUD.lua` | Phase 3 chase HUD: Runner edge chevron, Taya advisory tag-target marker, tag-transfer edge pulse, and the mobile hold-to-look-back button | Project Owner |
+| ChaseHUD bootstrap | `src/StarterPlayerScripts/ChaseHUD.client.lua` | Starts ChaseHUD once | Project Owner |
 
 ## Tools and world inputs
 

@@ -140,6 +140,21 @@
         },
         "VfxScale": {
           "$path": "src/StarterPlayerScripts/VfxScale.lua"
+        },
+        "CameraDirector": {
+          "$path": "src/StarterPlayerScripts/CameraDirector.lua"
+        },
+        "CameraDirectorBootstrap": {
+          "$path": "src/StarterPlayerScripts/CameraDirector.client.lua"
+        },
+        "ChaseState": {
+          "$path": "src/StarterPlayerScripts/ChaseState.lua"
+        },
+        "ChaseHUD": {
+          "$path": "src/StarterPlayerScripts/ChaseHUD.lua"
+        },
+        "ChaseHUDBootstrap": {
+          "$path": "src/StarterPlayerScripts/ChaseHUD.client.lua"
         }
       }
     }

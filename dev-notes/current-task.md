@@ -3,12 +3,13 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: pounce-tag-ability
-updated: 2026-10-17
-source: docs/MOVEMENT_AUDIT.md
+task: camera-phase-4
+updated: 2026-10-18
+source: docs/CAMERA_AUDIT.md
 related:
   - ../AGENTS.md
   - ../docs/MOVEMENT_AUDIT.md
+  - ../docs/CAMERA_AUDIT.md
   - ../docs/UPGRADE_REPORT.md
   - ../.gemini/TASK.md
   - ../MODULE_OWNERSHIP.md
@@ -18,6 +19,17 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-18: Camera overhaul Phase 4 is implemented in the repository: first person as a second view mode of the same `CameraDirector`. Toggle on Z / DPadUp / the new mobile view button; deferred blended switching with latest-request-wins; eye-anchored pose with a lighter capsule-safe effect set; body yaw ease with an AutoRotate contract that yields to dash, slide, vault, roll, and every existing owner; head visibility driven by the blend with an RS_03 aim exception; FOV base 72 with the same catch-up limit; `PounceCamera` FP scaling 0.6 FOV / 0.35 offsets; FP resume from aim or lock eases over 0.2 s. Added `Config.Camera.FirstPerson` (all [SD]), the two `Config.Pounce.Camera` FP scales, `Config.Settings.CameraViewModeDefault`, and the `cameraViewMode` string setting in `ClientSettings`. Syntax, notes, and Rojo build passed. No Studio test was run.
+- Project owner review: run the Phase 4 checklist in Next. Spectator camera, final-seconds effects, and polish stay blocked until the owner approves.
+
+- 2026-10-18: Owner requested a read-only analysis of the target lock and pounce aiming, because the lock felt off and tagging a locked target often missed. Verified findings. Pounce aim assist is a 10 percent blend inside an 18 degree, 14 stud cone (`Config.Pounce.AimAssist`) and never reads the lock. While locked the camera is fully Scriptable with no manual look (`TargetLockController`). Acquisition has no minimum angle, no immunity filter, and no range or line-of-sight auto-break. `Config.TargetLock.BreakRange` 55 and `LosBreakTime` 1.0 are defined but unused, and `LockDisabled` and `LockDelayUntil` are documented in comments but never checked. A lock break blocks reacquisition for `BreakCooldown` 4.0 seconds. The server measures the tag cone against replicated horizontal velocity captured at pounce request time, and travel validation allows only `MaxSteerAngle` 30 degrees of deviation. Delivered the state plus recommendation memo in chat. Option 1 is a client-only locked-target redirect clamped inside the 30 degree travel tolerance. Option 3 is a server-assisted lock pounce with a validated target hint and a `RequestPounce` payload change. No code changed. The owner will route the memo to a reviewing agent, and no implementation is approved.
+
+- 2026-10-18: Camera overhaul Phase 3 is implemented in the repository. `CameraDirector` now blends Runner (72 FOV / 10.25 studs) and Taya (68 / 9.25) role profiles, adds Runner hold-to-look-back (B / ButtonL1, 160 degree swing) with a previous-frame movement-stability assist, chase proximity FOV, and tag-transfer FOV and shake feedback. New `ChaseState` module resolves the active Taya from players and `Workspace.Bots` and computes one shared smoothed chase intensity. New `ChaseHUD` module draws the Runner edge chevron, the Taya advisory tag-target marker, the tag-transfer edge pulse, and the mobile look-back button. Added `Config.Camera.RoleProfiles/LookBack/Chase/ChaserIndicator/TagMarker/TagTransfer` (all [SD]) and the `lookBackEnabled`/`chaserIndicatorEnabled` settings keys. Syntax, notes, and Rojo build passed. No Studio test was run.
+- Project owner review: run the Phase 3 checklist in Next. First person, final-seconds effects, and spectator camera stay blocked until the owner approves.
+- 2026-10-18: Camera overhaul Phase 2 is implemented in the repository. The movement camera effect system now lives inside `CameraDirector`: sprint, falling, landing, dash, slide, vault, and roll effects across FOV, position, rotation, and shake channels, with `Config.Camera.Effects`, the `cameraEffectsIntensity` setting, the `HRushSkillFov` suppression attribute, and the SprintVFX FOV migration. Syntax, notes, and Rojo build passed. No Studio test was run.
+- Project owner review: run the Phase 2 checklist in Next. The owner then requested Phase 3, which is now implemented.
+- 2026-10-18: Camera overhaul Phase 1 is implemented in the repository. `CameraDirector` plus starter, `Config.Camera`, two new `ClientSettings` keys, and the expanded settings panel are in the build. Syntax and Rojo build passed. No Studio test was run.
+- Project owner review: run the Phase 1 checklist in Next, especially the settings pause, the aim and lock yields, and pounce compatibility.
 - Latest owner request: reduced pounce cooldowns to 0.8 seconds on hit and 1.05 seconds on miss. Fixed midair eligibility to read horizontal momentum instead of MoveDirection, which AirMovement intentionally clears. The accepted direction is captured before windup and reused at launch.
 - No tests requested or run for this fix. Owner should check moving jump ascent/apex/descent activation, direction after releasing movement midair, and the shorter cooldowns.
 
@@ -42,6 +54,33 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Implemented camera overhaul Phase 4, the owner-requested first-person phase: a second view mode of the same `CameraDirector` with deferred blended switching, eye-anchored pose, first-person effect set, body yaw alignment, head visibility, `PounceCamera` FP scaling, and aim and lock resume blending. All three toggle routes write through `ClientSettings`, so the store handler is the single switch path.
+- Added `Config.Camera.FirstPerson` (Enabled, CameraHeight 1.6, ForwardOffset 0.12, BaseFov 72, SwitchTime 0.2, YawAlignTime 0.12, ToggleKey Z, ToggleGamepad DPadUp, and the Effects block; all [SD]), `Config.Pounce.Camera.FirstPersonFovScale` 0.6 and `FirstPersonOffsetScale` 0.35, and `Config.Settings.CameraViewModeDefault` "ThirdPerson".
+- Extended `ClientSettings` with a string spec kind and the memory-only `cameraViewMode` key (`ThirdPerson` / `FirstPerson`). No settings-panel row; the in-match panel limitation is unchanged.
+- Added the `HRUSH_CameraView` action (Z / DPadUp, Pass while not the live input owner) and the `toggleViewMode` / `getViewMode` API. Both keys verified unused before binding.
+- Added the mobile 48 px view button to `ChaseHUD` at (0.94, 0.40) with a polled 3P / 1P label; the LOOK button hides in first person and any touch look-back is released.
+- `PounceCamera` scales its FOV layer by 0.6 and its positional and angular layers by 0.35 in first person through a lazy `CameraDirector` require; the reset and apply symmetry is untouched.
+- Deferred switching waits for a free frame (no aim, lock, dash-deferral is per design, slide, vault, roll, pounce, stun, ability busy, settings, menu, yield) and blends from the last written frame over 0.2 s. FP resume from the aim or lock camera arms the same blend instead of cutting.
+- Completed the owner-requested read-only TargetLock and pounce aiming analysis and delivered the state plus recommendation memo. No game code, Config value, remote, or asset changed.
+- Implemented camera overhaul Phase 3, the owner-requested chase awareness phase: role camera profiles, Runner hold-to-look-back with a movement-stability assist, chase proximity FOV, tag-transfer feedback, the Runner edge chevron, the Taya advisory tag-target marker, and the mobile look-back button.
+- Added `ChaseState.lua` (client chase state shared by camera and HUD) and `ChaseHUD.lua` plus `ChaseHUD.client.lua`; mapped all three in `default.project.json`.
+- Added `Config.Camera.RoleProfiles` (BlendTime 0.3; Runner 72 / 10.25; Taya 68 / 9.25), `LookBack` (B / ButtonL1, 160 degrees, 0.15 s blend), `Chase` (20 to 2 studs, 3 FOV, 0.35 s rise, 0.6 s fall, closing bonus capped 0.35, visibility 0.8), `ChaserIndicator` (14 studs, 0.06 margin, 56 px padding), `TagMarker` (18 studs, 0.15 s scan), and `TagTransfer` (ToTaya -1.5 FOV, ToRunner +2 FOV, 0.07 shake) (all [SD]).
+- Added `Config.Settings.LookBackDefault` and `ChaserIndicatorDefault`; added `lookBackEnabled` and `chaserIndicatorEnabled` to `ClientSettings`. No settings-panel rows.
+- FOV composition is now role profile plus the boost sum (movement, chase, transfer) clamped to `MaxFovBoostTotal`; the rate-limited catch-up, `HRushSkillFov` suppression, and PounceCamera reset symmetry are preserved.
+- Look-back is gated to Runner free movement (not Taya, not aim or lock, not scripted movement, not paused); the assist rotates `Humanoid.MoveDirection` by the previous frame's applied yaw so steering stays world-consistent. No movement value, speed, or AutoRotate is changed and no new remote was added.
+- The tag marker is advisory only: nearest eligible Runner or bot within 18 studs with line of sight, respecting `HRushTagSafeUntil` and `TagRules.isUntouchable`; the server still decides every tag. Keys B and ButtonL1 were verified unused before binding.
+- Passed syntax, notes, and Rojo build checks on 2026-10-18. No Studio or 2-player test has been run.
+- Implemented camera overhaul Phase 2, the owner-requested centralized movement camera effect system: sprint, falling, landing, dash, slide, vault, and roll effects across FOV, position, rotation, and shake channels, with dt-based envelopes, movement-attribute suppression, and the hard-landing shake fed by `HRushLandingEvent`.
+- Added `Config.Camera.Effects` (all [SD]) and `Config.Settings.CameraEffectsDefault`; added `cameraEffectsIntensity` to `ClientSettings`. No settings row yet.
+- Moved FOV ownership to the director: absolute `BaseFov`-relative write per frame with a 40 degree/s catch-up limit, suppressed while the `HRushSkillFov` attribute is true.
+- Removed the SprintVFX camera FOV code and the `Config.SprintVFX` FOV keys. `ReducedEffects` remains for count halving.
+- Fixed the latent Phase 1 nil `SensitivityDefault` key in `CameraDirector.refreshSensitivity`.
+- Passed syntax, notes, and Rojo build checks on 2026-10-18. No Studio or 2-player test has been run.
+- Implemented camera overhaul Phase 1: the approved single client base camera director with third-person shoulder orbit, mouse/gamepad/touch look, collision, shoulder swap, MS_03/MS_04 cursor control, settings pause by panel visibility, and deferred lobby, match, and respawn handoffs around RS_03 aim and TargetLock.
+- Added `Config.Camera` (all [SD]) plus `Config.Settings.CameraSensitivityDefault` and `InvertCameraYDefault`; extended `ClientSettings` with `cameraSensitivity` and `invertCameraY`.
+- Expanded the lobby settings panel from 520x640 to 520x812 with generic toggle-row helpers. Existing rows keep identical behavior.
+- Mapped `CameraDirector` and its starter in `default.project.json`. PounceCamera, SprintVFX, skill shake, lobby camera, TargetLock, and aim writers are untouched.
+- Passed syntax and Rojo build checks on 2026-10-18. No Studio or 2-player test has been run.
 - Implemented the approved movement upgrade Part 2 without starting the new Vault animation batch or camera work.
 - Added the single landing owner, live Land and LandHard playback, landing and impact events, Soft and Hard behavior, cancellable hard-landing speed penalty, and server observation.
 - Reworked Vault around current feet height, the absolute ground cap, knee, waist and chest probes, top and landing rays, the mantle boundary, four variant tags, collision-safe motion, interruption cleanup, and mirrored server validation.
@@ -87,6 +126,17 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner: run the Phase 4 first-person checklist with at least 2 players. Toggle on Z, DPadUp, and the mobile view button, and confirm the 3P / 1P label; switch while running, mid-slide, mid-vault, mid-roll, and mid-pounce and confirm the request waits and blends with no cut; first-person look and pitch limits, mouse, gamepad, and touch; body yaw alignment while strafing, sprinting, and turning, and that dash, slide, vault, and roll keep their authored facing; head and accessory hiding in and out of first person with accessories equipped and after a respawn; RS_03 aim entry and exit and TargetLock entry and exit from first person with no third-person flash and eased resumes; pounce camera in first person scaled but readable; landing, jump, slide, vault, and roll first-person effects at intensity 0, 50, and 100 with reducedCamera on and off; FOV feel against third person; mode persistence within a session and a return to ThirdPerson on a fresh join; mobile button placement with no overlap at 16:9, ultrawide, portrait, and landscape; toggling near a wall and in a corner; a full round in each mode.
+
+- Target lock and pounce aiming: wait for the reviewing agent and the project owner to solidify the memo. If approved, do Option 1 first: client-only locked-target redirect, no remote change, clamped to about 25 degrees so travel validation stays clear. Option 3 later: server-assisted lock pounce with a validated target hint and a `RequestPounce` payload change. `Config.Pounce` is a locked revision, so any change needs project-owner sign-off. Do not implement before approval.
+
+- Project owner: run the Phase 3 chase awareness checklist with at least 2 players. Role profile blend on both sides of a tag transfer; Runner profile look and feel against the Phase 1 baseline; hold B / ButtonL1 while running, standing, sprinting, dashing, sliding, turning a wall corner, on mobile with the LOOK button, and on gamepad; confirm the character keeps its heading while looking back and swings out cleanly on release; role transfer feedback fires once per transfer in both directions with no CameraType corruption; Taya marker with none, one, and multiple targets, behind a wall with line of sight lost, while locked, while pouncing, and on range exit; chase FOV rise and fall while the Taya closes and opens; pounce, TargetLock, RS_03, and Phase 2 effect regressions; UI at 16:9, ultrawide, and mobile portrait and landscape with no control overlap; reducedCamera on at intensity 0, 50, and 100.
+- Project owner: run the Phase 1 camera checklist with at least 2 players. PC first: in-match third-person look and mouse feel, collision against walls and crates, aim hold and release with no snap, target-lock yield and break, pounce during camera control, respawn snap, match start and end handoff, out-of-match settings pause, both new settings rows, and shoulder swap on V and ButtonL3. Then one mobile touch-look pass and one gamepad pass.
+- Project owner: run the Phase 2 movement camera checklist with at least 2 players. Sprint widen per role, falling pull-back, soft and hard landing dip and shake, dash pull-in, slide tilt, vault plant and clear bumps with AirVault scaling, roll dip, pounce regression, aim and lock regression, collision, reducedCamera on at intensity 0/50/100, and PC, gamepad, and mobile passes.
+- `cameraEffectsIntensity` has no settings row yet. It stays at the 100 default until an eighth row is approved.
+- `lookBackEnabled` and `chaserIndicatorEnabled` also have no settings-panel rows yet. They stay at their true defaults until rows are approved.
+- Do not start the next camera phase (final-seconds effects, spectator camera, death cinematics, round-end camera, cinematic sequences, any TargetLock or RS_03 redesign) until the owner approves. Phase 4 first person was requested and is implemented.
+- Camera sensitivity and invert stay memory-only. DataStore persistence remains a later approved item.
 - Test the rebuilt pounce-only revision: walking and jumping activation, no contact-only tags, player/bot pounce hits, and bot Taya recovery.
 
 - Project owner: open the newly built `HabulanRush.rbxlx`, start a live match with two players, and follow the pounce handoff checklist. Report any denied grounded sprint pounce first.
@@ -104,6 +154,12 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Blockers
 
+- Pounce aiming and TargetLock findings are recorded but unapproved: no lock-aware pounce direction, dormant `BreakRange` and `LosBreakTime`, no immunity filtering in acquisition, unimplemented `LockDisabled` and `LockDelayUntil`, and no manual look while the lock camera is active.
+- Camera Phase 4 has no Studio validation yet. Toggle feel, blend, body yaw, head visibility, aim and lock resumes, mobile button, and effect feel are pending project-owner review. 2-player, gamepad, and mobile checks are required.
+- Camera Phase 3 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
+- Camera Phase 2 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
+- Camera Phase 1 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
+- Pre-existing: the in-match HUD gear opens a settings panel that cannot render in match, so mid-match settings changes do nothing. Phase 1 documents this and does not change the in-match settings flow.
 - Part 2 implementation and solo Studio fixture evidence are complete, but required two-player, mobile, and gamepad validation remains pending.
 - Manual 2-player Studio validation is still required for gameplay work.
 - Published Batch A and B animations are logged as original project-owned assets. Unrelated audio and run-style catalog IDs still need their own release eligibility review.
@@ -143,9 +199,18 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 25. Jump uses a fixed-height, snappy-rise, fast-fall direction. Vault must become current-feet-relative and support ground or air contact. Camera must use one client-only director that yields to Tsinelas aim and TargetLock.
 26. Movement upgrade Part 1 is approved with JumpPower 50 retained, total falling gravity starting at 1.6, live coyote and jump-buffer windows, AirControlPct starting at 1.0, an always-on air cap, and log-only server validation.
 27. Movement upgrade Part 1 is approved after project-owner Studio testing. Part 2 changes AirControlPct to 0.0 for committed takeoff direction, keeps FallGravityMult 1.6, and is approved for landing and chest-level Vault implementation only.
+28. Camera overhaul proceeds in approved phases. Phase 1 (client base camera director only: third-person shoulder, look input, collision, shoulder swap, sensitivity and invert settings) is approved and implemented. Chase awareness, first person, look-back, chaser indicators, and tag-target UI remain future phases.
+29. Camera overhaul Phase 2 is the owner-requested centralized movement camera effect system (sprint, falling, landing, dash, slide, vault, roll; FOV, position, rotation, and shake channels with movement-aware suppression). It is implemented. First person, look-back, chase awareness, chaser indicators, tag-target UI, final-seconds effects, and spectator camera remain future phases.
+30. Camera overhaul Phase 3 is the owner-requested chase awareness phase (role camera profiles, Runner hold-to-look-back with a movement-stability assist, chase proximity FOV, chaser edge indicator, Taya advisory tag-target marker, tag-transfer feedback, mobile look-back button). It is implemented. First person, final-seconds effects, spectator camera, and any TargetLock or RS_03 redesign remain future phases.
+31. Camera overhaul Phase 4 is the owner-requested first-person view mode: a second mode of the same `CameraDirector` with a deferred blended switch, eye-anchored pose, capsule-safe effect set, body yaw alignment with an AutoRotate contract, head visibility with an RS_03 aim exception, `PounceCamera` FP scaling, and eased FP resume from aim or lock. It is implemented. Spectator camera, final-seconds effects, death cinematics, round-end camera, cinematic sequences, and polish remain future phases.
 
 ## Validation
 
+- 2026-10-18 camera Phase 4: `scripts/check-syntax.ps1` passed after all edits. `scripts/check-notes.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No Studio or 2-player test was run.
+- 2026-10-18 TargetLock and pounce aiming analysis (read-only): no code changed and no build needed. Findings verified against `TargetLockController`, `PounceController`, `TagService`, and `Config`. `scripts/check-notes.ps1` rerun after this update.
+- 2026-10-18 camera Phase 3: `scripts/check-syntax.ps1` passed. `scripts/check-notes.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No Studio or 2-player test was run.
+- 2026-10-18 camera Phase 2: `scripts/check-syntax.ps1` passed. `scripts/check-notes.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No Studio or 2-player test was run.
+- 2026-10-18 camera Phase 1: `scripts/check-syntax.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No Studio or 2-player test was run.
 - 2026-10-17 midair fix and shorter cooldowns: Rojo build passed, regenerating `HabulanRush.rbxlx`. No tests run at owner request.
 
 - 2026-10-17 pounce-only revision: Rojo build passed and regenerated `HabulanRush.rbxlx`. No tests run, as requested.
