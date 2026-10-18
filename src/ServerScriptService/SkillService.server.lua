@@ -2,7 +2,7 @@
 -- ServerScriptService/SkillService.server.lua
 -- Owner: Project Owner
 -- Responsibility: validate skill casts (RequestSkill), keep the server-side
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 --                 cooldown ledger, then split the reply: SkillApproved goes
 --                 ONLY to the requesting player, SkillVFX goes to ALL players
 --                 for visuals. Denies are silent.
@@ -188,7 +188,7 @@ local function applyTayaStun(taya: Player, duration: number): boolean
 	end
 	-- Safe Window does NOT protect against this stun. Safe Window (DESIGN_LOCK
 	-- F06, TagService T12) is defined for tags only, so it is ignored here.
-	-- F07 dash invulnerability protects against pounce lunges only, so it is
+	-- F07 dash invulnerability protects against tag actions only, so it is
 	-- ignored here too. No F07 interaction by design.
 	stunTokenCounter += 1
 	local token = stunTokenCounter
@@ -423,7 +423,7 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, di
 		return
 	end
 
-	-- Stun: HRushStunned is set by pounce/skill effects (T13/T18/T19).
+	-- Stun: HRushStunned is set by skill effects (T13/T18/T19).
 	if player:GetAttribute("HRushStunned") == true then
 		deny(player, skillId, "stunned")
 		return

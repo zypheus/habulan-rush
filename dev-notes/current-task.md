@@ -3,7 +3,7 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: bots-removal
+task: simple-click-tag
 updated: 2026-10-18
 source: playtest-2026-10-18 owner decision
 related:
@@ -19,6 +19,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-18: Fixed the owner-reported animation regression from the simple-tag reimplementation. Root cause was the first-person `AnimationController` being attached to the live character alongside the Humanoid Animator. The first-person tag clip now runs on an isolated local cloned R15 arm rig; the live character keeps one Humanoid Animator for all movement and replicated animations. The real arms are hidden locally only while the first-person clip plays, then their previous local transparency is restored. The server third-person tag clip now uses Action4 priority. Rojo build passed; runtime verification remains with the project owner.
+- 2026-10-18: Reimplemented the owner-approved simple click-to-tag mechanic after the earlier changes were discarded. Pounce motion, cooldown, camera, VFX, remotes, attributes, and HUD were removed. Taya now tags with left-click, R2, or the mobile TAG button; the server selects and validates the nearest Runner in a 6.5-stud forward volume with a 70-degree arc, line of sight, safe-window, dash-immunity, role, match, health, stun, and skill checks. `HRush_TagFirstPerson` (`rbxassetid://105436702082738`) plays through a local-only Action4 controller in first person. `HRush_TagThirdPerson` (`rbxassetid://139144393566205`) plays from the server Animator for all players. Rojo build passed; gameplay and device testing remain with the project owner.
 - 2026-10-18: Replaced the four jump animations per owner request. `Config.Animations` JumpStart/Fall/Land/LandHard IDs are now `rbxassetid://74307357863566`, `rbxassetid://84863749801510`, `rbxassetid://88319270506819`, and `rbxassetid://104821646839230`, superseding the Batch A IDs `115591963738630`, `106234834891508`, `83446879560399`, and `93067099789487`. `ASSET_LOG.md` added four Approved rows and marked the old rows Superseded; `docs/MOVEMENT_AUDIT.md` tables updated. Syntax, notes, and Rojo build passed. No Studio metadata probe was run (owner choice). Runtime playback and 2-player replication checks pending.
 - 2026-10-18: Replaced the sprint animation per owner request. `Config.Animations.Sprint.Id` is now `rbxassetid://74829353930740` (studio probe: `HRush_ExaggeratedSprint`, 0.6 s, Movement priority, looped, 48 keyframes), superseding the Batch A ID `132688446420207`. ASSET_LOG row added (Pending Review, owner provenance confirmation) and the old row marked Superseded; `docs/MOVEMENT_AUDIT.md` sprint table updated. Syntax, notes, and Rojo build passed. Runtime sprint playback and 2-player replication checks pending.
 - 2026-10-18: Fixed the owner-reported first-person regression: after an FP session the character no longer turned toward movement in third person. Root cause was an `AutoRotate` capture corruption: `PounceController` and the Vault mechanic capture `Humanoid.AutoRotate` at start (capturing the director's FP forced `false`), and `stepFacing` used to restore and clear its saved value mid-mechanic, so the mechanic wrote back `false` and FP re-captured it; the TP exit then restored `false`. `stepFacing` now hands off completely while FP is active and a scripted mechanic owns the body (writes nothing, keeps the saved value) and restores only on camera-side exits. Movement direction was verified unaffected (PlayerModule `ControlModule` never reads `AutoRotate`). No other module changed. Syntax, notes, and Rojo build passed. Studio repro pending: FP, pounce or vault once, return to TP, body must turn toward movement and `Humanoid.AutoRotate` must read true.
@@ -59,6 +61,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Removed the competing local Animator from the live character and isolated `HRush_TagFirstPerson` on a local arm rig while preserving the server-replicated `HRush_TagThirdPerson` path.
+- Reimplemented simple click tagging, removed the complete pounce runtime, added server-owned target selection and final tag commit, wired perspective-specific tag animations, updated the Rojo map, ownership, asset log, and owner-test handoff.
 - Replaced the four jump animations with the owner-supplied `rbxassetid://74307357863566` (JumpStart), `rbxassetid://84863749801510` (Fall), `rbxassetid://88319270506819` (Land), and `rbxassetid://104821646839230` (LandHard) in `Config.Animations`; added four Approved `ASSET_LOG.md` rows, marked the Batch A rows Superseded, and updated the `docs/MOVEMENT_AUDIT.md` ID table and Fall observation.
 - Replaced the sprint animation with the owner-supplied `rbxassetid://74829353930740` (`HRush_ExaggeratedSprint`, verified 0.6 s / Movement / looped / 48 keyframes in Studio) in `Config.Animations.Sprint`; logged it in `ASSET_LOG.md` and marked the Batch A sprint row Superseded, and updated the `docs/MOVEMENT_AUDIT.md` sprint table.
 - Fixed the owner-reported first-person exit regression (body not turning in third person). Read-only audit traced the `AutoRotate` capture corruption through `stepFacing`, `PounceController`, and the Vault mechanic, then `stepFacing` was reworked to three cases: FP manual (unchanged), FP plus scripted mechanic (hands off, saved value kept), and every camera-side exit (restore once). Movement direction confirmed independent of `AutoRotate` against the Studio-shipped PlayerModule `ControlModule`.
@@ -134,6 +138,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner: confirm walk, sprint, jump, fall, landing, dash, slide, roll, and vault animations work before and after tag attempts. Then verify first-person tag arms are local-only and the Action4 third-person tag clip is visible to both players.
+- Project owner: test click, R2, and the mobile TAG button with two players. In first person, only the tagging player should see `HRush_TagFirstPerson`; both players should see `HRush_TagThirdPerson` for the same attempt, with the local Action4 clip taking visual priority. Check standing, running, jumping, sliding, vaulting, rapid clicks, misses, walls, side/rear targets, dash immunity, safe window, stun, and skill-busy rejection.
 - Project owner: check the four new jump animations in a fresh build. Jump takeoff responsiveness, the airborne loop and its seam, soft and hard landing playback, the `LandImpact` marker in Land and LandHard, and 2-player replication.
 - Project owner: check the new sprint animation in a fresh build. Sprint as both roles, confirm the loop, the speed-fit playback (`WalkSpeed / RunnerSprintSpeed`), and 2-player replication. Confirm the license/provenance for `rbxassetid://74829353930740` for the ASSET_LOG row.
 - Project owner: verify the first-person exit fix. Enter first person, pounce once and vault once, then switch back to third person and confirm the body turns toward movement again and `Humanoid.AutoRotate` reads true. Repeat without pounce and vault to confirm no regression.
@@ -166,6 +172,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Blockers
 
+- The animation regression repair has no Studio validation yet by owner request. Existing movement animation playback, first-person arm visibility and cleanup, and third-person tag replication are pending project-owner testing.
+- Simple click tagging and both supplied animations have no Studio validation yet by owner request. Two-player replication, first-person isolation, gamepad, and mobile behavior are pending project-owner testing.
 - The jump animation replacements have no runtime check yet. Takeoff, airborne, landing, marker firing, and 2-player replication are pending project-owner review. No Studio metadata probe was run at owner choice, so published durations, priorities, loop flags, and keyframe counts for the four new IDs are unverified.
 - The sprint animation replacement has no runtime check yet. Loop, speed-fit playback, and 2-player replication are pending project-owner review. The ASSET_LOG row is Pending Review until the owner confirms provenance.
 - The first-person exit `AutoRotate` fix has no Studio validation yet. The repro (FP, pounce or vault, return to TP) is pending project-owner review.
@@ -225,6 +233,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Validation
 
+- 2026-10-18 animation regression repair: Rojo build passed and regenerated `HabulanRush.rbxlx`. No syntax, notes, Studio, multiplayer, gamepad, or mobile test was run.
+- 2026-10-18 simple click-to-tag reimplementation: Rojo build passed and regenerated `HabulanRush.rbxlx`. No syntax, notes, Studio, multiplayer, gamepad, or mobile test was run at owner request.
 - 2026-10-18 jump animation replacement: `scripts/check-syntax.ps1` passed after the Config edit. `scripts/check-notes.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No Studio metadata probe or runtime test was run (owner choice); takeoff, airborne, landing, marker, and 2-player replication checks pending.
 - 2026-10-18 sprint animation replacement: Studio probe loaded `rbxassetid://74829353930740` (`HRush_ExaggeratedSprint`, 0.6 s, Movement, looped, 48 keyframes) from placeId 133869267942827. `scripts/check-syntax.ps1` passed after the Config edit. `scripts/check-notes.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No runtime sprint test was run; loop, speed-fit, and 2-player replication pending.
 - 2026-10-18 first-person exit AutoRotate fix: `scripts/check-syntax.ps1` passed after the edit. `scripts/check-notes.ps1` passed. Rojo build passed and regenerated `HabulanRush.rbxlx`. No Studio test was run; the repro (FP, pounce or vault, return to TP, body turns and `AutoRotate` true) is pending.

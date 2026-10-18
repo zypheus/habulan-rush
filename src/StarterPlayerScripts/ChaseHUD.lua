@@ -103,7 +103,7 @@ end
 ----------------------------------------------------------------------------
 
 -- Nearest eligible Runner within TagMarker.MaxDistance with line of sight.
--- Eligibility mirrors PounceController's local candidate rules (Runner, in
+-- Eligibility mirrors TagService's candidate rules (Runner, in
 -- match, alive, not tag-immune, not RS_01 untouchable); the outcome is
 -- advisory only, the server still validates the actual tag.
 local function rescan()
@@ -115,8 +115,7 @@ local function rescan()
 	if localPlayer:GetAttribute("HRushRole") ~= "Taya" then
 		return
 	end
-	if localPlayer:GetAttribute("HRushLocalPouncing") == true
-		or localPlayer:GetAttribute("HRushStunned") == true then
+	if localPlayer:GetAttribute("HRushStunned") == true then
 		return
 	end
 	local camera = Workspace.CurrentCamera
@@ -193,7 +192,7 @@ local function rescan()
 	scanTarget = bestTarget
 	scanCharacter = bestCharacter
 	scanRoot = bestRoot
-	scanInReach = bestDistance <= Config.Pounce.MaxHitDistance
+	scanInReach = bestDistance <= Config.Tag.ActionRange
 	debugPrint(string.format(
 		"marker %s at %.1f studs",
 		if scanInReach then "in reach" else "candidate",
@@ -269,7 +268,7 @@ function onRender(dt: number)
 	end
 
 	-- Taya advisory tag marker: a diamond over the nearest eligible Runner,
-	-- amber and pulsing when inside pounce range.
+	-- amber and pulsing when inside tag range.
 	scanAcc += dt
 	if not scanInitialized or scanAcc >= Marker.ScanInterval then
 		scanInitialized = true

@@ -2,7 +2,7 @@
 -- StarterPlayerScripts/LandingController.lua
 -- Owner: Project Owner
 -- Responsibility: local landing classification, animation, impact events, and hard-landing penalty lifetime.
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2A landing owner, approved 2026-10-16.
 
 local Players = game:GetService("Players")
@@ -109,7 +109,6 @@ end
 
 local function beginPenalty()
 	if LocalPlayer:GetAttribute("HRushVaulting") == true
-		or LocalPlayer:GetAttribute("HRushLocalPouncing") == true
 		or LocalPlayer:GetAttribute("HRushRolling") == true
 		or LocalPlayer:GetAttribute("HRushSliding") == true
 	then
@@ -149,7 +148,6 @@ local function onLanded()
 		return
 	end
 	airborne = false
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return end
 	local payload: LandingPayload = {
 		fallHeight = math.max(0, apexY - activeRoot.Position.Y),
 		horizontalSpeed = horizontalSpeed(activeRoot),

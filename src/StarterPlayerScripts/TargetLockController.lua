@@ -1,5 +1,5 @@
 --!strict
--- Client-only aim helper. Server tag and pounce checks must never trust it.
+-- Client-only aim helper. Server tag checks must never trust it.
 -- TAYA-ONLY: the lock is a Taya tool. Runners cannot acquire or cycle, and a
 -- lock breaks the moment a tag transfer turns the local Taya into a Runner.
 -- Integration attributes, set by the server on Players:

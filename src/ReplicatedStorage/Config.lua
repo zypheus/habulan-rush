@@ -2,7 +2,7 @@
 -- ReplicatedStorage/Config.lua
 -- Owner: Project Owner
 -- Responsibility: immutable shared gameplay and presentation tuning.
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: simple click-to-tag rework and supplied tag animations, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2 landing owner and chest-level Vault, approved 2026-10-16.
 
 local Config = {}
@@ -10,7 +10,7 @@ local Config = {}
 Config.Movement = {
 	RunnerWalkSpeed   = 16, -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
 	RunnerSprintSpeed = 21, -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
-	TayaSprintSpeed = 21, -- [LOCKED] Project-owner pounce sprint revision, 2026-10-16
+	TayaSprintSpeed = 21, -- [LOCKED] Project-owner Taya sprint revision, 2026-10-16
 	SpeedScale = 1.2, -- [SD] approved 2026-10-15; multiplies every movement speed and speed-derived distance (1 = locked bases)
 	JumpPower = 50, -- [SD] existing Bootstrap value moved here without behavior change
 	FallGravityMult = 1.6, -- [SD] Part 1 total gravity multiplier while falling
@@ -33,7 +33,7 @@ Config.Movement = {
 	DashDuration           = 0.2,
 	DashCooldown           = 1.5, -- [SD] was 6.0; stamina cost governs spam now
 	DashStaminaCost        = 20, -- [SD] stamina per dash; 5 dashes empty a full tank
-	DashPounceInvulnTime   = 0.15,
+	DashTagInvulnTime      = 0.15,
 	DashSoundId            = "rbxassetid://115548807322300", -- [SD] dash whoosh (Pixabay Sound Effects, royalty-free, see ASSET_LOG)
 	DashSoundVolume        = 0.7, -- [SD] dash whoosh volume 0-1
 	SlideMinSpeedPct  = 0.85, -- [SD] Step 3 entry threshold as a share of effective sprint speed
@@ -46,7 +46,7 @@ Config.Movement = {
 	SlideCameraDip    = 0.65, -- [SD] Step 3 target camera dip in studs
 	SlideFovKick      = 4, -- [SD] Step 3 target FOV kick in degrees
 	SlideHitboxScale  = 0.5,
-	SlideSpeedMult    = 1.25, -- [SD] aggressive escape entry boost; sign-off pending vs spec + pounce band
+	SlideSpeedMult    = 1.25, -- [SD] aggressive escape entry boost; sign-off pending vs spec + tag reach
 	SlideSteerLock    = true, -- [SD] heading fixed at entry; false = MoveDirection steers mid-slide
 	SlideDustCount    = 12, -- [SD] heel dust burst on slide entry (dash pattern)
 	SlideDustLifeMin  = 0.3, -- [SD] dust particle lifetime low (s)
@@ -353,74 +353,16 @@ Config.Tag = {
 	RewindDefault        = 0.12,
 	RewindMax            = 0.20,
 	CloseChaseDistance  = 10,
-}
-
-Config.Pounce = { -- [LOCKED] Project-owner revision, 2026-10-17: moving ground/air activation; pounce-only tags including bots
-	Enabled = true,
-	WindupTime = 0.07,
-	HitRecovery = 0.15,
-	MissRecovery = 0.28,
-	HitCooldown = 0.8, -- [LOCKED] reduced at project-owner request, 2026-10-17
-	MissCooldown = 1.05, -- [LOCKED] reduced at project-owner request, 2026-10-17
-	MaxAirTime = 0.70,
-	ForwardSpeed = 55,
-	UpwardSpeed = 13,
-	AirControl = 0.12,
-	HitboxSize = Vector3.new(5, 5, 6),
-	MaxTagAngle = 40,
-	AimAssistDistance = 14,
-	AimAssistAngle = 18,
-	AimAssistStrength = 0.10,
-	MinAirTime = 0.10, -- [SD] exclude the launch frame from landing detection
-	GroundTolerance = 0.12, -- [SD] server ground-ray tolerance for client-owned R15 rigs
-	MinForwardDot = 0.5, -- [SD] moving within 60 degrees of character facing
-	MinMoveSpeed = 1, -- [SD] minimum server-observed horizontal movement; sprint and ground contact are not required
-	MaxSteerAngle = 30, -- [SD] steering input cone relative to launch
-	SteerRate = 0.8, -- [SD] frame-independent heading blend
-	AnimationFade = 0.06, -- [SD]
-	TagPoseTime = 0.10, -- [SD] minimum confirmed contact pose
-	RequestInterval = 0.08, -- [SD] packet guard independent of gameplay cooldown
-	ReplyTimeout = 1.2, -- [SD]
-	HitboxOffset = Vector3.new(0, 0.65, -3), -- [SD] hands/upper-torso region
+	ActionRange = 6.5, -- [SD] short server-owned tag reach
+	ActionHitboxSize = Vector3.new(6, 5.5, 6), -- [SD]
+	ActionHitboxOffset = Vector3.new(0, 0.5, -3), -- [SD]
+	ActionMaxAngle = 70, -- [SD]
+	ActionRequestInterval = 0.10, -- [SD] packet guard, not a gameplay cooldown
 	StandingTargetOffset = 0.5, -- [SD]
-	SlidingTargetOffset = -1.1, -- [SD] lowered target profile
-	MaxHitDistance = 9, -- [SD] broad distance guard; box and cone remain mandatory
-	TravelSlack = 4, -- [SD] server-observed replication slack in studs
-	MaxRise = 4, -- [SD] vertical envelope for the small 13 studs/s impulse
-	WallProbeSize = Vector3.new(1.5, 1.5, 1.5), -- [SD]
-	WallLookAhead = 2, -- [SD]
-	WallMaxNormalY = 0.35, -- [SD]
-	RecoverySpeedMult = 0.35, -- [SD] heavier committed recovery instead of full sprint
-	Camera = { -- [SD] additive presentation, after existing camera owners
-		CollisionPadding = 0.05,
-		WindupFov = 3, LaunchFov = 8, AirFov = 6, ImpactFov = 10,
-		WindupOffset = Vector3.new(0, -0.05, 0.3),
-		LaunchOffset = Vector3.new(0, 0.15, 0.8), AirOffset = Vector3.new(0, 0.12, 0.55),
-		NearPush = 0.3, NearDistance = 7,
-		ImpactPush = 0.25, ImpactPosition = Vector3.new(0.04, 0.06, 0.03),
-		ImpactAngles = Vector3.new(1.5, 0.8, 1), ImpactDecay = 25, ImpactFrequency = 85,
-		LandDip = 0.13, LandPitch = 1.5, LandDecay = 18, SmoothRate = 28,
-		LaunchHold = 0.08,
-		FirstPersonFovScale = 0.6, -- [SD] Phase 4 pounce FOV layer scale in first person
-		FirstPersonOffsetScale = 0.35, -- [SD] Phase 4 pounce positional layer scale in first person
-	},
-	Feedback = { -- [SD] original primitive geometry and ribbons; no third-party assets
-		DustColor = Color3.fromRGB(185, 166, 140), WindColor = Color3.fromRGB(170, 232, 255),
-		ImpactColor = Color3.fromRGB(255, 231, 115),
-		WindupCount = 4, LaunchCount = 10, HitCount = 16, LandCount = 6, MissCount = 12,
-		Lifetime = 0.24, DustSize = 0.14, DustRadius = 2, ImpactRadius = 3,
-		StreakCount = 4, StreakLength = 1.2, StreakThickness = 0.035, FlashSize = 0.6,
-		RingSegments = 16, RingThickness = 0.06, RingRadius = 2,
-		TrailLifetime = 0.14, TrailMinSpeed = 25, SoundVolume = 0.8,
-	},
-	Debug = false, -- [SD] Development visualization; off for release
-	Animations = {
-		Windup = "rbxassetid://112019342280579",
-		Leap = "rbxassetid://94945585012531",
-		Tag = "rbxassetid://88403484239291",
-		Recovery = "rbxassetid://115358409009409",
-	},
-	Sounds = { Windup = "", Launch = "", AirRush = "", TagImpact = "", Landing = "", MissLanding = "" }, -- [SD] Original audio hooks
+	SlidingTargetOffset = -1.1, -- [SD]
+	FirstPersonAnimationId = "rbxassetid://105436702082738", -- [SD] project-owner supplied 2026-10-18
+	ThirdPersonAnimationId = "rbxassetid://139144393566205", -- [SD] project-owner supplied 2026-10-18
+	AnimationFade = 0.05, -- [SD]
 }
 
 Config.Taya = {
@@ -533,9 +475,9 @@ Config.Skills = {
 		sounds = { windup = "", takeoff = "", landing = "" },
 		tell = { vfx = "DustRing", sfx = "Hup" },
 		weakness = "No air steering",
-		counterCondition = "Escapes a pounce or Lambat while airborne",
+		counterCondition = "Escapes a tag action or Lambat while airborne",
 	},
-	RS_02 = { id="RS_02", name="Pekeng Takbo", role="Runner", type="Decoy", cooldown=18, duration=4, range=0, params={breakLock=true}, tell={vfx="SmokePuff",sfx="Psssh"}, weakness="Decoy has no stamina and runs in a straight line", counterCondition="Taya locks onto or pounces the decoy" },
+	RS_02 = { id="RS_02", name="Pekeng Takbo", role="Runner", type="Decoy", cooldown=18, duration=4, range=0, params={breakLock=true}, tell={vfx="SmokePuff",sfx="Psssh"}, weakness="Decoy has no stamina and runs in a straight line", counterCondition="Taya locks onto or tags the decoy" },
 	RS_03 = {
 		id       = "RS_03",
 		name     = "Tsinelas Throw",
@@ -596,8 +538,8 @@ Config.Skills = {
 Config.Diskarte = {
 	MeterMax = 100,
 	Gain = {
-		LockBreak=15, PounceDouge=25, Counter=20, CloseChaseEscape=15,
-		PounceTag=25, Tag=15, CatchAfterEscape=20, TayaCounter=20,
+		LockBreak=15, TagDodge=25, Counter=20, CloseChaseEscape=15,
+		Tag=15, CatchAfterEscape=20, TayaCounter=20,
 	},
 	SamePairCooldown = 6.0,
 	RepeatedTagCooldown = 3.0,
@@ -640,7 +582,7 @@ Config.MapVote = {
 -- effects (sprint, falling, landing, dash, slide, vault, roll) and the
 -- Phase 3 chase awareness set (role camera profiles, Runner look-back,
 -- chase proximity FOV, chaser indicator, Taya tag-target marker, and
--- tag-transfer feedback). PounceCamera, the TargetLock assist, the skill
+-- tag-transfer feedback). The TargetLock assist and skill
 -- shake, and the RS_03 aim camera stay additive layers on top. CameraDirector
 -- yields to aim and TargetLock and suspends its FOV channel while the RS_01
 -- skill tween is active (HRushSkillFov attribute), so every layer composes

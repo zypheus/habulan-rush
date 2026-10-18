@@ -22,8 +22,7 @@
       },
       "Remotes": {
         "$className": "Folder",
-        "RequestPounce":   { "$className": "RemoteEvent" },
-        "PounceEvent":     { "$className": "RemoteEvent" },
+        "RequestTag":      { "$className": "RemoteEvent" },
         "RequestSkill":    { "$className": "RemoteEvent" },
         "RequestDash":     { "$className": "RemoteEvent" },
         "RequestMovementState": { "$className": "RemoteEvent" },
@@ -96,17 +95,11 @@
         "LandingController": {
           "$path": "src/StarterPlayerScripts/LandingController.lua"
         },
-        "PounceController": {
-          "$path": "src/StarterPlayerScripts/PounceController.lua"
+        "TagController": {
+          "$path": "src/StarterPlayerScripts/TagController.lua"
         },
-        "PounceBootstrap": {
-          "$path": "src/StarterPlayerScripts/PounceController.client.lua"
-        },
-        "PounceCamera": {
-          "$path": "src/StarterPlayerScripts/PounceCamera.lua"
-        },
-        "PounceEffects": {
-          "$path": "src/StarterPlayerScripts/PounceEffects.lua"
+        "TagControllerBootstrap": {
+          "$path": "src/StarterPlayerScripts/TagController.client.lua"
         },
         "SprintVFX": {
           "$path": "src/StarterPlayerScripts/SprintVFX.lua"

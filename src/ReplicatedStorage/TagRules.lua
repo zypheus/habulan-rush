@@ -1,11 +1,10 @@
 --!strict
 -- ReplicatedStorage/TagRules.lua
 -- Owner: Project Owner
--- Responsibility: shared tag eligibility for touch and pounce.
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
--- Shared tag validation rules. WHY: the touch tag (TM_08) and the pounce
--- (TM_05) must agree on when a Runner cannot be tagged, so the check lives in
--- ONE module that both server paths call. Server authoritative.
+-- Responsibility: shared tag eligibility rules.
+-- Task/spec: simple click-to-tag rework, approved 2026-10-18.
+-- The check stays shared so tag actions and future server-owned tag paths
+-- agree on when a Runner cannot be tagged.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 

@@ -2,7 +2,7 @@
 -- ServerScriptService/MatchService.server.lua   (v1.2 - queue + lobby/match separation, bots removed)
 -- Owner: Project Owner
 -- Responsibility: State machine (MS_01->MS_06), shuffle bag, scoring,
--- Task/spec: test bots removed (server, TagService bridge, and client scans); approved 2026-10-18.
+-- Task/spec: simple click-to-tag server commit, approved 2026-10-18.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
 -- CHANGED IN v1.2
@@ -33,9 +33,9 @@ local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
 local Remotes      = ReplicatedStorage:WaitForChild("Remotes")
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent     = Remotes:WaitForChild("TagEvent") :: RemoteEvent
-local CommitPounceTag = Instance.new("BindableFunction")
-CommitPounceTag.Name = "HRUSH_CommitPounceTag"
-CommitPounceTag.Parent = ServerScriptService
+local CommitTag = Instance.new("BindableFunction")
+CommitTag.Name = "HRUSH_CommitTag"
+CommitTag.Parent = ServerScriptService
 
 local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
 
@@ -298,16 +298,15 @@ local function transferTaya(from: Instance, to: Instance)
 	print(string.format("[MatchService] Tag transfer: %s tagged %s (new Taya)", from.Name, to.Name))
 end
 
-CommitPounceTag.OnInvoke = function(tagger: Instance, target: Instance): boolean
+CommitTag.OnInvoke = function(tagger: Instance, target: Instance): boolean
 	if matchState ~= "MS_04" or currentTaya ~= tagger or playerRoles[tagger] ~= "Taya" then return false end
-	if tagger:GetAttribute("HRushPouncing") ~= true or tagger:GetAttribute("HRushPounceState") ~= "Airborne" then return false end
 	if tagger == target or not table.find(getParticipants(), target) or playerRoles[target] ~= "Runner" then return false end
 	if (immuneUntil[target] or 0) > os.clock() then return false end
 	local taggerRoot, targetRoot = getRoot(tagger), getRoot(target)
 	local targetCharacter = if target:IsA("Player") then target.Character else target :: Model
 	local targetHumanoid = targetCharacter and targetCharacter:FindFirstChildOfClass("Humanoid")
 	if not taggerRoot or not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then return false end
-	if (targetRoot.Position - taggerRoot.Position).Magnitude > Config.Pounce.MaxHitDistance then return false end
+	if (targetRoot.Position - taggerRoot.Position).Magnitude > Config.Tag.ActionRange then return false end
 	if TagRules.isUntouchable(targetCharacter :: Model) then return false end
 	transferTaya(tagger, target)
 	return true
@@ -473,7 +472,7 @@ QueueEvent.OnServerEvent:Connect(function(player, action)
 	end
 end)
 
--- TagEvent is server-to-client only. Only a validated TagService pounce commits a tag.
+-- TagEvent is server-to-client only. Only a validated TagService request commits a tag.
 
 -- ============================================================
 -- MATCH LOOP (MS_01 -> MS_06)

@@ -22,10 +22,10 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Service | Canonical source | Authoritative state or responsibility | Owner |
 |---|---|---|---|
 | PartyService | `src/ServerScriptService/PartyService.lua` | Party membership, leader actions, and party locks | Project Owner |
-| MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, roles, timer, scoring, bot chase/request intent, and server-only pounce tag commit | Project Owner |
+| MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, roles, timer, scoring, and server-only tag commit | Project Owner |
 | MovementAuthority | `src/ServerScriptService/MovementAuthority.lua` | Server movement state, request validation, cooldowns, and passive speed/displacement observation | Project Owner |
 | MovementAuthority bootstrap | `src/ServerScriptService/MovementAuthority.server.lua` | Starts the MovementAuthority lifecycle | Project Owner |
-| TagService | `src/ServerScriptService/TagService.server.lua` | Pounce request ledger, cooldown, lifecycle, spatial/cone/LOS/travel validation, one-hit approval, and authoritative bot pounce motion/animation | Project Owner |
+| TagService | `src/ServerScriptService/TagService.server.lua` | Click tag rate guard, target selection, spatial/arc/LOS validation, and replicated third-person tag animation | Project Owner |
 | SkillService | `src/ServerScriptService/SkillService.server.lua` | Skill validation, cooldown ledger, RS_03 hit simulation, and stuns | Project Owner |
 | EventService | `src/ServerScriptService/EventService.server.lua` | Planned round event authority | Project Owner |
 | RunStyleService | `src/ServerScriptService/RunStyleService.server.lua` | Server-whitelisted cosmetic animation selection | Project Owner |
@@ -38,10 +38,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 | MovementController | `src/StarterPlayerScripts/MovementController.client.lua` | Input, predicted movement, movement animation, ability presentation, and local camera effects | Project Owner |
 | AirMovement | `src/StarterPlayerScripts/AirMovement.lua` | Normal jump grace windows, character-only falling force, air control, momentum preservation, and air-speed cap | Project Owner |
 | LandingController | `src/StarterPlayerScripts/LandingController.lua` | Local landing classification, landing animation and impact events, and hard-landing penalty lifetime | Project Owner |
-| PounceController | `src/StarterPlayerScripts/PounceController.lua` | Conditional input, predicted pounce state and motion, animation, recovery, and server reconciliation | Project Owner |
-| Pounce bootstrap | `src/StarterPlayerScripts/PounceController.client.lua` | Starts PounceController once | Project Owner |
-| PounceCamera | `src/StarterPlayerScripts/PounceCamera.lua` | Additive pounce camera offsets, FOV, impact, and cleanup | Project Owner |
-| PounceEffects | `src/StarterPlayerScripts/PounceEffects.lua` | Original procedural VFX, configured sound hooks, observer effects, and Studio-only debug visuals | Project Owner |
+| TagController | `src/StarterPlayerScripts/TagController.lua` | Click, R2, and touch input plus an isolated local first-person arm rig | Project Owner |
+| Tag bootstrap | `src/StarterPlayerScripts/TagController.client.lua` | Starts TagController once | Project Owner |
 | SprintVFX | `src/StarterPlayerScripts/SprintVFX.lua` | Sprint cosmetic state and instances | Project Owner |
 | SprintVFX bootstrap | `src/StarterPlayerScripts/SprintVFX.client.lua` | Starts the SprintVFX module | Project Owner |
 | TargetLockController | `src/StarterPlayerScripts/TargetLockController.lua` | Local target selection, reticle, and camera assist | Project Owner |

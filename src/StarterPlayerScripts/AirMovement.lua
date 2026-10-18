@@ -2,7 +2,7 @@
 -- StarterPlayerScripts/AirMovement.lua
 -- Owner: Project Owner
 -- Responsibility: normal jump grace windows, falling physics, and horizontal air limits.
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Parts 1 and 2 jump priority and committed air direction, approved 2026-10-16.
 
 local Players = game:GetService("Players")
@@ -91,7 +91,6 @@ end
 local function movementAllowed(): boolean
 	local state = LocalPlayer:GetAttribute("HRushState")
 	return LocalPlayer:GetAttribute("HRushStunned") ~= true
-		and LocalPlayer:GetAttribute("HRushLocalPouncing") ~= true
 		and LocalPlayer:GetAttribute("HRushVaulting") ~= true
 		and LocalPlayer:GetAttribute("HRushRolling") ~= true
 		and LocalPlayer:GetAttribute("IsAirborne") ~= true
@@ -100,7 +99,6 @@ end
 
 local function scriptedMovementActive(): boolean
 	return LocalPlayer:GetAttribute("HRushVaulting") == true
-		or LocalPlayer:GetAttribute("HRushLocalPouncing") == true
 		or LocalPlayer:GetAttribute("HRushDashing") == true
 		or LocalPlayer:GetAttribute("IsAirborne") == true
 end

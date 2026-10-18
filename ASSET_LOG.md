@@ -16,15 +16,22 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Simple tag animations, 2026-10-18
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-18 | HRush_TagFirstPerson (`rbxassetid://105436702082738`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Local first-person tag action (`Config.Tag.FirstPersonAnimationId`) | Pending Review | Loaded on an isolated local arm rig so it never competes with or replicates through the live character Animator. |
+| 2026-10-18 | HRush_TagThirdPerson (`rbxassetid://139144393566205`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Replicated tag action (`Config.Tag.ThirdPersonAnimationId`) | Pending Review | Loaded and played by the server so the tagging player and observers receive the same third-person action. |
+
 ### Pounce integration, 2026-10-16
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 2026-10-16 | HRush_PounceWindup (`rbxassetid://112019342280579`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Config.Pounce.Animations.Windup | Pending Review | Integrated as requested; not modified or republished. |
-| 2026-10-16 | HRush_PounceLeap (`rbxassetid://94945585012531`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Config.Pounce.Animations.Leap | Pending Review | Integrated as requested; not modified or republished. |
-| 2026-10-16 | HRush_PounceTag (`rbxassetid://88403484239291`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Config.Pounce.Animations.Tag | Pending Review | Only plays after server confirmation; not modified or republished. |
-| 2026-10-16 | HRush_PounceRecovery (`rbxassetid://115358409009409`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Config.Pounce.Animations.Recovery | Pending Review | Integrated as requested; not modified or republished. |
-| 2026-10-16 | Pounce dust, wind ribbons, streaks, impact flash and ring | Procedural VFX | Original Luau in PounceEffects.lua, generated with Codex | Original project source | Pounce presentation | Approved for implementation | Native parts, trails and tweens; no imported texture, mesh, or audio. All six new sound hooks are empty. |
+| 2026-10-16 | HRush_PounceWindup (`rbxassetid://112019342280579`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Removed pounce mechanic | Superseded | Removed from the runtime on 2026-10-18. |
+| 2026-10-16 | HRush_PounceLeap (`rbxassetid://94945585012531`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Removed pounce mechanic | Superseded | Removed from the runtime on 2026-10-18. |
+| 2026-10-16 | HRush_PounceTag (`rbxassetid://88403484239291`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Removed pounce mechanic | Superseded | Replaced by the first-person and third-person tag animations on 2026-10-18. |
+| 2026-10-16 | HRush_PounceRecovery (`rbxassetid://115358409009409`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Removed pounce mechanic | Superseded | Removed from the runtime on 2026-10-18. |
+| 2026-10-16 | Pounce dust, wind ribbons, streaks, impact flash and ring | Procedural VFX | Original Luau in PounceEffects.lua, generated with Codex | Original project source | Removed pounce presentation | Superseded | Removed with PounceEffects.lua on 2026-10-18. |
 
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |

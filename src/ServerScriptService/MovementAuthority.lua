@@ -2,7 +2,7 @@
 -- ServerScriptService/MovementAuthority.lua
 -- Owner: Project Owner
 -- Responsibility: server movement request validation, state ledger, and passive observation.
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2 landing and Vault validation, approved 2026-10-16.
 
 local Players = game:GetService("Players")
@@ -49,7 +49,6 @@ local MovementAuthority = {}
 
 local started = false
 local movement: any = nil
-local pounce: any = nil
 local ledgers: { [Player]: Ledger } = {}
 
 local function finiteNumber(value: number): boolean
@@ -164,9 +163,6 @@ local function roleSpeed(player: Player, sprinting: boolean): number
 end
 
 local function allowedSpeed(player: Player, ledger: Ledger, now: number): number
-	if player:GetAttribute("HRushPouncing") == true then
-		return pounce.ForwardSpeed
-	end
 	if ledger.state == "Dash" and now < ledger.dashUntil then
 		return movement.DashDistance * movement.SpeedScale / movement.DashDuration
 	end
@@ -526,7 +522,6 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 end
 
 local function handleDash(player: Player, direction: unknown)
-	if player:GetAttribute("HRushPouncing") == true then return end
 	local ledger = ledgers[player]
 	if ledger == nil then
 		return
@@ -564,7 +559,7 @@ local function handleDash(player: Player, direction: unknown)
 
 	ledger.dashReadyAt = now + movement.DashCooldown
 	ledger.dashUntil = now + movement.DashDuration
-	player:SetAttribute("HRushPounceImmuneUntil", now + movement.DashPounceInvulnTime)
+	player:SetAttribute("HRushTagActionImmuneUntil", Workspace:GetServerTimeNow() + movement.DashTagInvulnTime)
 	setState(player, ledger, "Dash")
 end
 
@@ -885,7 +880,6 @@ function MovementAuthority.start()
 	assert(configModule ~= nil and configModule:IsA("ModuleScript"), "Config ModuleScript missing")
 	local config = require(configModule)
 	movement = config.Movement
-	pounce = config.Pounce
 	validateConfig()
 
 	local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)

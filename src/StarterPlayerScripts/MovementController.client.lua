@@ -2,7 +2,7 @@
 -- StarterPlayerScripts/MovementController.client.lua
 -- Owner: Project Owner
 -- Responsibility: client input, predicted movement, animation, and presentation.
--- Task/spec: approved Pounce / Tag integration and Taya sprint revision, 2026-10-16.
+-- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2 landing owner and chest-level Vault, approved 2026-10-16.
 -- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
 --
@@ -10,7 +10,7 @@
 --   • Runner walk / sprint speed via Humanoid.WalkSpeed (16 / 21, Config-driven)
 --   • Stamina drain 20/s, regen 12/s after 1s, depletion lock until >= 10
 --   • Post-tag ex-Taya boost: +20% walk+sprint for 2s (F08, via TagEvent)
---   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s pounce invuln (F07),
+--   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s tag-action invulnerability (F07),
 --     wall-clamped raycast, RequestDash → server (server validates + records)
 --   • Slide: 1.0s, 3s cooldown, 50% hitbox (HipHeight), 1.25x boosted
 --     momentum entry sustained per-Heartbeat, locked heading, both roles (F09)
@@ -106,7 +106,6 @@ local regenTimer = 0.0 -- seconds since sprint stopped
 -- Dash
 local isDashing = false
 local dashCooldownLeft = 0.0
-local dashInvulnLeft = 0.0 -- F07 pounce invulnerability window (vs pounce lunge only)
 local dashConn: RBXScriptConnection? = nil
 
 -- Slide
@@ -291,13 +290,6 @@ local function applySpeed()
 		Humanoid.WalkSpeed = 0
 		return
 	end
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then
-		local pounceState = LocalPlayer:GetAttribute("HRushLocalPounceState")
-		if pounceState == "Recovery" or pounceState == "Contact" then
-			Humanoid.WalkSpeed = Mv.TayaSpeed * Mv.SpeedScale * Config.Pounce.RecoverySpeedMult
-			return
-		end
-	end
 	if isSliding or isRolling or vault.active then
 		-- Slide, roll, and vault own their momentum until their state ends.
 		return
@@ -336,7 +328,6 @@ local function updateStamina(dt: number)
 	-- Landing recovery (RS_01) keeps sprint off briefly without blocking walk.
 	-- Stun keeps sprint off without blocking regen.
 	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing and not isRolling and not vault.active
-		and (role == "Taya" or LocalPlayer:GetAttribute("HRushLocalPouncing") ~= true)
 		and skillRecoveryLeft <= 0 and not isStunned()
 	if role == "Runner" and isDepletion and stamina < Mv.StaminaDepletedMin then
 		wantSprint = false -- forced walk until stamina recovers enough
@@ -755,7 +746,7 @@ end
 
 -- ── Dash ──────────────────────────────────────────────────────────────────────
 -- Spec §3: DashDistance (12) studs in DashDuration (0.2s), DashCooldown (6s),
--- DashPounceInvulnTime (0.15s, F07 vs pounce lunge only — server enforces this).
+-- DashTagInvulnTime (0.15s, F07 vs tag actions only; server enforces this).
 -- No stamina cost. Movement is linear start→end (constant velocity 60 st/s);
 -- a forward raycast clamps the target so the dash stops at walls instead of
 -- phasing through. Server is notified via RequestDash (validates cooldown/round).
@@ -772,7 +763,6 @@ local function cancelDash()
 end
 
 local function performDash()
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return end
 	if inputLocked then
 		return
 	end
@@ -799,7 +789,6 @@ local function performDash()
 	end
 
 	isDashing = true
-	dashInvulnLeft = Mv.DashPounceInvulnTime
 	dashCooldownLeft = Mv.DashCooldown
 	-- Stamina spend: same depletion entry as sprint (walk until StaminaDepletedMin).
 	stamina = clamp(stamina - Mv.DashStaminaCost, 0, Mv.StaminaMax)
@@ -901,7 +890,6 @@ local function endSlide()
 end
 
 local function performSlide()
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return end
 	if inputLocked then
 		return
 	end
@@ -1030,7 +1018,6 @@ local function endRoll()
 end
 
 local function performRoll()
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return end
 	if os.clock() > rollInputExpiresAt then
 		rollInputExpiresAt = 0
 		return
@@ -1237,7 +1224,6 @@ function vault.finish(completed: boolean, interruption: string?, preserveMomentu
 end
 
 function vault.tryStart(): boolean
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return false end
 	if inputLocked or not (roundLive or lobbyWarmup) or isStunned() or vault.active or isRolling or isDashing then
 		return false
 	end
@@ -1422,8 +1408,7 @@ end
 -- it the moment sprinting ends (role swap, lock, stun, depletion), and scales
 -- playback with real WalkSpeed so feet keep up when SpeedScale changes.
 local function tickSprintAnim()
-	if isSprinting and not isSliding and not isRolling and not vault.active
-		and LocalPlayer:GetAttribute("HRushLocalPouncing") ~= true and Humanoid then
+	if isSprinting and not isSliding and not isRolling and not vault.active and Humanoid then
 		if sprintTrack then
 			if not sprintTrack.IsPlaying then
 				sprintTrack:Play(Animations.Sprint.FadeIn, 1, 1)
@@ -2036,7 +2021,6 @@ end
 -- Same gates as the cast: aiming is only entered and only fires while a
 -- throw right now would be valid.
 local function tsinelasCanCast(): boolean
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return false end
 	if not roundLive or inputLocked then
 		return false
 	end
@@ -2526,7 +2510,6 @@ local function launchSkill()
 end
 
 local function requestSkill()
-	if LocalPlayer:GetAttribute("HRushLocalPouncing") == true then return end
 	if not roundLive or inputLocked then
 		return -- round gate (countdown, lobby, round end)
 	end
@@ -2674,9 +2657,6 @@ local function tickCooldowns(dt: number)
 	if vault.probe <= 0 then
 		vault.probe = Mv.VaultProbeInterval
 		vault.tryStart()
-	end
-	if dashInvulnLeft > 0 then
-		dashInvulnLeft = math.max(0, dashInvulnLeft - dt)
 	end
 	if skillCooldownLeft > 0 then
 		skillCooldownLeft = math.max(0, skillCooldownLeft - dt)
@@ -3103,7 +3083,7 @@ end, false, Enum.KeyCode.ButtonX)
 
 -- TEMP (T18): RS_03 hold-to-aim until T17 draft. ButtonA is the only free
 -- face button (X skill, B dash, Y Diskarte, bumpers and triggers reserved
--- by the spec for lock and pounce). Same three calls as the G key.
+-- by the spec for lock and tag). Same three calls as the G key.
 local TSINELAS_GP_ACTION = "HRUSH_Tsinelas_GP"
 ContextActionService:BindAction(TSINELAS_GP_ACTION, function(_name, state, _obj)
 	if state == Enum.UserInputState.Begin then
@@ -3259,7 +3239,6 @@ function vault.onCharacterAdded(char: Model)
 	regenTimer = 0.0
 	isDashing = false
 	dashCooldownLeft = 0.0
-	dashInvulnLeft = 0.0
 	isSliding = false
 	slideCooldownLeft = 0.0
 	slideTimer = 0.0

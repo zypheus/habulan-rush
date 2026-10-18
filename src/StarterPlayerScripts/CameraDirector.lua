@@ -14,7 +14,7 @@
 -- RS_03 aim camera and the TargetLock assist, defers view switches while
 -- scripted movement or a takeover owns the frame, suspends FOV while the
 -- RS_01 skill tween runs, and stays a clean base under additive layers
--- (PounceCamera, skill shake).
+-- (skill shake).
 -- Task/spec: camera overhaul Phase 4, approved 2026-10-18.
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -180,7 +180,7 @@ local TOUCH_BUTTON_ACTIONS = {
 	"HRUSH_Dash_Touch",
 	"HRUSH_Slide_Touch",
 	"HRUSH_Skill_Touch",
-	"HRUSH_Pounce",
+	"HRUSH_Tag",
 }
 
 local onRender: (number) -> ()
@@ -324,11 +324,10 @@ local function deviceScale(): number
 	return Eff.Device.Default
 end
 
--- Scripted states own their own camera feel: skills, pounce, and stun all
+-- Scripted states own their own camera feel: skills and stun both
 -- suppress the generic movement effects for their duration.
 local function effectsBusy(): boolean
 	return localPlayer:GetAttribute("HRushAbilityBusy") == true
-		or localPlayer:GetAttribute("HRushLocalPouncing") == true
 		or localPlayer:GetAttribute("HRushStunned") == true
 end
 
@@ -368,7 +367,7 @@ end
 
 -- Look-back is a Runner free-movement camera: not while the camera is
 -- yielded to aim or lock, not while scripted movement owns the character
--- (pounce, skill, stun, dash, vault, roll), and not in the settings pause.
+-- (skill, stun, dash, vault, roll), and not in the settings pause.
 -- Standing still, running, sliding, and airborne are allowed; the movement
 -- assist only has an effect while actually moving.
 local function lookBackAllowed(): boolean
@@ -448,7 +447,7 @@ local function modeEnabled(): boolean
 end
 
 -- A mode switch waits for a frame no other owner needs: not yielded, not
--- paused, and not mid slide, vault, roll, pounce, stun, or skill. Dash is
+-- paused, and not mid slide, vault, roll, stun, or skill. Dash is
 -- exempt on purpose; the body facing yields to it instead of holding the
 -- switch.
 local function canSwitchMode(): boolean
@@ -461,7 +460,6 @@ local function canSwitchMode(): boolean
 	if localPlayer:GetAttribute("HRushSliding") == true
 		or localPlayer:GetAttribute("HRushVaulting") == true
 		or localPlayer:GetAttribute("HRushRolling") == true
-		or localPlayer:GetAttribute("HRushLocalPouncing") == true
 		or localPlayer:GetAttribute("HRushStunned") == true
 		or localPlayer:GetAttribute("HRushAbilityBusy") == true then
 		return false
@@ -520,12 +518,10 @@ end
 -- instead of the default movement-facing.
 --
 -- While a scripted mechanic owns the body in first person (dash, slide,
--- vault, roll, pounce, skill, stun) this step hands off completely: it
--- writes nothing and keeps the saved AutoRotate value. Pounce and vault
--- capture and restore AutoRotate themselves, so a mid-mechanic restore
--- here would let them capture our forced false and write it back on
--- their exit, leaving third person stuck with AutoRotate false and a
--- body that never turns toward movement.
+-- vault, roll, skill, stun) this step hands off completely: it writes
+-- nothing and keeps the saved AutoRotate value. Vault captures and restores
+-- AutoRotate itself, so a mid-mechanic restore here could leave third person
+-- stuck with AutoRotate false and a body that never turns toward movement.
 --
 -- Every camera-side exit (mode switch, yield, menu, pause, death)
 -- restores the saved value once, so third person and all scripted
@@ -644,7 +640,7 @@ local function stepEffects(dt: number)
 	profileFovSmooth = approach(profileFovSmooth, roleProfileFov(), Cfg.RoleProfiles.BlendTime, dt)
 	profileDistSmooth = approach(profileDistSmooth, roleProfileDistance(), Cfg.RoleProfiles.BlendTime, dt)
 
-	-- Look-back ease. The hold input is gated per frame, so a stun, pounce,
+	-- Look-back ease. The hold input is gated per frame, so a stun,
 	-- yield, or settings pause always swings the camera back out.
 	local lookBackTarget = if (lookBackHeld or lookBackTouchHeld) and lookBackAllowed() then 1.0 else 0.0
 	lookBackSmooth = approach(lookBackSmooth, lookBackTarget, Cfg.LookBack.BlendTime, dt)
@@ -705,7 +701,7 @@ local function stepEffects(dt: number)
 	vaultClear = approach(vaultClear, clearTarget, 0.1, dt)
 
 	-- First-person jump pitch: one edge when the feet leave the ground with
-	-- real upward speed. Scripted lifts (vault, pounce, skill, stun) never
+	-- real upward speed. Scripted lifts (vault, skill, stun) never
 	-- trigger it.
 	if wasGrounded and not isGrounded and not busy and not vaulting and root ~= nil
 		and root.AssemblyLinearVelocity.Y > 2 then
@@ -1242,8 +1238,7 @@ function onRender(dt: number)
 	-- FOV is written absolutely. First person uses its own flat base instead
 	-- of the role profile; both modes keep the rate-limited catch-up, so a
 	-- switch, a yield, an RS_01 kick, or a role change eases back instead of
-	-- snapping. PounceCamera composes on top; its reset at Camera.Value - 1
-	-- removes its own delta before this write.
+	-- snapping.
 	if not skillFovHeld then
 		local targetFov: number
 		if viewMode == "FirstPerson" then
@@ -1369,7 +1364,7 @@ end
 
 -- Hold-to-look-back input. The action sinks so the key never leaks to
 -- another system, but the per-frame gate in stepEffects decides whether it
--- engages, so a hold during a stun or pounce simply waits.
+-- engages, so a hold during a stun simply waits.
 local function onLookBackAction(_name: string, inputState: Enum.UserInputState, _input: InputObject): Enum.ContextActionResult
 	if inputState == Enum.UserInputState.Begin then
 		if UserInputService:GetFocusedTextBox() ~= nil then
@@ -1524,8 +1519,8 @@ end
 -- Phase 4 view mode API. toggleViewMode writes the request through
 -- ClientSettings, so the Changed handler above stays the single path that
 -- arms a deferred switch; the ChaseHUD touch button and the key bind both
--- call it. getViewMode reports the active mode for the button label and the
--- PounceCamera scaling.
+-- call it. getViewMode reports the active mode for perspective-specific UI
+-- and animation playback.
 function CameraDirector.toggleViewMode()
 	if not modeEnabled() then
 		return
