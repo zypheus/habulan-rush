@@ -517,13 +517,25 @@ end
 
 -- Body facing. First person drops humanoid AutoRotate and eases the root
 -- yaw toward the camera yaw each frame, so the avatar turns with the view
--- instead of the default movement-facing. Every other owner (yield, dash,
--- slide, vault, roll, pounce, skill, stun, menu, pause) restores the saved
--- AutoRotate value first, so third person and all scripted movement behave
--- exactly as before.
+-- instead of the default movement-facing.
+--
+-- While a scripted mechanic owns the body in first person (dash, slide,
+-- vault, roll, pounce, skill, stun) this step hands off completely: it
+-- writes nothing and keeps the saved AutoRotate value. Pounce and vault
+-- capture and restore AutoRotate themselves, so a mid-mechanic restore
+-- here would let them capture our forced false and write it back on
+-- their exit, leaving third person stuck with AutoRotate false and a
+-- body that never turns toward movement.
+--
+-- Every camera-side exit (mode switch, yield, menu, pause, death)
+-- restores the saved value once, so third person and all scripted
+-- movement behave exactly as before.
 local function stepFacing(dt: number, root: BasePart?)
-	local manual = fpFacingOwned() and not mechanicsOwnFacing()
-	if manual and root ~= nil then
+	if viewMode == "FirstPerson" and mechanicsOwnFacing() then
+		bodyActive = false
+		return
+	end
+	if fpFacingOwned() and root ~= nil then
 		if autoRotateSaved == nil then
 			local humanoid = humanoidOf()
 			autoRotateSaved = if humanoid ~= nil then humanoid.AutoRotate else true

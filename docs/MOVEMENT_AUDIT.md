@@ -466,7 +466,7 @@ The runtime resolver reads `Config.Animations` and accepts only numeric `rbxasse
 | Track | Published ID | Live runtime state |
 |---|---|---|
 | HRush_Walk | `rbxassetid://89956272220101` | Metadata only |
-| HRush_Sprint | `rbxassetid://132688446420207` | Active loop while sprinting |
+| HRush_Sprint | `rbxassetid://74829353930740` | Active loop while sprinting (owner replacement 2026-10-18) |
 | HRush_JumpStart | `rbxassetid://115591963738630` | Metadata only |
 | HRush_Fall | `rbxassetid://106234834891508` | Metadata only |
 | HRush_Land | `rbxassetid://83446879560399` | Active Soft landing one-shot |

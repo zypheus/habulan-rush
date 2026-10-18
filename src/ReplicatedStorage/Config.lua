@@ -141,7 +141,7 @@ Config.Animations = { -- [SD] movement animation runtime metadata and original-a
 		FadeIn = 0.12, FadeOut = 0.12, SpeedMin = 0.75, SpeedMax = 1.5,
 	}, -- [SD] Batch A published original
 	Sprint = {
-		Id = "rbxassetid://132688446420207", -- [SD] Batch A published original
+		Id = "rbxassetid://74829353930740", -- [SD] project-owner replacement 2026-10-18, supersedes the Batch A ID
 		Priority = Enum.AnimationPriority.Movement,
 		Looped = true,
 		FadeIn = 0.15,

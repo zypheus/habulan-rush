@@ -704,3 +704,25 @@ Implemented in the repository on 2026-10-18 by opencode, requested by the projec
 
 ### Not in Phase 4
 - Spectator camera, final-seconds effects, death cinematics, round-end camera, cinematic sequences, and general polish remain future phases and wait for owner approval. No TargetLock or RS_03 redesign was performed.
+
+---
+
+## First-person exit AutoRotate fix (2026-10-18)
+
+Found by project-owner testing right after the Phase 4 report: after entering first person and switching back to third person, the character moved in the camera-relative direction but never turned its body toward movement.
+
+### Root cause
+- `PounceController` (start capture at `:239`, restore at `:93`) and the Vault mechanic (capture at `MovementController.client.lua:1289`, restore at `:1218`) each save `Humanoid.AutoRotate` at start and write it back at exit. During a first-person session the saved value was the director's forced `false`.
+- `stepFacing` used to restore and clear `autoRotateSaved` on any frame where first person was not the manual owner, including frames owned by a scripted mechanic. That restore fired one frame into a pounce or vault, spending the director's saved `true` mid-mechanic; the mechanic's own exit then wrote back the captured `false`.
+- Still in first person, the director re-captured that `false`, and the third-person exit restored it. With `AutoRotate` false the body stops turning toward movement and the avatar slides while facing its last heading.
+- Movement itself was never affected: the default PlayerModule `ControlModule` binds at `Input` priority and applies a camera-relative vector through `Player:Move` with no `AutoRotate` dependency (verified against the Studio-shipped PlayerModule source, version `4f087c32742644ab`, `ControlModule.lua:123` and `:508`).
+
+### Fix
+- `stepFacing` is now three-way. First person without a mechanic: capture once, hold `AutoRotate` false, ease the root yaw (unchanged). First person with a scripted mechanic (dash, slide, vault, roll, pounce, skill, stun): hands off completely, writes nothing, and keeps the saved value, so the mechanic's own capture and restore govern. Every camera-side exit (mode switch, yield, menu, pause, death): restore the saved value once.
+- No changes to `PounceController`, the Vault mechanic, movement, remotes, or any other module. The fix also removes the old mid-mechanic restore that briefly fought pounce and vault while they ran in first person.
+
+### Validation state
+- `scripts/check-syntax.ps1` passed on 2026-10-18 after the fix.
+- `scripts/check-notes.ps1` passed on 2026-10-18.
+- Rojo build passed on 2026-10-18 and regenerated `HabulanRush.rbxlx`.
+- Studio repro pending: enter first person, pounce or vault once, return to third person, and confirm the body turns toward movement again and `Humanoid.AutoRotate` reads true.
