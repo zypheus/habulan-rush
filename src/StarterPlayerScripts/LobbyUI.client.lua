@@ -1,3 +1,9 @@
+--!strict
+-- StarterPlayerScripts/LobbyUI.client.lua
+-- Owner: Project Owner
+-- Responsibility: Lobby, queue, loading screen, and settings presentation.
+-- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
+-- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
 --[[
 	HABULAN RUSH - Lobby UI
 	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
@@ -1423,23 +1429,37 @@ end
 local settingsPanel = createPanel("Settings", "SETTINGS", 520, 812)
 local settingsStep = SharedConfig.Settings.SliderStep
 do
-	local c = settingsPanel.Content -- 464 x 694
+	local c = create("ScrollingFrame", {
+		Name = "SettingsScroll",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+	}, settingsPanel.Content)
 
 	local settingsRows: { [string]: any } = {}
 	local rowCards: { [string]: Instance } = {}
-	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "reducedCamera", "invertCameraY" }
+	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "reducedCamera", "invertCameraY", "showPopups", "momentumBar", "momentumSounds" }
+	c.CanvasSize = UDim2.fromOffset(0, #rowOrder * 84 + 112)
 	local rowTitles: { [string]: string } = {
 		master = "Master Volume",
 		music = "Music Volume",
 		sfx = "SFX Volume",
 		vfx = "VFX Intensity",
 		cameraSensitivity = "Camera Look Speed",
-		reducedCamera = "Reduced Camera Effects",
+		reducedCamera = "Reduce Motion",
 		invertCameraY = "Invert Camera Y",
+		showPopups = "Show Popups",
+		momentumBar = "Momentum Bar",
+		momentumSounds = "Momentum Sounds",
 	}
 	local toggleKeys: { [string]: boolean } = {
 		reducedCamera = true,
 		invertCameraY = true,
+		showPopups = true,
+		momentumBar = true,
+		momentumSounds = true,
 	}
 
 	local function valueFromX(track: Frame, x: number): number
@@ -1612,6 +1632,9 @@ do
 	-- Camera and reduced-camera toggle rows (camera look, reduced effects).
 	createToggleRow(6, "reducedCamera", "No FOV kicks, shake, or aim camera.")
 	createToggleRow(7, "invertCameraY", "Push up to look down.")
+	createToggleRow(8, "showPopups", "Show momentum action text near your character.")
+	createToggleRow(9, "momentumBar", "Show the bottom-center momentum meter.")
+	createToggleRow(10, "momentumSounds", "Play momentum cues at your SFX volume.")
 
 	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, #rowOrder * 84 + 8, 464, 56, function()
 		UIAudio.playUi("click")
@@ -1639,6 +1662,7 @@ do
 	-- are never captured, so the character keeps simulating underneath.
 	local focused = 1
 	local function refreshFocus()
+		c.CanvasPosition = Vector2.new(0, math.max(0, (focused - 4) * 84))
 		for i, key in rowOrder do
 			local card = rowCards[key]
 			if card then
@@ -1873,7 +1897,7 @@ do
 			title = "CLASSIC HABULAN",
 			tag = "MVP · CORE MODE",
 			art = artCourt,
-			desc = "FFA hot-potato tag · 4-8 players · 3 rounds x 150s · Skill Draft each round · fair shuffle-bag Taya · safe windows + post-tag boosts",
+			desc = "FFA hot-potato tag · 4-8 players · 3 rounds x 150s · bato bato pick for first Taya · safe windows + post-tag boosts",
 			win = "WIN: Lowest total Taya Time takes 1st + MVP.",
 		},
 		GM_03 = {
@@ -2431,11 +2455,9 @@ applyMatchGate()
 
 --------------------------------------------------------------------------
 -- LOADING SCREEN (match found -> arena reveal)
--- Shown while you are in a match but the arena isn't ready yet (MS_01 right after
--- match creation, and MS_02 draft). It fades out when the countdown (MS_03) begins.
--- When the Skill Draft UI (T17) exists, change LOADING_WAIT_STATES to { MS_01 = true }.
+-- Shown while match creation is in progress. It closes for map vote and MS_RPS.
 --------------------------------------------------------------------------
-local LOADING_WAIT_STATES = { MS_01 = true, MS_02 = true }
+local LOADING_WAIT_STATES = { MS_01 = true }
 local LOADING_MIN_SECONDS = 1.5
 local LOADING_TIPS = {
 	"Hold Shift to sprint. Watch your stamina.",
@@ -2610,7 +2632,13 @@ local function setLoadingVisible(visible)
 		task.spawn(runLoadingAnimation, token)
 	else
 		-- never flash: keep it up for a minimum time, then fade out.
-		-- Exception: into MS_VOTE — the vote screen must be visible immediately.
+		-- MS_RPS must show immediately so the short intro is visible.
+		if player:GetAttribute("HRushState") == "MS_RPS" then
+			loadingGui.Enabled = false
+			loadingVeil.BackgroundTransparency = 1
+			return
+		end
+		-- Exception: into MS_VOTE, the vote screen must be visible immediately.
 		local remaining
 		if player:GetAttribute("HRushState") == "MS_VOTE" then
 			remaining = 0

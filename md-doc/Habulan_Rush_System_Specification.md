@@ -10,20 +10,24 @@ This document turns GDD v2.0 into implementable rules. It defines state, rules, 
 
 |**State**|**Entry condition**|**Exit condition**|**Server actions**|
 |---|---|---|---|
-|MS_01 Lobby|Server start / match end|≥4 players ready (max<br>8) or host start|Map vote, ready check|
-|MS_02 Skill Draft|Lobby ready, or after Round<br>End (rounds 2–3) [SD]|12 s timer ends|Offer 2 Runner + 2 Taya choices;<br>auto-pick random offered skill on<br>timeout|
-|MS_03 Countdown|Draft ends|5 s timer ends|Spawn players, pick first Taya from<br>shuffle bag, lock movement|
+|MS_01 Lobby|Server start / match end|Queued search times out or reaches 8 players; solo sandbox allowed|Start queued match|
+|MS_VOTE Map Vote|Queued match starts|Vote timer ends|Collect map votes and publish the selected map|
+|MS_RPS Bato Bato Pick|Map vote or Round End ends; at least two players remain eligible|One starting Taya remains, or stage cap is reached|Run server-timed pick, reveal, and elimination stages; publish starting Taya|
+|MS_03 Countdown|MS_RPS ends, or one eligible player skips it|5 s timer ends|Spawn players, use the MS_RPS result as first Taya, lock movement|
 |MS_04 Round Live|Countdown ends|Timer reaches 0|Run Taya Timer, Diskarte, events,<br>phases|
 |MS_05 Round End|Round Live ends|8 s timer ends|Freeze input, rank, award points,<br>recap|
 |MS_06 Match End|After round 3|15 s timer ends|Final ranking, MVP, return to lobby|
 
 
 
-### **2.1 First Taya (shuffle bag)** 
+### **2.1 First Taya (bato bato pick)**
 
-- Bag contains every present player once; remove one per round; refill only when empty. Bag persists across the match. 
+- The match-long eligible pool starts with every match player. Remove a player only after they start as Taya. Refill from all present players when empty. If the pool has one player, skip MS_RPS and choose that player.
 
-- A player who disconnects is removed from the bag. A late joiner is not added until the next match [SD]. 
+- In MS_RPS, only eligible players submit Rock, Paper, or Scissors. The server accepts one valid sign per player per stage during the pick window and randomizes missing choices. Clients receive the roster and deadline, then a simultaneous sign reveal. A player sees only their own sign before reveal.
+- One sign or all three signs is a tie: repeat with the same stage pool. With exactly two signs, players showing the winning sign leave the stage pool as safe; the losing sign stays. After Config.Match.Rps.MaxStages stages, randomly choose from the remaining stage pool and announce SUDDEN PICK.
+- A disconnected player leaves the stage pool. One remaining player starts as Taya. If none remain, draw from the shuffle bag of present players as a fallback. A late joiner is not added until the next match [SD].
+- Config.Match.Rps owns intro, pick, reveal, resolve, result, and Studio timings. The server owns the pool, deadlines, signs, resolution, and starting Taya. RpsStageStart, RpsReveal, and RpsResult are server-to-client; RpsSubmitSign is client-to-server.
 
 ### **2.2 Scoring** 
 

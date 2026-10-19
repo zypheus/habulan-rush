@@ -12,10 +12,14 @@ Primary coding agent: **Codex**, only for the currently approved item
 |---|---|---|---|
 | Config | `src/ReplicatedStorage/Config.lua` | Immutable shared values; server and client read only | Project Owner |
 | TagRules | `src/ReplicatedStorage/TagRules.lua` | Pure shared tag rules | Project Owner |
+| RpsRules | `src/ReplicatedStorage/RpsRules.lua` | Pure bato bato pick stage resolution | Project Owner |
+| MomentumRules | `src/ReplicatedStorage/MomentumRules.lua` | Shared pure momentum gain, decay, tier, and speed math | Project Owner |
 | TsinelasArc | `src/ReplicatedStorage/TsinelasArc.lua` | Pure shared RS_03 arc calculations | Project Owner |
 | Dash VFX | `src/ReplicatedStorage/VFX/Dash.lua` | Replicated cosmetic helper | Project Owner |
 | Run styles | `src/ReplicatedStorage/Cosmetics/RunStyles.lua` | Replicated cosmetic definitions | Project Owner |
 | Remotes | `default.project.json`, `ReplicatedStorage.Remotes` | Client/server API instances; server validates client requests | Project Owner |
+| MomentumUpdate remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-to-owner momentum snapshots and accepted action gains | Project Owner |
+| RPS remotes | `default.project.json`, `ReplicatedStorage.Remotes` | StageStart, Reveal, Result server presentation and validated SubmitSign request | Project Owner |
 
 ## Server
 
@@ -36,6 +40,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Controller or module | Canonical source | Client-owned responsibility | Owner |
 |---|---|---|---|
 | MovementController | `src/StarterPlayerScripts/MovementController.client.lua` | Input, predicted movement, movement animation, ability presentation, and local camera effects | Project Owner |
+| MomentumController | `src/StarterPlayerScripts/MomentumController.lua` | Local momentum prediction, reconciliation, and local change events | Project Owner |
+| MomentumHUD | `src/StarterPlayerScripts/MomentumHUD.client.lua` | Local momentum bar, popups, chain, loss feedback, and sound cues | Project Owner |
 | AirMovement | `src/StarterPlayerScripts/AirMovement.lua` | Normal jump grace windows, character-only falling force, air control, momentum preservation, and air-speed cap | Project Owner |
 | LandingController | `src/StarterPlayerScripts/LandingController.lua` | Local landing classification, landing animation and impact events, and hard-landing penalty lifetime | Project Owner |
 | TagController | `src/StarterPlayerScripts/TagController.lua` | Click, R2, and touch input plus an isolated local first-person arm rig | Project Owner |
@@ -46,6 +52,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | TargetLock bootstrap | `src/StarterPlayerScripts/TargetLockController.client.lua` | Starts the target-lock module | Project Owner |
 | UIController | `src/StarterPlayerScripts/UIController.client.lua` | Match HUD, cooldowns, draft presentation, and recaps | Project Owner |
 | LobbyUI | `src/StarterPlayerScripts/LobbyUI.client.lua` | Lobby, party, queue, settings presentation, and lobby camera | Project Owner |
+| RpsUI | `src/StarterPlayerScripts/RpsUI.client.lua` | MS_RPS cards, sign input, local timer, and reveal presentation | Project Owner |
 | MapVoteUI | `src/StarterPlayerScripts/MapVoteUI.client.lua` | Map-vote presentation and input | Project Owner |
 | ClientSettings | `src/StarterPlayerScripts/ClientSettings.lua` | In-session presentation settings | Project Owner |
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |

@@ -17,7 +17,7 @@ _Version 1.0 • Platform: Roblox (Luau) • Derived from GDD v2.0 §18_
 |**Module**|**Location**|**Responsibility**|**Owner**|
 |---|---|---|---|
 |Config|ReplicatedStorage|Tunable numbers, skill definitions, map data|Designer +<br>Programmer|
-|MatchService|ServerScriptService|State machine, shuffle bag, scoring, phase<br>timers, disconnect handling|Programmer A|
+|MatchService|ServerScriptService|State machine, MS_RPS first Taya selection, fallback shuffle bag, scoring, phase timers, disconnect handling|Programmer A|
 |TagService|ServerScriptService|Pounce/touch validation, transfer, Safe Window,<br>Lock Delay, lag rewind|Programmer A|
 |SkillService|ServerScriptService|Draft, cooldowns, role checks, effects, Diskarte|Programmer B|
 |EventService|ServerScriptService|Barangay Rush events and Huling Habol<br>timeline|Programmer B|

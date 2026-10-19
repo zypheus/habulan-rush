@@ -29,13 +29,13 @@ The project owner approved the pasted Pounce / Tag request and explicitly approv
 
 | # | Finding | Confirmed Default | Status |
 |---|---------|-------------------|--------|
-| F01 | Skill Draft frequency | **Draft runs before every round** (adds 24 s; target match = 9.0 min) | ✅ Confirmed |
+| F01 | Pre-round selection | **MS_02 retired; MS_RPS bato bato pick runs before MS_03 each round** | Owner review |
 | F06 | Safe Window stacking | **Windows do not stack; longest remaining applies** | ✅ Confirmed |
 | F07 | Dash pounce invulnerability | **0.15 s, vs pounce lunge only** (not Tsinelas Throw or touch tag) | ✅ Confirmed |
 | F11 | Close chase distance | **10 studs** (for Diskarte close-chase-escape reward) | ✅ Confirmed |
 | F12 | Counter table | See §Counter Table below | ✅ Confirmed |
 | F16 | Esports 40–60% metric | **Pounce success rate = hits ÷ attempts** (logged in Playtest Log) | ✅ Confirmed |
-| F18 | Disconnect / min players | **Min 4 players. Taya disconnect → nearest Runner becomes Taya. Leavers rank last for the round.** | ✅ Confirmed |
+| F18 | Disconnect / min players | **Queued search can start a solo sandbox; Taya disconnect during MS_04 still promotes the nearest Runner. Leavers rank last for the round.** | Owner review |
 
 ## Counter Table (F12) — Diskarte "Counter" Gain Triggers
 

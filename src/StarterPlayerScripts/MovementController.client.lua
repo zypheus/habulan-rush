@@ -4,6 +4,8 @@
 -- Responsibility: client input, predicted movement, animation, and presentation.
 -- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2 landing owner and chest-level Vault, approved 2026-10-16.
+-- Task/spec: momentum steps 2 to 4, 2026-10-19.
+-- Task/spec: slide chaining and entry speed, 2026-10-19.
 -- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
 --
 -- Responsibilities:
@@ -12,10 +14,10 @@
 --   • Post-tag ex-Taya boost: +20% walk+sprint for 2s (F08, via TagEvent)
 --   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s tag-action invulnerability (F07),
 --     wall-clamped raycast, RequestDash → server (server validates + records)
---   • Slide: 1.0s, 3s cooldown, 50% hitbox (HipHeight), 1.25x boosted
+--   • Slide: 1.0s, 3s cooldown, 50% hitbox (HipHeight), momentum gain
 --     momentum entry sustained per-Heartbeat, locked heading, both roles (F09)
 --   • Roll: slide input buffered for 0.15s before landing, momentum preserved,
---     +10% of effective Runner sprint speed, normal tag profile, both roles
+--     server-validated momentum gain, normal tag profile, both roles
 --   • Slide anim guaranteed: verified load + watchdog retry + one warn/character
 --   • Published anims (Config IDs): HRush_Sprint loops while sprinting
 --     (playback scaled with WalkSpeed), HRush_SlideLoop holds per slide,
@@ -57,6 +59,10 @@ local Workspace = game:GetService("Workspace")
 
 -- ── Config ──────────────────────────────────────────────────────────────────
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local momentum = {
+	rules = require(ReplicatedStorage:WaitForChild("MomentumRules")),
+	controller = require(script.Parent:WaitForChild("MomentumController")),
+}
 local TsinelasArc = require(ReplicatedStorage:WaitForChild("TsinelasArc"))
 local Mv     = Config.Movement   -- shorthand
 local Animations = Config.Animations
@@ -113,18 +119,22 @@ local isSliding = false
 local slideCooldownLeft = 0.0
 local slideTimer = 0.0
 local slideHipHeight = 0.0 -- HipHeight captured at slide start (restored on end)
-local slideConn: RBXScriptConnection? = nil -- Heartbeat sustain: holds boosted entry speed
+local slideConn: RBXScriptConnection? = nil -- Heartbeat sustain: holds momentum-aware slide speed
 local slideDir = Vector3.new(0, 0, -1) -- slide heading, fixed at entry (steer lock)
-local slideSpeed = 0.0 -- slide speed, fixed at entry (entry x SlideSpeedMult)
+local slideSpeed = 0.0 -- role sprint base; momentum and ex-Taya boost are applied each frame
 local slideGen = 0 -- slide generation: watchdog retries only the latest slide
 local slideAnimWarned = false -- one warn per character when the clip will not play
 
 -- Landing roll
-local isRolling = false
-local rollInputExpiresAt = 0.0
-local rollTimer = 0.0
-local rollDir = Vector3.new(0, 0, -1)
-local rollSpeed = 0.0
+local roll: any = {
+	active = false,
+	inputExpiresAt = 0.0,
+	inputAt = 0.0,
+	timer = 0.0,
+	dir = Vector3.new(0, 0, -1),
+	speed = 0.0,
+	baseSpeed = 0.0,
+}
 
 -- Automatic low-obstacle vault. One table avoids exhausting this legacy
 -- controller's top-level local-register budget.
@@ -250,7 +260,7 @@ local function clamp(v, lo, hi)
 	return math.max(lo, math.min(hi, v))
 end
 
-local function reportMovementState(action: string, active: boolean, direction: Vector3?)
+local function reportMovementState(action: string, active: boolean, direction: any?)
 	if roundLive then
 		RequestMovementState:FireServer(action, active, direction)
 	end
@@ -290,26 +300,24 @@ local function applySpeed()
 		Humanoid.WalkSpeed = 0
 		return
 	end
-	if isSliding or isRolling or vault.active then
+	if isSliding or roll.active or vault.active then
 		-- Slide, roll, and vault own their momentum until their state ends.
 		return
 	end
 	local targetSpeed: number
+	local boostMult = if role == "Runner" and boostLeft > 0 then Mv.PostTagSpeedBoostMult else 1
 	if role == "Taya" then
 		targetSpeed = (if isSprinting then Mv.TayaSprintSpeed else Mv.TayaSpeed) * Mv.SpeedScale
 	else
-		local mult = if boostLeft > 0 then Mv.PostTagSpeedBoostMult else 1.0
 		if isSprinting then
-			targetSpeed = Mv.RunnerSprintSpeed * Mv.SpeedScale * mult
+			targetSpeed = Mv.RunnerSprintSpeed * Mv.SpeedScale
 		else
-			targetSpeed = Mv.RunnerWalkSpeed * Mv.SpeedScale * mult
+			targetSpeed = Mv.RunnerWalkSpeed * Mv.SpeedScale
 		end
 	end
 	local landingMult = LocalPlayer:GetAttribute("HRushHardLandingSpeedMult")
-	if typeof(landingMult) == "number" then
-		targetSpeed *= landingMult
-	end
-	Humanoid.WalkSpeed = targetSpeed
+	Humanoid.WalkSpeed = momentum.rules.speed(targetSpeed, boostMult,
+		if typeof(landingMult) == "number" then landingMult else 1, momentum.controller.value())
 end
 
 -- ── Stamina ──────────────────────────────────────────────────────────────────
@@ -327,7 +335,7 @@ local function updateStamina(dt: number)
 	-- Decide if we're actually sprinting this frame.
 	-- Landing recovery (RS_01) keeps sprint off briefly without blocking walk.
 	-- Stun keeps sprint off without blocking regen.
-	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing and not isRolling and not vault.active
+	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing and not roll.active and not vault.active
 		and skillRecoveryLeft <= 0 and not isStunned()
 	if role == "Runner" and isDepletion and stamina < Mv.StaminaDepletedMin then
 		wantSprint = false -- forced walk until stamina recovers enough
@@ -439,7 +447,7 @@ local function pushAttributes(force: boolean?)
 	LocalPlayer:SetAttribute("HRushSlideCD", slideCooldownLeft)
 	LocalPlayer:SetAttribute("HRushDashing", isDashing)
 	LocalPlayer:SetAttribute("HRushSliding", isSliding)
-	LocalPlayer:SetAttribute("HRushRolling", isRolling)
+	LocalPlayer:SetAttribute("HRushRolling", roll.active)
 	LocalPlayer:SetAttribute("HRushVaulting", vault.active)
 	LocalPlayer:SetAttribute("HRushSprinting", isSprinting)
 	LocalPlayer:SetAttribute("HRushAbilityBusy", skillPending or skillApprovedActive or skillWindupLeft > 0
@@ -781,7 +789,7 @@ local function performDash()
 	if stamina < Mv.DashStaminaCost then
 		return -- not enough in the tank; show nothing, HUD already shows the bar
 	end
-	if isSliding or isRolling or vault.active then
+	if isSliding or roll.active or vault.active then
 		return
 	end
 	if not Humanoid or not HRP then
@@ -865,11 +873,11 @@ local function performDash()
 end
 
 -- ── Slide ─────────────────────────────────────────────────────────────────────
--- Spec §3 + F09: SlideDuration (1.0s), SlideCooldown (3s), hitbox at
+-- Spec §3 + F09: SlideDuration and SlideCooldown from Config, hitbox at
 -- SlideHitboxScale (50% height) so touch tag cannot hit a Runner under a low gap
 -- (TagService reads the sliding flag via position/height; server owns the verdict).
--- Entry keeps boosted momentum (x SlideSpeedMult) sustained per-Heartbeat;
--- WalkSpeed is held at boosted entry speed. Heading locks at entry while
+-- Entry adds predicted momentum and sustains the capped role speed per Heartbeat;
+-- heading locks at entry while
 -- SlideSteerLock is on. Both roles slide. Dust + whoosh on entry (dash
 -- pattern). Cancelled by tag swaps, round end, stun, or death.
 local function endSlide()
@@ -903,7 +911,7 @@ local function performSlide()
 	if isSliding or slideCooldownLeft > 0 then
 		return
 	end
-	if isDashing or isRolling or vault.active then
+	if isDashing or roll.active or vault.active then
 		return
 	end
 	if not Humanoid or not HRP then
@@ -911,6 +919,14 @@ local function performSlide()
 	end
 	if Humanoid.MoveDirection.Magnitude < 0.1 then
 		return -- must be moving to slide
+	end
+	local velocity = HRP.AssemblyLinearVelocity
+	local observedEntrySpeed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+	local sprintSpeed = (if role == "Taya" then Mv.TayaSprintSpeed else Mv.RunnerSprintSpeed) * Mv.SpeedScale
+	local earnsMomentum = momentum.rules.slideEligible(observedEntrySpeed, sprintSpeed)
+	if Config.Momentum.Debug then
+		print(string.format("[Momentum] client slide detected: role=%s sprint=%s speed=%.2f eligible=%s live=%s",
+			role, tostring(isSprinting), observedEntrySpeed, tostring(earnsMomentum), tostring(roundLive)))
 	end
 
 	isSliding = true
@@ -924,22 +940,23 @@ local function performSlide()
 	-- Shrink hitbox: halve height (F09 — low-gap evasion).
 	Humanoid.HipHeight = slideHipHeight * Mv.SlideHitboxScale
 
-	-- Boosted entry momentum: lock WalkSpeed at boosted entry and sustain it
+	-- Lock WalkSpeed at the momentum-aware entry speed and sustain it
 	-- every Heartbeat (a one-frame burst alone is eaten by humanoid friction).
 	-- Velocity-driven so walls still collide normally. Heading locks at entry
 	-- while SlideSteerLock is on; MoveDirection steers when it is off.
-	local flatVel = Vector3.new(HRP.AssemblyLinearVelocity.X, 0, HRP.AssemblyLinearVelocity.Z)
-	local baseWalk = if role == "Taya"
-		then Mv.TayaSpeed * Mv.SpeedScale
-		else Mv.RunnerWalkSpeed * Mv.SpeedScale
-	local entrySpeed = math.max(baseWalk, flatVel.Magnitude) * Mv.SlideSpeedMult
+	if roundLive and earnsMomentum then momentum.controller.predict("Slide") end
+	slideSpeed = sprintSpeed
+	local entrySpeed = momentum.rules.speed(slideSpeed,
+		if role == "Runner" and boostLeft > 0 then Mv.PostTagSpeedBoostMult else 1, 1, momentum.controller.value())
 	Humanoid.WalkSpeed = entrySpeed
+	-- Send the entry request before the slide velocity burst so the server can
+	-- validate the speed observed on entry, not the speed created by the slide.
+	reportMovementState("Slide", true, earnsMomentum)
 	local hum = Humanoid -- captured: sustain reads this character, never a respawned one
 	local burstDir = Vector3.new(Humanoid.MoveDirection.X, 0, Humanoid.MoveDirection.Z)
 	if burstDir.Magnitude > 0.01 then
 		burstDir = burstDir.Unit
 		slideDir = burstDir
-		slideSpeed = entrySpeed
 		HRP.AssemblyLinearVelocity = Vector3.new(burstDir.X * entrySpeed, HRP.AssemblyLinearVelocity.Y, burstDir.Z * entrySpeed)
 		if slideConn then
 			slideConn:Disconnect()
@@ -957,13 +974,14 @@ local function performSlide()
 				end
 			end
 			local v = HRP.AssemblyLinearVelocity
-			HRP.AssemblyLinearVelocity = Vector3.new(dir.X * slideSpeed, v.Y, dir.Z * slideSpeed)
+			local speed = momentum.rules.speed(slideSpeed,
+				if role == "Runner" and boostLeft > 0 then Mv.PostTagSpeedBoostMult else 1, 1, momentum.controller.value())
+			hum.WalkSpeed = speed
+			HRP.AssemblyLinearVelocity = Vector3.new(dir.X * speed, v.Y, dir.Z * speed)
 		end)
 	end
 	pushAttributes(true)
-	reportMovementState("Slide", true)
-	-- Step 1 reports the prediction for server validation. The client keeps its
-	-- current behavior until the Step 3 slide state machine is approved.
+	-- The server validates this entry independently and corrects the predicted gain.
 	-- Sprint yields for the whole slide so the loop never fights the one-shot.
 	stopSprintAnim()
 	emitSlideDust()
@@ -1001,16 +1019,17 @@ end
 
 -- ── Landing roll ──────────────────────────────────────────────────────────────
 -- The slide input becomes a short pre-landing buffer while airborne. A valid
--- landing consumes it, preserves horizontal momentum, and adds 10 percent of
--- effective Runner sprint speed. Roll keeps the normal tag profile and grants
+-- landing consumes it and preserves horizontal momentum. Roll adds the
+-- predicted, server-validated gain, keeps the normal tag profile, and grants
 -- no invulnerability.
 local function endRoll()
-	if not isRolling then
+	if not roll.active then
 		return
 	end
-	isRolling = false
-	rollTimer = 0
-	rollSpeed = 0
+	roll.active = false
+	roll.timer = 0
+	roll.speed = 0
+	roll.baseSpeed = 0
 	reportMovementState("Roll", false)
 	stopRollAnim()
 	applySpeed()
@@ -1018,15 +1037,18 @@ local function endRoll()
 end
 
 local function performRoll()
-	if os.clock() > rollInputExpiresAt then
-		rollInputExpiresAt = 0
+	if os.clock() > roll.inputExpiresAt then
+		roll.inputExpiresAt = 0
+		roll.inputAt = 0
 		return
 	end
-	rollInputExpiresAt = 0
+	local perfect = roll.inputAt > 0 and os.clock() - roll.inputAt <= Config.Momentum.PerfectRollWindow
+	roll.inputExpiresAt = 0
+	roll.inputAt = 0
 	if inputLocked or not (roundLive or lobbyWarmup) or isStunned() then
 		return
 	end
-	if isRolling or isSliding or isDashing or vault.active then
+	if roll.active or isSliding or isDashing or vault.active then
 		return
 	end
 	if skillFlightLeft > 0 or skillWindupLeft > 0 or skillApprovedActive then
@@ -1048,17 +1070,23 @@ local function performRoll()
 		return
 	end
 
-	isRolling = true
+	roll.active = true
 	if vault.landing then
 		vault.landing.cancelPenalty("Roll")
 	end
-	rollTimer = 0
-	rollDir = direction.Unit
-	rollSpeed = flatVelocity.Magnitude
-		+ Mv.RunnerSprintSpeed * Mv.SpeedScale * Mv.RollSpeedBonus
-	Humanoid.WalkSpeed = rollSpeed
+	roll.timer = 0
+	roll.dir = direction.Unit
+	local priorMomentum = momentum.controller.value()
+	local roleBase = (if role == "Runner" then Mv.RunnerSprintSpeed else Mv.TayaSpeed) * Mv.SpeedScale
+	if role == "Runner" and boostLeft > 0 then roleBase *= Mv.PostTagSpeedBoostMult end
+	local carriedSpeed = math.min(flatVelocity.Magnitude, roleBase * (1 + Mv.ServerSpeedTolerancePct))
+	local walkSpeed = (if role == "Runner" then Mv.RunnerWalkSpeed else Mv.TayaSpeed) * Mv.SpeedScale
+	roll.baseSpeed = math.max(walkSpeed, carriedSpeed - priorMomentum)
+	if roundLive then momentum.controller.predict("Roll", perfect) end
+	roll.speed = momentum.rules.speed(roll.baseSpeed, 1, 1, momentum.controller.value())
+	Humanoid.WalkSpeed = roll.speed
 	local velocity = HRP.AssemblyLinearVelocity
-	HRP.AssemblyLinearVelocity = Vector3.new(rollDir.X * rollSpeed, velocity.Y, rollDir.Z * rollSpeed)
+	HRP.AssemblyLinearVelocity = Vector3.new(roll.dir.X * roll.speed, velocity.Y, roll.dir.Z * roll.speed)
 	reportMovementState("Roll", true)
 	stopSprintAnim()
 	playRollAnim()
@@ -1224,7 +1252,7 @@ function vault.finish(completed: boolean, interruption: string?, preserveMomentu
 end
 
 function vault.tryStart(): boolean
-	if inputLocked or not (roundLive or lobbyWarmup) or isStunned() or vault.active or isRolling or isDashing then
+	if inputLocked or not (roundLive or lobbyWarmup) or isStunned() or vault.active or roll.active or isDashing then
 		return false
 	end
 	if skillFlightLeft > 0 or skillWindupLeft > 0 or skillApprovedActive then
@@ -1327,7 +1355,7 @@ local function handleSlideInput()
 		if not inputLocked
 			and (roundLive or lobbyWarmup)
 			and not isStunned()
-			and not isRolling
+			and not roll.active
 			and not isSliding
 			and not isDashing
 			and not vault.active
@@ -1335,7 +1363,9 @@ local function handleSlideInput()
 			and skillWindupLeft <= 0
 			and not skillApprovedActive
 		then
-			rollInputExpiresAt = os.clock() + Mv.RollWindow
+			roll.inputAt = os.clock()
+			roll.inputExpiresAt = os.clock() + Mv.RollWindow
+			reportMovementState("RollIntent", true, Workspace:GetServerTimeNow())
 		end
 		return
 	end
@@ -1408,7 +1438,7 @@ end
 -- it the moment sprinting ends (role swap, lock, stun, depletion), and scales
 -- playback with real WalkSpeed so feet keep up when SpeedScale changes.
 local function tickSprintAnim()
-	if isSprinting and not isSliding and not isRolling and not vault.active and Humanoid then
+	if isSprinting and not isSliding and not roll.active and not vault.active and Humanoid then
 		if sprintTrack then
 			if not sprintTrack.IsPlaying then
 				sprintTrack:Play(Animations.Sprint.FadeIn, 1, 1)
@@ -2027,7 +2057,7 @@ local function tsinelasCanCast(): boolean
 	if isStunned() then
 		return false -- stunned: aim exits through the upkeep cancel
 	end
-	if isRolling or vault.active then
+	if roll.active or vault.active then
 		return false
 	end
 	if tsinelasPending or tsinelasCooldownLeft > 0 then
@@ -2440,6 +2470,7 @@ end
 -- attribute second; both orders land on the same role speed here.
 local function onStunChanged()
 	if isStunned() then
+		momentum.controller.hardZero("stun")
 		cancelDash()
 		if isSliding then
 			endSlide()
@@ -2525,7 +2556,7 @@ local function requestSkill()
 	if skillCooldownLeft > 0 then
 		return
 	end
-	if isDashing or isSliding or isRolling or vault.active then
+	if isDashing or isSliding or roll.active or vault.active then
 		return
 	end
 	if not Humanoid or not HRP then
@@ -2709,26 +2740,29 @@ local function tickCooldowns(dt: number)
 			applySpeed()
 		end
 	end
-	if rollInputExpiresAt > 0 then
-		if os.clock() > rollInputExpiresAt then
-			rollInputExpiresAt = 0
-		elseif Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air and not isRolling then
+	if roll.inputExpiresAt > 0 then
+		if os.clock() > roll.inputExpiresAt then
+			roll.inputExpiresAt = 0
+			roll.inputAt = 0
+		elseif Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air and not roll.active then
 			-- StateChanged and FloorMaterial can settle in either order. Consume
 			-- the same buffered input once both agree the character is grounded.
 			performRoll()
 		end
 	end
-	if isRolling then
-		rollTimer += dt
+	if roll.active then
+		roll.timer += dt
+		roll.speed = momentum.rules.speed(roll.baseSpeed, 1, 1, momentum.controller.value())
 		if HRP and HRP.Parent then
+			Humanoid.WalkSpeed = roll.speed
 			local velocity = HRP.AssemblyLinearVelocity
 			HRP.AssemblyLinearVelocity = Vector3.new(
-				rollDir.X * rollSpeed,
+				roll.dir.X * roll.speed,
 				velocity.Y,
-				rollDir.Z * rollSpeed
+				roll.dir.Z * roll.speed
 			)
 		end
-		if rollTimer >= Mv.RollDuration then
+		if roll.timer >= Mv.RollDuration then
 			endRoll()
 		end
 	end
@@ -2912,6 +2946,7 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 	if payload.role == "Runner" or payload.role == "Taya" then
 		local newRole = payload.role
 		if newRole ~= role then
+			momentum.controller.hardZero("role changed")
 			-- Tag swap cleanup: cancel movement visuals while retaining held sprint input.
 			if isSliding then
 				endSlide()
@@ -2937,6 +2972,7 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 			sprintHeld_GP = false
 		end
 		if not roundLive then
+			momentum.controller.hardZero("round ended")
 			-- End active movement and skill-flight states when the round is not live.
 			if isSliding then
 				endSlide()
@@ -2976,6 +3012,7 @@ TagEvent.OnClientEvent:Connect(function(payload: { taggerId: number?, targetId: 
 	AudioRouter.playSfxId(Config.Sfx.Tag.slap, Config.Sfx.Tag.volume)
 	local myId = LocalPlayer.UserId
 	if payload.targetId == myId then
+		momentum.controller.hardZero("tagged")
 		-- We are the new Taya: no boost, Taya speed applies via role update.
 		boostLeft = 0.0
 		if isSliding then
@@ -2986,6 +3023,7 @@ TagEvent.OnClientEvent:Connect(function(payload: { taggerId: number?, targetId: 
 		applySpeed()
 		pushAttributes(true)
 	elseif payload.taggerId == myId and role == "Runner" then
+		momentum.controller.hardZero("tagged")
 		-- We were Taya and just tagged someone: ex-Taya boost starts now.
 		boostLeft = Mv.PostTagSpeedBoostDuration
 		applySpeed()
@@ -3250,11 +3288,14 @@ function vault.onCharacterAdded(char: Model)
 	slideDir = Vector3.new(0, 0, -1)
 	slideSpeed = 0.0
 	slideAnimWarned = false -- new character: warn again if its clip will not play
-	isRolling = false
-	rollInputExpiresAt = 0
-	rollTimer = 0
-	rollDir = Vector3.new(0, 0, -1)
-	rollSpeed = 0
+	roll.active = false
+	roll.inputExpiresAt = 0
+	roll.inputAt = 0
+	roll.timer = 0
+	roll.dir = Vector3.new(0, 0, -1)
+	roll.speed = 0
+	roll.baseSpeed = 0
+	momentum.controller.hardZero("respawn")
 	vault.active = false
 	vault.cooldown = 0
 	vault.probe = 0
@@ -3323,11 +3364,11 @@ function vault.onCharacterAdded(char: Model)
 		skillStateConn = nil
 	end
 	skillStateConn = Humanoid.StateChanged:Connect(function(_old: Enum.HumanoidStateType, new: Enum.HumanoidStateType)
-		if isRolling and (new == Enum.HumanoidStateType.Freefall or new == Enum.HumanoidStateType.Jumping) then
+		if roll.active and (new == Enum.HumanoidStateType.Freefall or new == Enum.HumanoidStateType.Jumping) then
 			endRoll()
 		end
 		local landed = new == Enum.HumanoidStateType.Landed or new == Enum.HumanoidStateType.Running
-		if landed and rollInputExpiresAt >= os.clock() then
+		if landed and roll.inputExpiresAt >= os.clock() then
 			performRoll()
 		end
 		if skillFlightLeft <= 0 or skillFlightStartedAt == 0 then
@@ -3422,6 +3463,7 @@ function vault.onCharacterAdded(char: Model)
 
 	-- Death cleanup: end slide/dash/skill visuals so respawn state is clean.
 	Humanoid.Died:Connect(function()
+		momentum.controller.hardZero("death")
 		tsinelasHeld = false
 		tsinelasCancelAim("death") -- death ends aiming and restores the camera
 		stopSprintAnim()
@@ -3456,6 +3498,8 @@ function vault.onCharacterAdded(char: Model)
 	-- aborted before finishing (check CreatorError above it).
 	print("[MovementController] character attached — heartbeat + input hooks live")
 end
+
+momentum.controller.start()
 
 if LocalPlayer.Character then
 	task.spawn(vault.onCharacterAdded, LocalPlayer.Character)

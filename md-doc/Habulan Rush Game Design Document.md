@@ -96,20 +96,21 @@ Habulan Rush: Game Design Document
 
 |State<br>ID|State|Duration|What happens|Next|
 |---|---|---|---|---|
-|MS_01|Lobby|until<br>ready|Players join, pick team or FFA mode,<br>vote map|MS_02|
-|MS_02|Skill Draft|12 s|Each player picks 1 Runner skill and 1<br>Taya skill from random choices|MS_03|
-|MS_03|Countdown|5 s|Players spawn, Taya is randomly<br>chosen, movement locked|MS_04|
+|MS_01|Lobby|until<br>queued|Players queue for a match|MS_VOTE|
+|MS_VOTE|Map Vote|10 s|Match players vote on the map|MS_RPS|
+|MS_RPS|Bato Bato Pick|variable|Eligible players reveal rock, paper, or scissors together; winning signs become safe until one starting Taya remains|MS_03|
+|MS_03|Countdown|5 s|Players spawn, use the MS_RPS starting Taya result, movement locked; one eligible player skips MS_RPS|MS_04|
 |MS_04|Round Live|150 s|Chase, tag passing, skills, Skill Surge<br>events|MS_05|
-|MS_05|Round End|8 s|Show Taya time ranking and points|MS_02 or<br>MS_06|
+|MS_05|Round End|8 s|Show Taya time ranking and points|MS_RPS or<br>MS_06|
 |MS_06|Match End|15 s|Final ranking, MVP highlight, return<br>to lobby|MS_01|
 
 
 
-Plain English: draft your skills, get dropped in, chase for 2.5 minutes, see who spent the least time as the chaser, repeat three times. 
+Plain English: vote on a map, use bato bato pick to choose the first Taya, chase for 2.5 minutes, see who spent the least time as the chaser, and repeat for three rounds.
 
 ### 3.2 Choosing the first Taya (fair randomness) 
 
-Use a **shuffle bag** : put every player in a bag, draw one at random, and do not draw them again until everyone has been drawn. The bag persists across rounds in the same match. Plain English: it feels random, but nobody gets stuck being Taya first every round. 
+Before each round, eligible players play **bato bato pick**. The match starts with every player eligible. A player who started as Taya is safe from future starting picks until the eligible pool empties, then all present players become eligible again. If one player is eligible, that player starts as Taya and MS_RPS is skipped. During a stage, eligible players choose Rock, Paper, or Scissors. Missing choices are randomized by the server. One sign or all three signs is a tie and the stage replays. With exactly two signs, players showing the winning sign become safe for this round; the others continue. After five stages, the server randomly chooses among the remaining players and shows SUDDEN PICK. A disconnect removes that player from the stage. If nobody remains, the shuffle bag selects a fallback from present players. All signs reveal at once. Players see only their own choice before that reveal.
 
 ### 3.3 Tag passing 
 
@@ -430,7 +431,7 @@ Habulan Rush: Game Design Document
 |Module|Location|Responsibility|
 |---|---|---|
 |`Config`|ReplicatedStorage|All numbers (movement, skills, scoring)|
-|`MatchService`|ServerScriptService|State machine MS_01 to MS_06, shuffle<br>bag, scoring|
+|`MatchService`|ServerScriptService|State machine MS_01 to MS_06 with MS_RPS, first Taya selection, fallback shuffle bag, scoring|
 |`TagService`|ServerScriptService|Pounce validation, tag passing, Safe<br>Window, Lock Delay|
 |`SkillService`|ServerScriptService|Draft, cooldowns, effects, ultimates|
 |`MovementController`|StarterPlayerScripts|Sprint, dash, slide, input, stamina UI|

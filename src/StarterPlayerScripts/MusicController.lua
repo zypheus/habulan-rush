@@ -6,6 +6,7 @@
 -- logged). Empty IDs play nothing and never error. All output obeys the
 -- Music SoundGroup. Presentation only, never gameplay.
 -- Refs: Settings screen task (Art Bible sections 3.1 and 3.3, UI/UX Spec section 5).
+-- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,9 +25,9 @@ local currentId = ""
 local fadeToken = 0
 local started = false
 
--- Match state to music key. MS_VOTE shares the draft track.
+-- Map vote and bato bato pick share the pre-round track.
 local function keyForState(state: string): string
-	if state == "MS_02" or state == "MS_VOTE" then
+	if state == "MS_VOTE" or state == "MS_RPS" then
 		return "draft"
 	elseif state == "MS_03" then
 		return "countdown"

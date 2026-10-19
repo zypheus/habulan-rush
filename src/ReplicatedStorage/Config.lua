@@ -4,6 +4,9 @@
 -- Responsibility: immutable shared gameplay and presentation tuning.
 -- Task/spec: simple click-to-tag rework and supplied tag animations, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2 landing owner and chest-level Vault, approved 2026-10-16.
+-- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
+-- Task/spec: momentum slice 1, server authority and shared tuning, 2026-10-19.
+-- Task/spec: slide chaining tuning and entry speed, 2026-10-19.
 
 local Config = {}
 
@@ -36,17 +39,16 @@ Config.Movement = {
 	DashTagInvulnTime      = 0.15,
 	DashSoundId            = "rbxassetid://115548807322300", -- [SD] dash whoosh (Pixabay Sound Effects, royalty-free, see ASSET_LOG)
 	DashSoundVolume        = 0.7, -- [SD] dash whoosh volume 0-1
-	SlideMinSpeedPct  = 0.85, -- [SD] Step 3 entry threshold as a share of effective sprint speed
-	SlideStartMult    = 1.15, -- [SD] Step 3 target; current slide keeps SlideSpeedMult until rewritten
+	SlideMinSpeedPct  = 0.85, -- [SD] Dormant movement entry target; momentum uses Config.Momentum.SlideMinSpeedPct
+	SlideStartMult    = 1.15, -- [SD] Step 3 target, dormant until a separate slide rewrite
 	SlideEndMult      = 0.45, -- [SD] Step 3 target speed at natural exit
 	SlideDuration     = 1.0, -- [SD] current value retained; within the 0.9 to 1.1 second target
 	SlideSteerRate    = 12, -- [SD] Step 3 target turn cap in degrees per second
-	SlideCooldown     = 3.0, -- [SD] current behavior retained; Step 3 will tune post-exit cooldown
+	SlideCooldown     = 1.25, -- [SD] Starts at slide entry; 1.0 s slide leaves 0.25 s before reuse
 	SlideJumpKeepPct  = 0.85, -- [SD] Step 5 target retained speed for a slide-hop
 	SlideCameraDip    = 0.65, -- [SD] Step 3 target camera dip in studs
 	SlideFovKick      = 4, -- [SD] Step 3 target FOV kick in degrees
 	SlideHitboxScale  = 0.5,
-	SlideSpeedMult    = 1.25, -- [SD] aggressive escape entry boost; sign-off pending vs spec + tag reach
 	SlideSteerLock    = true, -- [SD] heading fixed at entry; false = MoveDirection steers mid-slide
 	SlideDustCount    = 12, -- [SD] heel dust burst on slide entry (dash pattern)
 	SlideDustLifeMin  = 0.3, -- [SD] dust particle lifetime low (s)
@@ -58,7 +60,6 @@ Config.Movement = {
 	SlideSoundVolume  = 0.7, -- [SD] slide whoosh volume 0-1
 	RollWindow = 0.15, -- [SD] Batch C approved pre-landing input window in seconds
 	RollDuration = 0.45, -- [SD] Batch C approved state duration matching HRush_Roll
-	RollSpeedBonus = 0.10, -- [SD] Batch C approved bonus as a share of effective Runner sprint speed
 	VaultMinH = 1.5, -- [SD] Part 2 minimum obstacle top above the character's current feet
 	VaultMaxH = 3.5, -- [SD] Part 2 maximum obstacle top above the character's current feet
 	VaultMaxAboveGround = 7.0, -- [SD] Part 2 absolute obstacle-top cap above ground below the character
@@ -125,6 +126,64 @@ Config.Movement = {
 		TransparencyIn   = 0.2,
 		LightEmission    = 0.7,
 	},
+}
+
+Config.Momentum = {
+	Debug = false, -- [SD] Temporary slide gain and HUD trace; keep false outside diagnosis
+	Cap = 6, -- [SD] Maximum stored speed bonus, studs/s
+	GainSlide = 1.5, -- [SD] Accepted slide entry gain
+	GainRoll = 2.5, -- [SD] Accepted landing roll gain
+	GainRollPerfect = 3.5, -- [SD] Validated pre-landing roll intent followed by an accepted roll
+	GainVault = 1.5, -- [SD] Disabled in momentum steps 1 to 4
+	SlideMinSpeedPct = 0.8, -- [SD] Minimum entry speed as a share of role sprint speed to earn slide momentum
+	PerfectRollWindow = 0.05, -- [SD] Final third of the existing 0.15 s roll window
+	DiminishingMult = { 1.0, 0.6, 0.3 }, -- [SD] Repeated gain for each move
+	DiminishWindow = 2.0, -- [SD] Seconds between same-move gains
+	DecayGrace = 0.75, -- [SD] Seconds after a gain before decay starts
+	DecayMoving = 1.5, -- [SD] Studs/s of bonus lost per second while moving
+	DecayIdle = 6.0, -- [SD] Studs/s of bonus lost per second while idle
+	MovingThreshold = 0.1, -- [SD] Horizontal studs/s treated as movement
+	SyncInterval = 0.2, -- [SD] Server correction cadence while momentum decays
+	ZeroSyncInterval = 1.0, -- [SD] Correction cadence when rejected local actions predict momentum from zero
+	ChainWindow = 2.5, -- [SD] Cosmetic action chain window
+	TierThresholds = { 0.25, 0.50, 0.85 }, -- [SD] Fractions of Cap
+	GlobalSpeedCeiling = 30, -- [SD] Maximum ordinary movement speed after modifiers
+	TayaBuildsMomentum = true, -- [SD] Taya uses the same gains and decay
+	Fx = {
+		FovBonus = { 2, 5, 8 }, -- [SD] Tier FOV additions
+		PopupMergeWindow = 0.25, -- [SD] Seconds between merged action popups
+		MaxPopups = 3, -- [SD] Maximum simultaneous action popups
+		BarWidth = 208, -- [SD] Bottom-center bar width in pixels
+		BarHeight = 8, -- [SD] Bottom-center bar height in pixels
+		BarBottom = 88, -- [SD] Distance above the viewport bottom in pixels, above the Taya badge on touch screens
+		TierFlashTime = 0.18, -- [SD] One tier-change flash duration
+		CrackTime = 0.3, -- [SD] Hard-zero split-frame fall duration
+		PopupRisePx = 40, -- [SD] Action popup travel in pixels
+		PopupTime = 0.6, -- [SD] Action popup lifetime
+		RollPopupTime = 3.0, -- [SD] Total visible time for normal and perfect roll popups
+		LostTime = 0.8, -- [SD] Momentum-lost text lifetime
+		ChainPopTime = 0.18, -- [SD] Chain label scale bounce
+		GainPitchStep = 0.07, -- [SD] Per-chain gain tick pitch rise
+		GainPitchCap = 1.35, -- [SD] Highest gain tick pitch
+		TierPitchStep = 0.1, -- [SD] Per-tier chime pitch rise
+		SoundVolume = 0.45, -- [SD] Momentum one-shot loudness before SFX group volume
+		FovInTime = 0.25, -- [SD] Tier FOV rise time
+		FovOutTime = 0.5, -- [SD] Tier FOV fall time
+		PerfectFovKick = 3, -- [SD] Perfect-roll transient FOV addition
+		PerfectFovKickTime = 0.1, -- [SD] Perfect-roll transient duration
+	},
+}
+
+Config.MomentumAssets = {
+	Sfx_GainTick = "114295533790228", -- [SD] Project-owner supplied; provenance review pending
+	Sfx_TierUp = "112103056657102", -- [SD] Project-owner supplied; provenance review pending
+	Sfx_PerfectRoll = "125907380174659", -- [SD] Project-owner supplied; provenance review pending
+	Sfx_WindLoop = "", -- [SD] Not used in this run
+	Sfx_MomentumLost = "", -- [SD] Not used in this run
+	Tex_Trail = "", -- [SD] Later slice
+	Tex_Spark = "", -- [SD] Later slice
+	Tex_Dust = "", -- [SD] Later slice
+	Tex_SpeedLine = "", -- [SD] Later slice
 }
 
 Config.Animations = { -- [SD] movement animation runtime metadata and original-asset placeholders
@@ -417,6 +476,17 @@ Config.TargetLock = {
 }
 
 Config.Match = {
+	Rps = {
+		IntroTime = 1.5, -- [SD] Opening card before the first pick
+		PickTime = 5, -- [SD] Server-owned input window per stage
+		RevealTime = 1, -- [SD] Simultaneous sign reveal
+		ResolveTime = 1, -- [SD] Safe card movement or tie banner
+		ResultTime = 1.5, -- [SD] Starting Taya highlight
+		MaxStages = 5, -- [SD] Random sudden pick after this many stages
+		Studio = { IntroTime = 0.4, PickTime = 3, RevealTime = 0.45, ResolveTime = 0.45, ResultTime = 0.7 }, -- [SD] Studio test timings
+		RevealSoundId = "", -- [SD] TODO: add an approved reveal sound asset ID
+		ResultSoundId = "", -- [SD] TODO: add an approved result sting asset ID
+	},
 	MinPlayers        = 4,
 	MaxPlayers        = 8,
 	LobbyReadyTimeout = 0,
@@ -766,6 +836,9 @@ Config.Settings = {
 	SfxDefault = 100, -- [SD] SFX volume 0-100
 	VfxDefault = 100, -- [SD] cosmetic VFX intensity percent 0-100
 	ReducedCameraDefault = false, -- [SD] reduced camera effects off
+	ShowPopupsDefault = true, -- [SD] show local momentum action popups
+	MomentumBarDefault = true, -- [SD] show the local momentum bar
+	MomentumSoundsDefault = true, -- [SD] play local momentum sounds through the SFX group
 	CameraSensitivityDefault = 50, -- [SD] camera look speed percent 0-100 (50 = neutral)
 	InvertCameraYDefault = false, -- [SD] inverted vertical camera look off
 	CameraEffectsDefault = 100, -- [SD] camera effects intensity percent 0-100

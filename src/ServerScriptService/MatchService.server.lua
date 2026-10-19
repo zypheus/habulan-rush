@@ -1,7 +1,8 @@
 --!strict
 -- ServerScriptService/MatchService.server.lua   (v1.2 - queue + lobby/match separation, bots removed)
 -- Owner: Project Owner
--- Responsibility: State machine (MS_01->MS_06), shuffle bag, scoring,
+-- Responsibility: Match phases, MS_RPS first Taya selection, scoring, and fallback bag.
+-- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1 / T-CORE-03.
 -- Task/spec: simple click-to-tag server commit, approved 2026-10-18.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
@@ -30,9 +31,14 @@ local RunService        = game:GetService("RunService")
 
 local Config       = require(ReplicatedStorage:WaitForChild("Config"))
 local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
+local RpsRules = require(ReplicatedStorage:WaitForChild("RpsRules"))
 local Remotes      = ReplicatedStorage:WaitForChild("Remotes")
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent     = Remotes:WaitForChild("TagEvent") :: RemoteEvent
+local RpsStageStart = Remotes:WaitForChild("RpsStageStart") :: RemoteEvent
+local RpsReveal = Remotes:WaitForChild("RpsReveal") :: RemoteEvent
+local RpsResult = Remotes:WaitForChild("RpsResult") :: RemoteEvent
+local RpsSubmitSign = Remotes:WaitForChild("RpsSubmitSign") :: RemoteEvent
 local CommitTag = Instance.new("BindableFunction")
 CommitTag.Name = "HRUSH_CommitTag"
 CommitTag.Parent = ServerScriptService
@@ -119,7 +125,7 @@ local function getRoot(inst: Instance): BasePart?
 end
 
 -- ============================================================
--- SHUFFLE BAG CLASS (§2.1 / T-CORE-03)
+-- SHUFFLE BAG FALLBACK (System Spec 2.1 / T-CORE-03)
 -- ============================================================
 local ShuffleBag = {}
 ShuffleBag.__index = ShuffleBag
@@ -192,7 +198,7 @@ end
 -- STATE
 -- ============================================================
 local tayaBag = ShuffleBag.new()
-local matchState: string = "MS_01" -- MS_01 Lobby, MS_02 Draft, MS_03 Countdown, MS_04 Live, MS_05 RoundEnd, MS_06 MatchEnd
+local matchState: string = "MS_01" -- MS_02 retired; MS_VOTE and MS_RPS are non-numbered states
 local currentRound: number = 1
 local currentTaya: Instance? = nil
 local playerRoles: { [Instance]: string } = {}
@@ -202,6 +208,12 @@ local matchPoints: { [Instance]: number } = {}
 local immuneUntil: { [Instance]: number } = {}
 local matchRunning = false
 local roundActive = false
+local rpsChosen: { [Player]: boolean } = {}
+local rpsPool: { [Player]: boolean } = {}
+local rpsSigns: { [Player]: string } = {}
+local rpsOpensAt = 0
+local rpsDeadline = 0
+local rpsLastRequest: { [Player]: number } = {}
 
 local queued: { [Player]: boolean } = {}   -- pressed FIND MATCH, waiting for search to finish
 local inMatch: { [Player]: boolean } = {}  -- real players taking part in the current match
@@ -409,6 +421,10 @@ end
 
 Players.PlayerRemoving:Connect(function(player)
 	tayaBag:RemovePlayer(player)
+	rpsChosen[player] = nil
+	rpsPool[player] = nil
+	rpsSigns[player] = nil
+	rpsLastRequest[player] = nil
 	queued[player] = nil
 
 	if currentTaya == player and matchState == "MS_04" then
@@ -422,6 +438,21 @@ end)
 -- ============================================================
 -- REMOTES
 -- ============================================================
+RpsSubmitSign.OnServerEvent:Connect(function(player, sign)
+	local now = Workspace:GetServerTimeNow()
+	if now - (rpsLastRequest[player] or 0) < 0.08 then return end
+	rpsLastRequest[player] = now
+	if matchState ~= "MS_RPS" or not inMatch[player] or not rpsPool[player] then return end
+	if typeof(sign) ~= "string" or (sign ~= "Rock" and sign ~= "Paper" and sign ~= "Scissors") then return end
+	if now < rpsOpensAt or now > rpsDeadline or rpsSigns[player] then return end
+	rpsSigns[player] = sign
+	for target in pairs(inMatch) do
+		if target:IsDescendantOf(Players) then
+			RpsStageStart:FireClient(target, { lockedUserId = player.UserId })
+		end
+	end
+end)
+
 QueueEvent.OnServerEvent:Connect(function(player, action)
 	if action == "Play" then
 		if matchState ~= "MS_01" or inMatch[player] then
@@ -483,6 +514,159 @@ local function waitPhase(seconds: number)
 	task.wait(seconds)
 end
 
+local function rpsTiming(key: string): number
+	local rps = MATCH.Rps
+	if IS_STUDIO and rps.Studio[key] then
+		return rps.Studio[key]
+	end
+	return rps[key]
+end
+
+local function playerIds(players: { Player }): { number }
+	local ids: { number } = {}
+	for _, player in ipairs(players) do
+		table.insert(ids, player.UserId)
+	end
+	return ids
+end
+
+local function drawFallbackTaya(): Player?
+	local candidates: { Instance } = {}
+	for _, player in ipairs(getParticipants() :: { Player }) do
+		if not rpsChosen[player] then table.insert(candidates, player) end
+	end
+	if #candidates == 0 then candidates = getParticipants() end
+	tayaBag:Reset()
+	return tayaBag:Draw(candidates) :: Player?
+end
+
+local function runRps(): Player?
+	local participants = getParticipants() :: { Player }
+	local remaining: { Player } = {}
+	for _, player in ipairs(participants) do
+		if not rpsChosen[player] then
+			table.insert(remaining, player)
+		end
+	end
+	if #remaining == 0 then
+		rpsChosen = {}
+		remaining = participants
+	end
+	if #remaining == 0 then return nil end
+	if #remaining == 1 then
+		rpsChosen[remaining[1]] = true
+		return remaining[1]
+	end
+
+	matchState = "MS_RPS"
+	broadcastState(nil)
+	local safeThisRound: { [Player]: boolean } = {}
+	local rng = Random.new()
+	local sudden = false
+	for stage = 1, MATCH.Rps.MaxStages do
+		local present: { Player } = {}
+		for _, player in ipairs(remaining) do
+			if inMatch[player] and player:IsDescendantOf(Players) then
+				table.insert(present, player)
+			end
+		end
+		remaining = present
+		if #remaining < 2 then break end
+
+		rpsPool = {}
+		rpsSigns = {}
+		for _, player in ipairs(remaining) do
+			rpsPool[player] = true
+		end
+		local now = Workspace:GetServerTimeNow()
+		rpsOpensAt = now + (if stage == 1 then rpsTiming("IntroTime") else 0)
+		rpsDeadline = rpsOpensAt + rpsTiming("PickTime")
+		local roster = {}
+		local usedIds: { number } = {}
+		local safeIds: { number } = {}
+		for _, player in ipairs(getParticipants() :: { Player }) do
+			table.insert(roster, { userId = player.UserId, name = player.DisplayName })
+			if rpsChosen[player] then table.insert(usedIds, player.UserId) end
+			if safeThisRound[player] then table.insert(safeIds, player.UserId) end
+		end
+		table.sort(roster, function(a, b) return a.userId < b.userId end)
+		local startPayload = { stage = stage, roster = roster, pool = playerIds(remaining), used = usedIds, safe = safeIds, opensAt = rpsOpensAt, deadline = rpsDeadline }
+		for _, player in ipairs(getParticipants() :: { Player }) do
+			RpsStageStart:FireClient(player, startPayload)
+		end
+
+		while Workspace:GetServerTimeNow() < rpsDeadline do
+			local presentCount = 0
+			for _, player in ipairs(remaining) do
+				if inMatch[player] and player:IsDescendantOf(Players) then presentCount += 1 end
+			end
+			if presentCount < 2 then break end
+			task.wait(0.05)
+		end
+		rpsPool = {}
+		local active: { Player } = {}
+		local signsById: { [number]: string } = {}
+		local revealed = {}
+		for _, player in ipairs(remaining) do
+			if inMatch[player] and player:IsDescendantOf(Players) then
+				table.insert(active, player)
+				local sign = rpsSigns[player] or ({ "Rock", "Paper", "Scissors" })[rng:NextInteger(1, 3)]
+				signsById[player.UserId] = sign
+				table.insert(revealed, { userId = player.UserId, sign = sign })
+			end
+		end
+		remaining = active
+		if #remaining < 2 then break end
+		local tie, safe = RpsRules.Resolve(signsById)
+		if not tie then
+			local safeSet: { [number]: boolean } = {}
+			for _, userId in ipairs(safe) do safeSet[userId] = true end
+			local survivors: { Player } = {}
+			for _, player in ipairs(remaining) do
+				if safeSet[player.UserId] then
+					safeThisRound[player] = true
+				else
+					table.insert(survivors, player)
+				end
+			end
+			remaining = survivors
+		end
+		local revealPayload = { stage = stage, signs = revealed, safe = safe, remaining = playerIds(remaining), tie = tie }
+		for _, player in ipairs(getParticipants() :: { Player }) do
+			RpsReveal:FireClient(player, revealPayload)
+		end
+		task.wait(rpsTiming("RevealTime") + rpsTiming("ResolveTime"))
+		if #remaining <= 1 then break end
+	end
+	rpsPool = {}
+	rpsSigns = {}
+	local present: { Player } = {}
+	for _, player in ipairs(remaining) do
+		if inMatch[player] and player:IsDescendantOf(Players) then table.insert(present, player) end
+	end
+	remaining = present
+	local selected: Player?
+	if #remaining == 1 then
+		selected = remaining[1]
+	elseif #remaining > 1 then
+		selected = remaining[rng:NextInteger(1, #remaining)]
+		sudden = true
+	else
+		selected = drawFallbackTaya()
+	end
+	while selected do
+		rpsChosen[selected] = true
+		for _, player in ipairs(getParticipants() :: { Player }) do
+			RpsResult:FireClient(player, { userId = selected.UserId, sudden = sudden })
+		end
+		task.wait(rpsTiming("ResultTime"))
+		if inMatch[selected] and selected:IsDescendantOf(Players) then break end
+		selected = drawFallbackTaya()
+		sudden = true
+	end
+	return selected
+end
+
 local function returnToLobby()
 	local returning: { Player } = {}
 	for p in pairs(inMatch) do
@@ -495,6 +679,10 @@ local function returnToLobby()
 	roundActive = false
 	searchEndsAt = nil
 	tayaBag:Reset()
+	rpsChosen = {}
+	rpsPool = {}
+	rpsSigns = {}
+	rpsLastRequest = {}
 	totalTayaTime = {}
 	matchPoints = {}
 	tayaTimeThisRound = {}
@@ -720,15 +908,7 @@ local function runMatch()
 				matchPoints[p] = matchPoints[p] or 0
 			end
 
-			-- MS_02 SKILL DRAFT
-			matchState = "MS_02"
-			broadcastState(nil)
-			local draftDuration: number = MATCH.DraftDuration or 12
-			print(string.format("[MatchService] Round %d: MS_02 Skill Draft (%d s)", currentRound, draftDuration))
-			waitPhase(IS_STUDIO and 2 or draftDuration)
-
-			-- MS_03 COUNTDOWN
-			matchState = "MS_03"
+			-- MS_RPS picks the starting Taya before MS_03 (System Spec 2.1 / T-CORE-03).
 			local participants = getParticipants()
 			if participantCount() == 0 then
 				print("[MatchService] No real players left; aborting match.")
@@ -736,10 +916,18 @@ local function runMatch()
 				break
 			end
 
-			teleportToSpawns(participants)
-
-			-- randomized Taya via shuffle bag (§2.1 / T-CORE-03)
-			local startingTaya = tayaBag:Draw(participants) or participants[1]
+			local startingTaya = runRps()
+			if not startingTaya or not inMatch[startingTaya] then
+				startingTaya = drawFallbackTaya()
+				if startingTaya then rpsChosen[startingTaya] = true end
+			end
+			if not startingTaya then
+				abort = true
+				break
+			end
+			-- MS_03 COUNTDOWN
+			matchState = "MS_03"
+			teleportToSpawns(getParticipants())
 			setRoles(startingTaya)
 			local cdDuration: number = MATCH.CountdownDuration or 5
 			print(string.format("[MatchService] Round %d: MS_03 Countdown (%d s). Starting Taya: %s", currentRound, cdDuration, startingTaya.Name))
@@ -874,4 +1062,3 @@ local function runMatch()
 end
 
 task.defer(runMatch)
-print("[MatchService] MatchService v1.2 initialized (queue + ShuffleBag Taya selection, bots removed).")

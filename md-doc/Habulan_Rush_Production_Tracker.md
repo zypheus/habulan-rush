@@ -10,7 +10,7 @@
 | T04 | 2 | 46303 | Design Lock | Finalize Config values with Balance Workbook baseline | Design | Designer | P0 | Not Started |
 | T05 | 2 | 46303 | Design Lock | Assign module ownership (Match, Tag, Skill, UI, Movement) | Management | Lead | P0 | Not Started |
 | T06 | 2 | 46303 | Design Lock | Set up asset source list / disclosure log | Management | Lead | P0 | Not Started |
-| T07 | 3 | 46304 | Core Loop | MatchService: state machine MS_01–MS_06 + shuffle bag | Code | Programmer | P0 | Not Started |
+| T07 / T-CORE-03 | 3 | 46304 | Core Loop | MatchService: MS_01–MS_06 with MS_RPS bato bato pick; shuffle bag fallback | Code | Programmer | P0 | Owner review |
 | T08 | 3 | 46304 | Core Loop | Barangay Kalsada greybox (150x150, 8 spawns, vaults, low gaps) | Level | Artist | P0 | Not Started |
 | T09 | 4 | 46305 | Core Loop | MovementController: walk, sprint, stamina, dash, slide | Code | Programmer | P0 | Not Started |
 | T10 | 4 | 46305 | Core Loop | Taya timer + round timer replication | Code | Programmer | P0 | Not Started |

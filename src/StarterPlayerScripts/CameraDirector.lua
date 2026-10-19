@@ -16,6 +16,7 @@
 -- RS_01 skill tween runs, and stays a clean base under additive layers
 -- (skill shake).
 -- Task/spec: camera overhaul Phase 4, approved 2026-10-18.
+-- Task/spec: momentum step 4 FOV composition, 2026-10-19.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -34,6 +35,8 @@ local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
 local ChaseState = require(script.Parent:WaitForChild("ChaseState"))
 local TargetLockController = require(script.Parent:WaitForChild("TargetLockController"))
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+local Momentum = require(script.Parent:WaitForChild("MomentumController"))
+local MomentumRules = require(ReplicatedStorage:WaitForChild("MomentumRules"))
 
 local localPlayer = Players.LocalPlayer
 
@@ -124,6 +127,8 @@ local lookBackYawApplied = 0.0
 local lookBackYawPrev = 0.0
 local chaseFov = 0.0
 local extraFov = 0.0
+local momentumFov = 0.0
+local momentumKickAt = -math.huge
 local transferAt = -1000.0
 local transferToTaya = false
 
@@ -409,6 +414,8 @@ local function resetEffects()
 	spatialScaleSmooth = 1.0
 	chaseFov = 0.0
 	extraFov = 0.0
+	momentumFov = 0.0
+	momentumKickAt = -math.huge
 	transferAt = -1000.0
 	transferToTaya = false
 	lookBackHeld = false
@@ -634,6 +641,17 @@ local function stepEffects(dt: number)
 	-- Phase 3 chase state advances even while yielded, so re-entry and the
 	-- FOV catch-up always read this frame's numbers.
 	ChaseState.update(dt)
+	local reduceMotion = ClientSettings.get("reducedCamera") == true
+	if reduceMotion or localPlayer:GetAttribute("HRushState") ~= "MS_04" then
+		momentumFov = 0
+		momentumKickAt = -math.huge
+	else
+		local tier = MomentumRules.tier(Momentum.value())
+		local target = if tier > 0 then Config.Momentum.Fx.FovBonus[tier] else 0
+		local duration = if target > momentumFov then Config.Momentum.Fx.FovInTime else Config.Momentum.Fx.FovOutTime
+		momentumFov = approach(momentumFov, target, duration, dt)
+		if math.abs(momentumFov - target) < 0.01 then momentumFov = target end
+	end
 
 	-- Role profile blend: ease FOV and distance between the Runner and Taya
 	-- identities instead of snapping on a tag transfer.
@@ -1241,11 +1259,15 @@ function onRender(dt: number)
 	-- snapping.
 	if not skillFovHeld then
 		local targetFov: number
+		local kickElapsed = Workspace:GetServerTimeNow() - momentumKickAt
+		local kick = if kickElapsed >= 0 and kickElapsed < Config.Momentum.Fx.PerfectFovKickTime
+			then Config.Momentum.Fx.PerfectFovKick else 0
 		if viewMode == "FirstPerson" then
 			targetFov = FP.BaseFov + math.clamp(fpEffFov + extraFov, -Eff.MaxFovBoostTotal, Eff.MaxFovBoostTotal)
 		else
 			targetFov = profileFovSmooth + math.clamp(effFov + extraFov, -Eff.MaxFovBoostTotal, Eff.MaxFovBoostTotal)
 		end
+		targetFov += momentumFov + kick
 		local diff = targetFov - cam.FieldOfView
 		local maxStep = Eff.FovCatchupRate * dt
 		if math.abs(diff) <= maxStep then
@@ -1422,6 +1444,13 @@ function CameraDirector.start()
 		return
 	end
 	running = true
+	Momentum.start()
+	Momentum.Changed:Connect(function(_value: number, reason: string, _action: string?, _gain: number?, payload: any?)
+		if reason == "confirmed" and payload ~= nil and payload.perfect == true
+			and ClientSettings.get("reducedCamera") ~= true then
+			momentumKickAt = Workspace:GetServerTimeNow()
+		end
+	end)
 	refreshSensitivity()
 	-- Phase 4: honor a saved view mode; first person is opt-in.
 	local savedMode = ClientSettings.get("cameraViewMode")

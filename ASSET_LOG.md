@@ -16,6 +16,14 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Momentum cues, 2026-10-19
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-19 | Sfx_GainTick (`rbxassetid://114295533790228`) | Audio | Exact ID supplied by project owner | Provenance confirmation pending | Local momentum gain tick | Pending Review | Played through the existing SFX group; verify competition-safe rights before release. |
+| 2026-10-19 | Sfx_TierUp (`rbxassetid://112103056657102`) | Audio | Exact ID supplied by project owner | Provenance confirmation pending | Local momentum tier-up chime | Pending Review | Played through the existing SFX group; verify competition-safe rights before release. |
+| 2026-10-19 | Sfx_PerfectRoll (`rbxassetid://125907380174659`) | Audio | Exact ID supplied by project owner | Provenance confirmation pending | Local perfect-roll layer | Pending Review | Played through the existing SFX group; verify competition-safe rights before release. |
+
 ### Simple tag animations, 2026-10-18
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |

@@ -4,11 +4,15 @@
 -- Responsibility: server movement request validation, state ledger, and passive observation.
 -- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Part 2 landing and Vault validation, approved 2026-10-16.
+-- Task/spec: momentum slice 1, server-owned gains, decay, and speed allowance, 2026-10-19.
+-- Task/spec: momentum steps 2 to 4, validated roll intent and character tier, 2026-10-19.
+-- Task/spec: slide chaining and entry speed, 2026-10-19.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local MomentumRules = require(ReplicatedStorage:WaitForChild("MomentumRules"))
 
 type Ledger = {
 	state: string,
@@ -17,8 +21,10 @@ type Ledger = {
 	slideUntil: number,
 	slideReadyAt: number,
 	rollUntil: number,
-	rollAllowedSpeed: number,
+	rollBaseSpeed: number,
 	rollRequestUntil: number,
+	rollRequestedAt: number,
+	rollIntentAt: number,
 	vaultUntil: number,
 	vaultReadyAt: number,
 	vaultAllowedSpeed: number,
@@ -34,6 +40,12 @@ type Ledger = {
 	airPeakY: number,
 	hardLandUntil: number,
 	boostUntil: number,
+	momentum: number,
+	momentumGainAt: number,
+	momentumSampleAt: number,
+	momentumSyncAt: number,
+	momentumSeq: number,
+	momentumMoves: { [string]: { at: number, count: number } },
 	requestWindowStartedAt: number,
 	requestCount: number,
 	lastPosition: Vector3?,
@@ -49,7 +61,56 @@ local MovementAuthority = {}
 
 local started = false
 local movement: any = nil
+local momentum: any = nil
+local momentumUpdate: RemoteEvent
 local ledgers: { [Player]: Ledger } = {}
+
+local function updateMomentumTier(player: Player, value: number)
+	local character = player.Character
+	if character == nil then return end
+	local current = character:GetAttribute("MomentumTier")
+	local nextTier, changed = MomentumRules.tierTransition(if typeof(current) == "number" then current else -1, value)
+	if changed then character:SetAttribute("MomentumTier", nextTier) end
+end
+
+local function sendMomentum(player: Player, ledger: Ledger, now: number, action: string?, gain: number?, count: number?, perfect: boolean?, rejectedAction: string?)
+	ledger.momentumSeq += 1
+	ledger.momentumSyncAt = now
+	local serverTime = Workspace:GetServerTimeNow()
+	momentumUpdate:FireClient(player, {
+		value = ledger.momentum,
+		sequence = ledger.momentumSeq,
+		serverTime = serverTime,
+		lastGainAt = if ledger.momentumGainAt > 0 then serverTime - (now - ledger.momentumGainAt) else 0,
+		action = action,
+		gain = gain,
+		count = count,
+		perfect = perfect,
+		rejectedAction = rejectedAction,
+	})
+end
+
+local function grantMomentum(player: Player, ledger: Ledger, action: string, baseGain: number, now: number, perfect: boolean?)
+	if player:GetAttribute("HRushRole") == "Taya" and not momentum.TayaBuildsMomentum then
+		return
+	end
+	local previous = ledger.momentumMoves[action]
+	local value, gain, count = MomentumRules.gain(
+		ledger.momentum, baseGain,
+		if previous then previous.at else -math.huge,
+		if previous then previous.count else 0,
+		now
+	)
+	ledger.momentum = value
+	updateMomentumTier(player, value)
+	ledger.momentumGainAt = now
+	ledger.momentumMoves[action] = { at = now, count = count }
+	if momentum.Debug and action == "Slide" then
+		print(string.format("[Momentum] slide gain awarded: %s +%.2f total=%.2f count=%d",
+			player.Name, gain, value, count))
+	end
+	sendMomentum(player, ledger, now, action, gain, count, perfect)
+end
 
 local function finiteNumber(value: number): boolean
 	return value == value and math.abs(value) < math.huge
@@ -81,8 +142,10 @@ local function resetLedger(player: Player, ledger: Ledger)
 	ledger.slideUntil = 0
 	ledger.slideReadyAt = 0
 	ledger.rollUntil = 0
-	ledger.rollAllowedSpeed = 0
+	ledger.rollBaseSpeed = 0
 	ledger.rollRequestUntil = 0
+	ledger.rollRequestedAt = 0
+	ledger.rollIntentAt = 0
 	ledger.vaultUntil = 0
 	ledger.vaultReadyAt = 0
 	ledger.vaultAllowedSpeed = 0
@@ -98,6 +161,15 @@ local function resetLedger(player: Player, ledger: Ledger)
 	ledger.airPeakY = 0
 	ledger.hardLandUntil = 0
 	ledger.boostUntil = 0
+	if ledger.momentum > 0 then
+		ledger.momentum = 0
+		ledger.momentumGainAt = 0
+		sendMomentum(player, ledger, os.clock(), "Lost", 0)
+	end
+	ledger.momentumGainAt = 0
+	ledger.momentumSampleAt = os.clock()
+	ledger.momentumMoves = {}
+	updateMomentumTier(player, 0)
 	ledger.lastPosition = nil
 	ledger.lastSampleAt = os.clock()
 	player:SetAttribute("HRushServerAirborne", false)
@@ -114,6 +186,12 @@ local function recordViolation(player: Player, ledger: Ledger, reason: string, d
 	player:SetAttribute("HRushMovementViolations", ledger.totalViolations)
 	if movement.ServerLogsEnabled and count == movement.ServerLogViolationThreshold then
 		warn(string.format("[MovementAuthority] %s: %s (%s)", player.Name, reason, detail))
+	end
+	-- A rejected predicted slide or roll should return to the authoritative
+	-- value immediately instead of waiting for the next idle sync.
+	if string.sub(reason, 1, 6) == "slide_" or string.sub(reason, 1, 5) == "roll_" then
+		sendMomentum(player, ledger, os.clock(), nil, nil, nil, nil,
+			if string.sub(reason, 1, 6) == "slide_" then "Slide" else "Roll")
 	end
 end
 
@@ -167,25 +245,17 @@ local function allowedSpeed(player: Player, ledger: Ledger, now: number): number
 		return movement.DashDistance * movement.SpeedScale / movement.DashDuration
 	end
 	if ledger.state == "Roll" and now < ledger.rollUntil then
-		return ledger.rollAllowedSpeed
+		return MomentumRules.speed(ledger.rollBaseSpeed, 1, 1, ledger.momentum)
 	end
 	if ledger.state == "Vault" and now < ledger.vaultUntil then
-		return ledger.vaultAllowedSpeed
+		return math.min(momentum.GlobalSpeedCeiling, ledger.vaultAllowedSpeed)
 	end
 
-	local speed: number
-	if ledger.state == "Slide" and now < ledger.slideUntil then
-		speed = roleSpeed(player, player:GetAttribute("HRushRole") ~= "Taya") * movement.SlideSpeedMult
-	else
-		speed = roleSpeed(player, ledger.state == "Sprint")
-	end
-	if now < ledger.boostUntil and player:GetAttribute("HRushRole") == "Runner" then
-		speed *= movement.PostTagSpeedBoostMult
-	end
-	if now < ledger.hardLandUntil then
-		speed *= movement.HardLandSpeedMult
-	end
-	return speed
+	local exTayaMult = if now < ledger.boostUntil and player:GetAttribute("HRushRole") == "Runner"
+		then movement.PostTagSpeedBoostMult else 1
+	local hardLandMult = if now < ledger.hardLandUntil then movement.HardLandSpeedMult else 1
+	local baseSpeed = roleSpeed(player, ledger.state == "Slide" or ledger.state == "Sprint")
+	return MomentumRules.speed(baseSpeed, exTayaMult, hardLandMult, ledger.momentum)
 end
 
 local function validateCommon(player: Player, ledger: Ledger): (Humanoid?, BasePart?)
@@ -215,11 +285,18 @@ local function beginRoll(player: Player, ledger: Ledger, root: BasePart, role: s
 		baseSpeed * (1 + movement.ServerSpeedTolerancePct)
 	)
 	local walkSpeed = roleSpeed(player, false)
-	local bonus = movement.RunnerSprintSpeed * movement.SpeedScale * movement.RollSpeedBonus
+	local priorMomentum = ledger.momentum
 	ledger.rollRequestUntil = 0
+	-- Compare the two ordered client requests as received by the server. FloorMaterial
+	-- may replicate later, so that observation delay must not cancel a valid intent.
+	local perfect = MomentumRules.perfectRoll(ledger.rollIntentAt,
+		if ledger.rollRequestedAt > 0 then ledger.rollRequestedAt else now)
+	ledger.rollRequestedAt = 0
+	ledger.rollIntentAt = 0
 	ledger.hardLandUntil = 0
 	player:SetAttribute("HRushServerHardLandUntil", 0)
-	ledger.rollAllowedSpeed = math.max(walkSpeed, carriedSpeed) + bonus
+	grantMomentum(player, ledger, "Roll", if perfect then momentum.GainRollPerfect else momentum.GainRoll, now, perfect)
+	ledger.rollBaseSpeed = math.max(walkSpeed, carriedSpeed - priorMomentum)
 	ledger.rollUntil = now + movement.RollDuration
 	setState(player, ledger, "Roll")
 end
@@ -351,7 +428,7 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 		recordViolation(player, ledger, "request_schema", "movement state")
 		return
 	end
-	if action ~= "Sprint" and action ~= "Slide" and action ~= "Roll" and action ~= "Vault" then
+	if action ~= "Sprint" and action ~= "Slide" and action ~= "Roll" and action ~= "RollIntent" and action ~= "Vault" then
 		recordViolation(player, ledger, "request_action", action)
 		return
 	end
@@ -359,11 +436,15 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 	if not active then
 		if action == "Roll" then
 			ledger.rollRequestUntil = 0
+			ledger.rollRequestedAt = 0
+			ledger.rollIntentAt = 0
+		elseif action == "RollIntent" then
+			ledger.rollIntentAt = 0
 		end
 		if ledger.state == action then
 			if action == "Roll" then
 				ledger.rollUntil = 0
-				ledger.rollAllowedSpeed = 0
+				ledger.rollBaseSpeed = 0
 			end
 			if action == "Vault" then
 				ledger.vaultUntil = 0
@@ -381,6 +462,24 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 	local role = player:GetAttribute("HRushRole")
 	if role ~= "Runner" and role ~= "Taya" then
 		recordViolation(player, ledger, "request_role", tostring(role))
+		return
+	end
+	if action == "RollIntent" then
+		if typeof(directionValue) ~= "number"
+			or not MomentumRules.intentFresh(directionValue :: number, Workspace:GetServerTimeNow(),
+				movement.RollWindow + movement.ServerSampleWindow)
+		then
+			recordViolation(player, ledger, "roll_intent_timestamp", "invalid or stale")
+			return
+		end
+		if humanoid.FloorMaterial ~= Enum.Material.Air
+			or player:GetAttribute("IsAirborne") == true
+			or (ledger.state ~= "Walk" and ledger.state ~= "Sprint")
+		then
+			recordViolation(player, ledger, "roll_intent_state", ledger.state)
+			return
+		end
+		ledger.rollIntentAt = now
 		return
 	end
 
@@ -402,11 +501,14 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 			recordViolation(player, ledger, "roll_state", ledger.state)
 			return
 		end
+		ledger.rollRequestedAt = now
 		if humanoid.FloorMaterial == Enum.Material.Air then
 			-- Character ownership can make the client's confirmed landing arrive
 			-- before FloorMaterial replicates to the server. Hold the request, then
 			-- let the server's own observer accept only a prompt landing.
-			ledger.rollRequestUntil = now + movement.RollWindow + movement.ServerSampleWindow
+			if ledger.rollRequestUntil <= now then
+				ledger.rollRequestUntil = now + movement.RollWindow + movement.ServerSampleWindow
+			end
 			return
 		end
 		local sinceAirborne = now - ledger.lastAirborneAt
@@ -499,19 +601,18 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 		recordViolation(player, ledger, "slide_grounded", "airborne")
 		return
 	end
-	if role == "Runner" and ledger.state ~= "Sprint" then
-		recordViolation(player, ledger, "slide_state", ledger.state)
-		return
-	end
 	if ledger.state == "Roll" or ledger.state == "Dash" or ledger.state == "Vault" then
 		recordViolation(player, ledger, "slide_state", ledger.state)
 		return
 	end
-	local minimumSpeed = roleSpeed(player, role == "Runner") * movement.SlideMinSpeedPct
-	local observedSpeed = horizontalSpeed(root)
-	if observedSpeed < minimumSpeed * (1 - movement.ServerSpeedTolerancePct) then
-		recordViolation(player, ledger, "slide_speed", string.format("%.2f < %.2f", observedSpeed, minimumSpeed))
-		return
+	local entrySpeed = horizontalSpeed(root)
+	-- The client flag can only withhold an award. A true flag alone never
+	-- grants one: the server must independently observe the entry speed.
+	local earnsMomentum = directionValue == true
+		and MomentumRules.slideEligible(entrySpeed, roleSpeed(player, true))
+	if momentum.Debug then
+		print(string.format("[Momentum] server slide detected: %s state=%s speed=%.2f clientEligible=%s eligible=%s",
+			player.Name, ledger.state, entrySpeed, tostring(directionValue), tostring(earnsMomentum)))
 	end
 
 	ledger.slideReadyAt = now + movement.SlideCooldown
@@ -519,6 +620,13 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 	ledger.hardLandUntil = 0
 	player:SetAttribute("HRushServerHardLandUntil", 0)
 	setState(player, ledger, "Slide")
+	if earnsMomentum then
+		grantMomentum(player, ledger, "Slide", momentum.GainSlide, now)
+	else
+		-- A valid slow slide has no gain event, popup, or chain step. This
+		-- snapshot also corrects any client prediction based on a stale speed.
+		sendMomentum(player, ledger, now, nil, nil, nil, nil, "Slide")
+	end
 end
 
 local function handleDash(player: Player, direction: unknown)
@@ -564,12 +672,25 @@ local function handleDash(player: Player, direction: unknown)
 end
 
 local function observePlayer(player: Player, ledger: Ledger, now: number)
+	if ledger.momentum > 0 then
+		local _, momentumRoot = liveCharacter(player)
+		local moving = momentumRoot ~= nil and horizontalSpeed(momentumRoot) > momentum.MovingThreshold
+		ledger.momentum = MomentumRules.decay(ledger.momentum, ledger.momentumGainAt,
+			ledger.momentumSampleAt, now, moving)
+		updateMomentumTier(player, ledger.momentum)
+		if now - ledger.momentumSyncAt >= momentum.SyncInterval or ledger.momentum == 0 then
+			sendMomentum(player, ledger, now, nil, nil)
+		end
+	elseif now - ledger.momentumSyncAt >= momentum.ZeroSyncInterval then
+		sendMomentum(player, ledger, now, nil, nil)
+	end
+	ledger.momentumSampleAt = now
 	if ledger.state == "Dash" and now >= ledger.dashUntil then
 		setState(player, ledger, "Walk")
 	elseif ledger.state == "Slide" and now >= ledger.slideUntil then
 		setState(player, ledger, "Walk")
 	elseif ledger.state == "Roll" and now >= ledger.rollUntil then
-		ledger.rollAllowedSpeed = 0
+		ledger.rollBaseSpeed = 0
 		setState(player, ledger, "Walk")
 	elseif ledger.state == "Vault" and now >= ledger.vaultUntil then
 		ledger.vaultAllowedSpeed = 0
@@ -681,6 +802,8 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 	if ledger.rollRequestUntil > 0 then
 		if now > ledger.rollRequestUntil then
 			ledger.rollRequestUntil = 0
+			ledger.rollRequestedAt = 0
+			ledger.rollIntentAt = 0
 		elseif humanoid ~= nil
 			and root ~= nil
 			and humanoid.FloorMaterial ~= Enum.Material.Air
@@ -692,6 +815,8 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 				beginRoll(player, ledger, root, role, now)
 			else
 				ledger.rollRequestUntil = 0
+				ledger.rollRequestedAt = 0
+				ledger.rollIntentAt = 0
 			end
 		end
 	end
@@ -702,8 +827,10 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 		return
 	end
 	if now < ledger.hardLandUntil then
-		local penaltyLimit = roleSpeed(player, ledger.state == "Sprint")
-			* movement.HardLandSpeedMult
+		local exTayaMult = if now < ledger.boostUntil and player:GetAttribute("HRushRole") == "Runner"
+			then movement.PostTagSpeedBoostMult else 1
+		local penaltyLimit = MomentumRules.speed(roleSpeed(player, ledger.state == "Sprint"),
+			exTayaMult, movement.HardLandSpeedMult, ledger.momentum)
 			* (1 + movement.ServerSpeedTolerancePct)
 		local observedSpeed = horizontalSpeed(root)
 		if observedSpeed > penaltyLimit then
@@ -742,6 +869,9 @@ end
 
 local function bindCharacter(player: Player, ledger: Ledger, character: Model)
 	resetLedger(player, ledger)
+	if character:GetAttribute("MomentumTier") == nil then
+		character:SetAttribute("MomentumTier", 0)
+	end
 	if ledger.diedConnection ~= nil then
 		ledger.diedConnection:Disconnect()
 		ledger.diedConnection = nil
@@ -765,8 +895,10 @@ local function attachPlayer(player: Player)
 		slideUntil = 0,
 		slideReadyAt = 0,
 		rollUntil = 0,
-		rollAllowedSpeed = 0,
+		rollBaseSpeed = 0,
 		rollRequestUntil = 0,
+		rollRequestedAt = 0,
+		rollIntentAt = 0,
 		vaultUntil = 0,
 		vaultReadyAt = 0,
 		vaultAllowedSpeed = 0,
@@ -782,6 +914,12 @@ local function attachPlayer(player: Player)
 		airPeakY = 0,
 		hardLandUntil = 0,
 		boostUntil = 0,
+		momentum = 0,
+		momentumGainAt = 0,
+		momentumSampleAt = now,
+		momentumSyncAt = now,
+		momentumSeq = 0,
+		momentumMoves = {},
 		requestWindowStartedAt = now,
 		requestCount = 0,
 		lastPosition = nil,
@@ -845,7 +983,11 @@ local function validateConfig()
 	assert(movement.SlideEndMult <= movement.SlideStartMult, "Slide end speed must not exceed its start speed")
 	assert(movement.RollWindow > 0, "Roll input window must be positive")
 	assert(movement.RollDuration > 0, "Roll duration must be positive")
-	assert(movement.RollSpeedBonus >= 0 and movement.RollSpeedBonus <= 1, "Roll speed bonus must be between 0 and 1")
+	assert(momentum.Cap > 0 and momentum.GlobalSpeedCeiling > 0, "Momentum cap and speed ceiling must be positive")
+	assert(momentum.SyncInterval > 0 and momentum.DecayGrace >= 0, "Momentum timing is invalid")
+	assert(momentum.ZeroSyncInterval > 0, "Momentum zero sync must be positive")
+	assert(momentum.PerfectRollWindow > 0 and momentum.PerfectRollWindow <= movement.RollWindow, "Perfect roll window is invalid")
+	assert(momentum.SlideMinSpeedPct > 0 and momentum.SlideMinSpeedPct <= 1, "Slide minimum speed must be a percentage")
 	assert(movement.VaultMinH > 0 and movement.VaultMaxH >= movement.VaultMinH, "Vault relative height range is invalid")
 	assert(movement.VaultMaxAboveGround >= movement.VaultMaxH, "Vault absolute cap must cover the relative range")
 	assert(movement.VaultMinDrop > 0, "Vault landing drop must be positive")
@@ -880,14 +1022,18 @@ function MovementAuthority.start()
 	assert(configModule ~= nil and configModule:IsA("ModuleScript"), "Config ModuleScript missing")
 	local config = require(configModule)
 	movement = config.Movement
+	momentum = config.Momentum
 	validateConfig()
 
 	local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
 	assert(remotes ~= nil and remotes:IsA("Folder"), "Remotes folder missing")
 	local requestMovementState = remotes:WaitForChild("RequestMovementState", 10)
 	local requestDash = remotes:WaitForChild("RequestDash", 10)
+	local momentumRemote = remotes:WaitForChild("MomentumUpdate", 10)
 	assert(requestMovementState ~= nil and requestMovementState:IsA("RemoteEvent"), "RequestMovementState missing")
 	assert(requestDash ~= nil and requestDash:IsA("RemoteEvent"), "RequestDash missing")
+	assert(momentumRemote ~= nil and momentumRemote:IsA("RemoteEvent"), "MomentumUpdate missing")
+	momentumUpdate = momentumRemote :: RemoteEvent
 
 	requestMovementState.OnServerEvent:Connect(handleMovementState)
 	requestDash.OnServerEvent:Connect(handleDash)

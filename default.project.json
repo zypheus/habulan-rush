@@ -11,6 +11,12 @@
       "TagRules": {
         "$path": "src/ReplicatedStorage/TagRules.lua"
       },
+      "RpsRules": {
+        "$path": "src/ReplicatedStorage/RpsRules.lua"
+      },
+      "MomentumRules": {
+        "$path": "src/ReplicatedStorage/MomentumRules.lua"
+      },
       "TsinelasArc": {
         "$path": "src/ReplicatedStorage/TsinelasArc.lua"
       },
@@ -26,6 +32,7 @@
         "RequestSkill":    { "$className": "RemoteEvent" },
         "RequestDash":     { "$className": "RemoteEvent" },
         "RequestMovementState": { "$className": "RemoteEvent" },
+        "MomentumUpdate": { "$className": "RemoteEvent" },
         "PickSkill":       { "$className": "RemoteEvent" },
         "ActivateDiskarte":{ "$className": "RemoteEvent" },
         "StateChanged":    { "$className": "RemoteEvent" },
@@ -40,7 +47,11 @@
         "MatchRecap":      { "$className": "RemoteEvent" },
         "QueueEvent":      { "$className": "RemoteEvent" },
         "PartyEvent":      { "$className": "RemoteEvent" },
-        "MapVoteEvent":    { "$className": "RemoteEvent" }
+        "MapVoteEvent":    { "$className": "RemoteEvent" },
+        "RpsStageStart":   { "$className": "RemoteEvent" },
+        "RpsReveal":       { "$className": "RemoteEvent" },
+        "RpsResult":       { "$className": "RemoteEvent" },
+        "RpsSubmitSign":   { "$className": "RemoteEvent" }
       }
     },
 
@@ -89,6 +100,12 @@
         "MovementController": {
           "$path": "src/StarterPlayerScripts/MovementController.client.lua"
         },
+        "MomentumController": {
+          "$path": "src/StarterPlayerScripts/MomentumController.lua"
+        },
+        "MomentumHUD": {
+          "$path": "src/StarterPlayerScripts/MomentumHUD.client.lua"
+        },
         "AirMovement": {
           "$path": "src/StarterPlayerScripts/AirMovement.lua"
         },
@@ -121,6 +138,9 @@
         },
         "MapVoteUI": {
           "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"
+        },
+        "RpsUI": {
+          "$path": "src/StarterPlayerScripts/RpsUI.client.lua"
         },
         "ClientSettings": {
           "$path": "src/StarterPlayerScripts/ClientSettings.lua"

@@ -6,13 +6,14 @@
 -- Choices live here and never write to Config at runtime.
 -- Refs: Settings screen task (UI/UX Spec section 7, T33 accessibility);
 -- camera overhaul Phase 4 (view mode key).
+-- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local S = Config.Settings
 
-export type SettingKey = "master" | "music" | "sfx" | "vfx" | "reducedCamera" | "cameraSensitivity" | "invertCameraY" | "cameraEffectsIntensity" | "lookBackEnabled" | "chaserIndicatorEnabled" | "cameraViewMode"
+export type SettingKey = "master" | "music" | "sfx" | "vfx" | "reducedCamera" | "showPopups" | "momentumBar" | "momentumSounds" | "cameraSensitivity" | "invertCameraY" | "cameraEffectsIntensity" | "lookBackEnabled" | "chaserIndicatorEnabled" | "cameraViewMode"
 
 type NumberSpec = {
 	kind: string,
@@ -40,6 +41,9 @@ local SPECS: { [SettingKey]: SettingSpec } = {
 	sfx = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.SfxDefault },
 	vfx = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.VfxDefault },
 	reducedCamera = { kind = "boolean", default = S.ReducedCameraDefault },
+	showPopups = { kind = "boolean", default = S.ShowPopupsDefault },
+	momentumBar = { kind = "boolean", default = S.MomentumBarDefault },
+	momentumSounds = { kind = "boolean", default = S.MomentumSoundsDefault },
 	cameraSensitivity = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.CameraSensitivityDefault },
 	invertCameraY = { kind = "boolean", default = S.InvertCameraYDefault },
 	cameraEffectsIntensity = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.CameraEffectsDefault },
