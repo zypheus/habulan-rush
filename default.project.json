@@ -160,6 +160,12 @@
         "CameraDirectorBootstrap": {
           "$path": "src/StarterPlayerScripts/CameraDirector.client.lua"
         },
+        "FirstPersonTorsoHider": {
+          "$path": "src/StarterPlayerScripts/FirstPersonTorsoHider.lua"
+        },
+        "FirstPersonTorsoHiderBootstrap": {
+          "$path": "src/StarterPlayerScripts/FirstPersonTorsoHider.client.lua"
+        },
         "ChaseState": {
           "$path": "src/StarterPlayerScripts/ChaseState.lua"
         },
