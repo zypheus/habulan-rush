@@ -49,6 +49,8 @@
         "QueueEvent":      { "$className": "RemoteEvent" },
         "PartyEvent":      { "$className": "RemoteEvent" },
         "MapVoteEvent":    { "$className": "RemoteEvent" },
+        "ModeVoteEvent":   { "$className": "RemoteEvent" },
+        "PanyoEvent":      { "$className": "RemoteEvent" },
         "RpsStageStart":   { "$className": "RemoteEvent" },
         "RpsReveal":       { "$className": "RemoteEvent" },
         "RpsResult":       { "$className": "RemoteEvent" },
@@ -70,6 +72,12 @@
       },
       "MatchService": {
         "$path": "src/ServerScriptService/MatchService.server.lua"
+      },
+      "PanyoMode": {
+        "$path": "src/ServerScriptService/PanyoMode.lua"
+      },
+      "PanyoEvents": {
+        "$path": "src/ServerScriptService/PanyoEvents.lua"
       },
       "MovementAuthority": {
         "$path": "src/ServerScriptService/MovementAuthority.lua"
@@ -139,6 +147,12 @@
         },
         "MapVoteUI": {
           "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"
+        },
+        "ModeVoteUI": {
+          "$path": "src/StarterPlayerScripts/ModeVoteUI.client.lua"
+        },
+        "PanyoHUD": {
+          "$path": "src/StarterPlayerScripts/PanyoHUD.client.lua"
         },
         "RpsUI": {
           "$path": "src/StarterPlayerScripts/RpsUI.client.lua"

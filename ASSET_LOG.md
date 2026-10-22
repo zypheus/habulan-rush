@@ -16,6 +16,17 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Agawan ng Panyo, 2026-10-23
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-23 | `HRUSH_Panyo` and pickup ring | Model | Original Roblox primitives and text created in `PanyoMode.lua` | Original | Neutral panyo and Carrier attachment | Pending Review | No Toolbox model or external texture. Runtime visual awaits owner Studio review. |
+| 2026-10-23 | `assets/sfx/panyo/pickup.wav` | Audio | Original synthesized cue in `scripts/generate-panyo-sfx.py` | Original | Panyo collection | Pending Upload | Enter approved Roblox ID in `Config.Panyo.Sounds.pickup` after owner upload. |
+| 2026-10-23 | `assets/sfx/panyo/steal.wav` | Audio | Original synthesized cue in `scripts/generate-panyo-sfx.py` | Original | Successful steal | Pending Upload | Enter approved Roblox ID in `Config.Panyo.Sounds.steal` after owner upload. |
+| 2026-10-23 | `assets/sfx/panyo/drop.wav` | Audio | Original synthesized cue in `scripts/generate-panyo-sfx.py` | Original | Panyo recovery | Pending Upload | Enter approved Roblox ID in `Config.Panyo.Sounds.drop` after owner upload. |
+| 2026-10-23 | `assets/sfx/panyo/reveal.wav` | Audio | Original synthesized cue in `scripts/generate-panyo-sfx.py` | Original | Periodic Carrier reveal | Pending Upload | Enter approved Roblox ID in `Config.Panyo.Sounds.reveal` after owner upload. |
+| 2026-10-23 | `assets/sfx/panyo/final.wav` | Audio | Original synthesized cue in `scripts/generate-panyo-sfx.py` | Original | Final seconds | Pending Upload | Enter approved Roblox ID in `Config.Panyo.Sounds.final` after owner upload. |
+
 ### Wind dash VFX textures, 2026-10-22
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
@@ -37,7 +48,8 @@ _All models, textures, audio, and assets used in the game must be logged here._
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 2026-10-18 | HRush_TagFirstPerson (`rbxassetid://105436702082738`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Local first-person tag action (`Config.Tag.FirstPersonAnimationId`) | Pending Review | Loaded on an isolated local arm rig so it never competes with or replicates through the live character Animator. |
-| 2026-10-18 | HRush_TagThirdPerson (`rbxassetid://139144393566205`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Replicated tag action (`Config.Tag.ThirdPersonAnimationId`) | Pending Review | Loaded and played by the server so the tagging player and observers receive the same third-person action. |
+| 2026-10-22 | HRush_TagThirdPerson replacement (`rbxassetid://132133679924288`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Replicated tag action (`Config.Tag.ThirdPersonAnimationId`) | Pending Review | Replaces `139144393566205`; server plays it on the character Animator. Arm-only blending awaits owner Studio verification. |
+| 2026-10-18 | HRush_TagThirdPerson (`rbxassetid://139144393566205`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Former replicated tag action | Superseded | Replaced by `132133679924288` on 2026-10-22. |
 
 ### Pounce integration, 2026-10-16
 

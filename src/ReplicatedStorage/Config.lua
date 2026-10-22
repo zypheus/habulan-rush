@@ -8,6 +8,9 @@
 -- Task/spec: momentum slice 1, server authority and shared tuning, 2026-10-19.
 -- Task/spec: slide chaining tuning and entry speed, 2026-10-19.
 -- Task/spec: source-owned wind dash VFX, approved 2026-10-22.
+-- Task/spec: Agawan ng Panyo Phase 1 mode selection, approved 2026-10-23.
+-- Task/spec: Panyo Carrier visual feedback, approved 2026-10-23.
+-- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
 
 local Config = {}
 
@@ -477,7 +480,7 @@ Config.Tag = {
 	StandingTargetOffset = 0.5, -- [SD]
 	SlidingTargetOffset = -1.1, -- [SD]
 	FirstPersonAnimationId = "rbxassetid://105436702082738", -- [SD] project-owner supplied 2026-10-18
-	ThirdPersonAnimationId = "rbxassetid://139144393566205", -- [SD] project-owner supplied 2026-10-18
+	ThirdPersonAnimationId = "rbxassetid://132133679924288", -- [SD] project-owner supplied replacement 2026-10-22
 	AnimationFade = 0.05, -- [SD]
 }
 
@@ -693,6 +696,54 @@ Config.Maps = {
 
 Config.Party = { MaxSize=4, SlotSpacing=3.2 }
 
+Config.ModeVote = {
+	Duration = 10, -- [SD] server-owned mode ballot window when more than one mode is enabled
+	RevealTime = 1.5, -- [SD] selected mode reveal before the map vote
+	RequestInterval = 0.1, -- [SD] minimum interval between a player's mode vote requests
+	TieFallback = "ClassicTag", -- [SD] preserve Classic Tag on a split or empty ballot
+	Order = { "ClassicTag", "AgawanNgPanyo" }, -- [SD] display and tie-independent mode order
+	Modes = {
+		ClassicTag = { name = "Classic Tag", description = "Lowest Taya time wins", enabled = true }, -- [SD]
+		AgawanNgPanyo = { name = "Agawan ng Panyo", description = "Grab, steal, and hold the panyo", enabled = true }, -- [SD] available in the server-owned mode ballot
+	},
+}
+
+Config.Panyo = {
+	RoundDuration = 120, -- [SD] live competitive and solo practice round length
+	PickupHold = 0.4, -- [SD] continuous server-observed proximity before collection
+	PickupRadius = 4, -- [SD] studs from the neutral panyo
+	PickupPollInterval = 0.1, -- [SD] server collection and carrier watchdog cadence
+	NewCarrierSafe = 1.0, -- [SD] protection after a pickup or steal
+	PreviousCarrierBlock = 2.0, -- [SD] previous carrier cannot steal back immediately
+	MaxArenaCoordinate = 70, -- [SD] Kalsada bounds inside the walls
+	MinArenaY = -10, -- [SD] invalid low position recovery threshold
+	MaxArenaY = 35, -- [SD] invalid high position recovery threshold
+	MaxObservedSpeed = 65, -- [SD] pickup plausibility speed in studs per second
+	PositionSlack = 10, -- [SD] network update allowance for the pickup plausibility check
+	InvalidMoveCooldown = 1.5, -- [SD] wait after an impossible pickup displacement
+	DropBlock = 2.0, -- [SD] former carrier cannot immediately reclaim a self-caused drop
+	ScorePublishInterval = 1.0, -- [SD] replicated possession score cadence
+	RevealDuration = 2.0, -- [SD] brief Carrier locator lifetime
+	Visuals = { -- [SD] client-only Carrier identification
+		Color = Color3.fromRGB(255, 225, 116), -- [SD] gold matches the Panyo HUD
+		TrailEndColor = Color3.fromRGB(255, 244, 192), -- [SD] pale cloth-colored trail tip
+		IdleFillTransparency = 0.55, -- [SD] visible Carrier fill between reveals
+		RevealFillTransparency = 0.2, -- [SD] stronger fill during timed reveals
+		TrailLifetime = 0.45, -- [SD] short movement ribbon behind the Carrier
+		TrailLeftOffset = Vector3.new(-0.55, -1.1, 0.4), -- [SD] waist-level left attachment
+		TrailRightOffset = Vector3.new(0.55, -1.1, 0.4), -- [SD] waist-level right attachment
+		TrailBirthTransparency = 0.2, -- [SD] opaque near the Carrier, fading to clear
+		TrailLightEmission = 0.7, -- [SD] visible ribbon without overpowering the marker
+	},
+	Events = { -- [SD] seconds left in the 120-second round
+		BarangayRush = 80,
+		HulingHabol = 30,
+		Reveals = { 80, 65, 50, 35, 30, 20, 10 },
+		FinalCues = { 30, 15, 10, 5 },
+	},
+	Sounds = { pickup = "", steal = "", drop = "", reveal = "", final = "" }, -- [SD] silent until competition-safe audio is supplied
+}
+
 Config.MapVote = {
 	Pool = { "Kalsada", "Binaha" },
 	Duration = 10, RevealTime = 1.5,
@@ -888,7 +939,7 @@ Config.Camera = {
 -- ============================================================
 -- SETTINGS (client presentation only; never gameplay)
 -- ============================================================
--- Defaults, ranges, and steps live here. Player choices live in
+-- Defaults, ranges, and steps live in Config. Player choices live in
 -- ClientSettings (StarterPlayerScripts) and never write back here.
 Config.Settings = {
 	MasterDefault = 100, -- [SD] master volume 0-100
@@ -900,6 +951,9 @@ Config.Settings = {
 	MomentumBarDefault = true, -- [SD] show the local momentum bar
 	MomentumSoundsDefault = true, -- [SD] play local momentum sounds through the SFX group
 	CameraSensitivityDefault = 50, -- [SD] camera look speed percent 0-100 (50 = neutral)
+	FirstPersonFovMin = 50, -- [SD] first-person FOV slider lower bound (degrees)
+	FirstPersonFovMax = 95, -- [SD] first-person FOV slider and final camera upper bound (degrees)
+	FirstPersonFovStep = 1, -- [SD] first-person FOV slider precision (degrees)
 	InvertCameraYDefault = false, -- [SD] inverted vertical camera look off
 	CameraEffectsDefault = 100, -- [SD] camera effects intensity percent 0-100
 	LookBackDefault = true, -- [SD] Runner hold-to-look-back on

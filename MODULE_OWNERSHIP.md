@@ -1,6 +1,6 @@
 # Module Ownership
 
-Updated: 2026-10-17
+Updated: 2026-10-23
 Human merge owner: **Project Owner**, sole maintainer
 Primary coding agent: **Codex**, only for the currently approved item
 
@@ -21,6 +21,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 | MomentumUpdate remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-to-owner momentum snapshots and accepted action gains | Project Owner |
 | DashVFXEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-accepted dash cosmetic broadcast; clients make no gameplay decision | Project Owner |
 | RPS remotes | `default.project.json`, `ReplicatedStorage.Remotes` | StageStart, Reveal, Result server presentation and validated SubmitSign request | Project Owner |
+| ModeVoteEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Validated mode ballot requests and server vote presentation | Project Owner |
+| PanyoEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-only Panyo pickup, steal, drop, phase, reveal, and final cue presentation | Project Owner |
 
 ## Server
 
@@ -28,6 +30,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 |---|---|---|---|
 | PartyService | `src/ServerScriptService/PartyService.lua` | Party membership, leader actions, and party locks | Project Owner |
 | MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, roles, timer, scoring, and server-only tag commit | Project Owner |
+| PanyoMode | `src/ServerScriptService/PanyoMode.lua` | One panyo instance, server-observed pickup, Carrier ownership, steal protection, recovery, and possession clock | Project Owner |
+| PanyoEvents | `src/ServerScriptService/PanyoEvents.lua` | Panyo phase transitions, periodic reveals, and final-second cues | Project Owner |
 | MovementAuthority | `src/ServerScriptService/MovementAuthority.lua` | Server movement state, request validation, cooldowns, and passive speed/displacement observation | Project Owner |
 | MovementAuthority bootstrap | `src/ServerScriptService/MovementAuthority.server.lua` | Starts the MovementAuthority lifecycle | Project Owner |
 | TagService | `src/ServerScriptService/TagService.server.lua` | Click tag rate guard, target selection, spatial/arc/LOS validation, and replicated third-person tag animation | Project Owner |
@@ -55,6 +59,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 | LobbyUI | `src/StarterPlayerScripts/LobbyUI.client.lua` | Lobby, party, queue, settings presentation, and lobby camera | Project Owner |
 | RpsUI | `src/StarterPlayerScripts/RpsUI.client.lua` | MS_RPS cards, sign input, local timer, and reveal presentation | Project Owner |
 | MapVoteUI | `src/StarterPlayerScripts/MapVoteUI.client.lua` | Map-vote presentation and input | Project Owner |
+| ModeVoteUI | `src/StarterPlayerScripts/ModeVoteUI.client.lua` | Match mode ballot presentation and input | Project Owner |
+| PanyoHUD | `src/StarterPlayerScripts/PanyoHUD.client.lua` | Possession timer, ranking, Carrier marker, reveal highlight, and local cues | Project Owner |
 | ClientSettings | `src/StarterPlayerScripts/ClientSettings.lua` | In-session presentation settings | Project Owner |
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |
 | MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client match-state music playback and fades | Project Owner |

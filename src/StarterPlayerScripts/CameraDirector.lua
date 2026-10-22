@@ -17,6 +17,7 @@
 -- (skill shake).
 -- Task/spec: camera overhaul Phase 4, approved 2026-10-18.
 -- Task/spec: momentum step 4 FOV composition, 2026-10-19.
+-- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -1263,11 +1264,15 @@ function onRender(dt: number)
 		local kick = if kickElapsed >= 0 and kickElapsed < Config.Momentum.Fx.PerfectFovKickTime
 			then Config.Momentum.Fx.PerfectFovKick else 0
 		if viewMode == "FirstPerson" then
-			targetFov = FP.BaseFov + math.clamp(fpEffFov + extraFov, -Eff.MaxFovBoostTotal, Eff.MaxFovBoostTotal)
+			targetFov = (ClientSettings.get("firstPersonFov") :: number)
+				+ math.clamp(fpEffFov + extraFov, -Eff.MaxFovBoostTotal, Eff.MaxFovBoostTotal)
 		else
 			targetFov = profileFovSmooth + math.clamp(effFov + extraFov, -Eff.MaxFovBoostTotal, Eff.MaxFovBoostTotal)
 		end
 		targetFov += momentumFov + kick
+		if viewMode == "FirstPerson" then
+			targetFov = math.clamp(targetFov, 1, Config.Settings.FirstPersonFovMax)
+		end
 		local diff = targetFov - cam.FieldOfView
 		local maxStep = Eff.FovCatchupRate * dt
 		if math.abs(diff) <= maxStep then

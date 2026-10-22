@@ -1,9 +1,11 @@
 --!strict
 -- ServerScriptService/MatchService.server.lua   (v1.2 - queue + lobby/match separation, bots removed)
 -- Owner: Project Owner
--- Responsibility: Match phases, MS_RPS first Taya selection, scoring, and fallback bag.
+-- Responsibility: Match phases, mode/map votes, MS_RPS first Taya selection, scoring, and fallback bag.
 -- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1 / T-CORE-03.
 -- Task/spec: simple click-to-tag server commit, approved 2026-10-18.
+-- Task/spec: Agawan ng Panyo Phase 1 mode selection, approved 2026-10-23.
+-- Task/spec: Agawan ng Panyo full mode, approved 2026-10-23.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
 -- CHANGED IN v1.2
@@ -39,11 +41,13 @@ local RpsStageStart = Remotes:WaitForChild("RpsStageStart") :: RemoteEvent
 local RpsReveal = Remotes:WaitForChild("RpsReveal") :: RemoteEvent
 local RpsResult = Remotes:WaitForChild("RpsResult") :: RemoteEvent
 local RpsSubmitSign = Remotes:WaitForChild("RpsSubmitSign") :: RemoteEvent
+local ModeVoteEvent = Remotes:WaitForChild("ModeVoteEvent") :: RemoteEvent
 local CommitTag = Instance.new("BindableFunction")
 CommitTag.Name = "HRUSH_CommitTag"
 CommitTag.Parent = ServerScriptService
 
 local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
+local PanyoMode = require(ServerScriptService:WaitForChild("PanyoMode"))
 
 -- QueueEvent is created here if your Remotes setup script doesn't define it yet
 local QueueEvent: RemoteEvent
@@ -199,6 +203,7 @@ end
 -- ============================================================
 local tayaBag = ShuffleBag.new()
 local matchState: string = "MS_01" -- MS_02 retired; MS_VOTE and MS_RPS are non-numbered states
+local currentMode: string = "ClassicTag"
 local currentRound: number = 1
 local currentTaya: Instance? = nil
 local playerRoles: { [Instance]: string } = {}
@@ -257,12 +262,14 @@ local function broadcastState(targetPlayer: Player?, optionalTimer: number?)
 	local targets = targetPlayer and { targetPlayer } or Players:GetPlayers()
 	ReplicatedStorage:SetAttribute("HRushMatchState", matchState)
 	ReplicatedStorage:SetAttribute("HRushRoundState", matchState)
+	ReplicatedStorage:SetAttribute("HRushGameMode", currentMode)
 
 	for _, p in ipairs(targets) do
 		local isIn = inMatch[p] == true
 		local shownState = isIn and matchState or "MS_01"
 		local role = isIn and (playerRoles[p] or "Runner") or "Runner"
 		p:SetAttribute("HRushInMatch", isIn)
+		p:SetAttribute("HRushGameMode", if isIn then currentMode else nil)
 		p:SetAttribute("HRushState", shownState)
 		p:SetAttribute("HRushRole", role)
 		p:SetAttribute("HRushRound", currentRound)
@@ -270,6 +277,7 @@ local function broadcastState(targetPlayer: Player?, optionalTimer: number?)
 		StateChanged:FireClient(p, {
 			state = shownState,
 			role = role,
+			mode = if isIn then currentMode else nil,
 			round = currentRound,
 			timer = serverTime,
 		})
@@ -311,6 +319,10 @@ local function transferTaya(from: Instance, to: Instance)
 end
 
 CommitTag.OnInvoke = function(tagger: Instance, target: Instance): boolean
+	if currentMode == "AgawanNgPanyo" then
+		return matchState == "MS_04" and tagger:IsA("Player") and target:IsA("Player")
+			and PanyoMode.TrySteal(tagger, target)
+	end
 	if matchState ~= "MS_04" or currentTaya ~= tagger or playerRoles[tagger] ~= "Taya" then return false end
 	if tagger == target or not table.find(getParticipants(), target) or playerRoles[target] ~= "Runner" then return false end
 	if (immuneUntil[target] or 0) > os.clock() then return false end
@@ -397,6 +409,7 @@ local function initPlayer(player: Player)
 	player:SetAttribute("HRushQueue", "Idle")
 	player:SetAttribute("HRushState", "MS_01")
 	player:SetAttribute("HRushRole", "Runner")
+	player:SetAttribute("HRushGameMode", nil)
 	-- Late joiners never see returnToLobby's broadcast, so push the lobby
 	-- state directly: without this the client keeps its pre-first-message
 	-- defaults and movement stays frozen until the next full match cycle.
@@ -406,6 +419,7 @@ local function initPlayer(player: Player)
 				StateChanged:FireClient(player, {
 					state = "MS_01",
 					role = "Runner",
+					mode = nil,
 					round = currentRound,
 					timer = workspace:GetServerTimeNow(),
 				})
@@ -420,6 +434,7 @@ for _, p in ipairs(Players:GetPlayers()) do
 end
 
 Players.PlayerRemoving:Connect(function(player)
+	if currentMode == "AgawanNgPanyo" then PanyoMode.RemovePlayer(player) end
 	tayaBag:RemovePlayer(player)
 	rpsChosen[player] = nil
 	rpsPool[player] = nil
@@ -427,7 +442,7 @@ Players.PlayerRemoving:Connect(function(player)
 	rpsLastRequest[player] = nil
 	queued[player] = nil
 
-	if currentTaya == player and matchState == "MS_04" then
+	if currentMode == "ClassicTag" and currentTaya == player and matchState == "MS_04" then
 		promoteNearestRunnerToTaya(player)
 	end
 
@@ -668,12 +683,14 @@ local function runRps(): Player?
 end
 
 local function returnToLobby()
+	PanyoMode.EndRound()
 	local returning: { Player } = {}
 	for p in pairs(inMatch) do
 		table.insert(returning, p)
 	end
 
 	matchState = "MS_01"
+	currentMode = "ClassicTag"
 	currentRound = 1
 	currentTaya = nil
 	roundActive = false
@@ -711,6 +728,102 @@ local function returnToLobby()
 			end)
 		end
 	end
+end
+
+-- ============================================================
+-- MODE VOTE
+-- ============================================================
+local function runModeVote(): string
+	local voteConfig = Config.ModeVote
+	local available = {}
+	for _, modeId in ipairs(voteConfig.Order) do
+		local definition = voteConfig.Modes[modeId]
+		if definition and definition.enabled == true then
+			table.insert(available, {
+				id = modeId,
+				name = definition.name,
+				description = definition.description,
+			})
+		end
+	end
+	assert(#available > 0, "At least one game mode must be enabled")
+	if #available == 1 then
+		return available[1].id
+	end
+
+	local duration: number = voteConfig.Duration
+	local revealTime: number = voteConfig.RevealTime
+	local endsAt = Workspace:GetServerTimeNow() + duration
+	local votes: { [string]: number } = {}
+	local choices: { [Player]: string } = {}
+	local lastRequestAt: { [Player]: number } = {}
+	for _, mode in ipairs(available) do
+		votes[mode.id] = 0
+	end
+	local startPayload = { type = "Start", modes = available, endsAt = endsAt }
+	for _, player in ipairs(getParticipants() :: { Player }) do
+		ModeVoteEvent:FireClient(player, startPayload)
+	end
+
+	local voteConnection = ModeVoteEvent.OnServerEvent:Connect(function(player: Player, action: unknown, modeId: unknown)
+		local now = Workspace:GetServerTimeNow()
+		if now >= endsAt or not inMatch[player] then return end
+		if now - (lastRequestAt[player] or 0) < voteConfig.RequestInterval then return end
+		lastRequestAt[player] = now
+		if action ~= "Vote" or typeof(modeId) ~= "string" or votes[modeId] == nil then return end
+		local previous = choices[player]
+		if previous == modeId then return end
+		if previous ~= nil then votes[previous] -= 1 end
+		choices[player] = modeId
+		votes[modeId] += 1
+		for _, target in ipairs(getParticipants() :: { Player }) do
+			ModeVoteEvent:FireClient(target, {
+				type = "Update", votes = votes, voterId = player.UserId, mode = modeId,
+			})
+		end
+	end)
+
+	while Workspace:GetServerTimeNow() < endsAt do
+		task.wait(0.1)
+		local participants = getParticipants() :: { Player }
+		if #participants == 0 then break end
+		local allVoted = true
+		for _, player in ipairs(participants) do
+			if choices[player] == nil then allVoted = false break end
+		end
+		if allVoted then break end
+	end
+	voteConnection:Disconnect()
+
+	-- Departed players do not decide a mode for the remaining roster.
+	votes = {}
+	for _, mode in ipairs(available) do votes[mode.id] = 0 end
+	for _, player in ipairs(getParticipants() :: { Player }) do
+		local choice = choices[player]
+		if choice ~= nil then votes[choice] += 1 end
+	end
+	local winner = voteConfig.TieFallback
+	local bestCount = 0
+	for _, mode in ipairs(available) do
+		local count = votes[mode.id]
+		if count > bestCount then
+			bestCount = count
+			winner = mode.id
+		elseif count == bestCount and mode.id == voteConfig.TieFallback then
+			winner = mode.id
+		end
+	end
+	if bestCount == 0 or votes[winner] ~= bestCount then
+		winner = voteConfig.TieFallback
+	end
+	for _, player in ipairs(getParticipants() :: { Player }) do
+		ModeVoteEvent:FireClient(player, { type = "Winner", winner = winner, votes = votes })
+	end
+	task.wait(revealTime)
+	for _, player in ipairs(getParticipants() :: { Player }) do
+		ModeVoteEvent:FireClient(player, { type = "Close" })
+	end
+	return winner
 end
 
 -- ============================================================
@@ -885,10 +998,15 @@ local function runMatch()
 		end
 		queued = {}
 
-		-- ===== MAP VOTE PHASE =====
+		-- ===== MODE AND MAP VOTE PHASE =====
 		matchState = "MS_VOTE"
 		broadcastState(nil)
-		local selectedMap = runMapVote()
+		local selectedMode = runModeVote()
+		if selectedMode ~= currentMode then
+			currentMode = selectedMode
+			broadcastState(nil)
+		end
+		local selectedMap = if currentMode == "AgawanNgPanyo" then "Kalsada" else runMapVote()
 		ReplicatedStorage:SetAttribute("HRushSelectedMap", selectedMap)
 		print(string.format("[MatchService] Map vote completed. Selected map: %s", selectedMap))
 
@@ -896,7 +1014,11 @@ local function runMatch()
 		teleportToSpawns(getParticipants())
 		task.wait(0.5)
 
-		local totalRounds: number = MATCH.TotalRounds or 3
+		local practiceSolo = currentMode == "AgawanNgPanyo" and participantCount() == 1
+		local totalRounds: number = if practiceSolo then 1 else MATCH.TotalRounds or 3
+		local panyoTotalTime: { [Player]: number } = {}
+		local panyoTotalSteals: { [Player]: number } = {}
+		local panyoValidRounds = 0
 		local abort = false
 
 		for roundNum = 1, totalRounds do
@@ -916,30 +1038,53 @@ local function runMatch()
 				break
 			end
 
-			local startingTaya = runRps()
-			if not startingTaya or not inMatch[startingTaya] then
-				startingTaya = drawFallbackTaya()
-				if startingTaya then rpsChosen[startingTaya] = true end
-			end
-			if not startingTaya then
-				abort = true
-				break
+			local startingTaya: Instance? = nil
+			if currentMode == "ClassicTag" then
+				startingTaya = runRps()
+				if not startingTaya or not inMatch[startingTaya] then
+					startingTaya = drawFallbackTaya()
+					if startingTaya then rpsChosen[startingTaya] = true end
+				end
+				if not startingTaya then abort = true break end
+			else
+				currentTaya = nil
+				for _, player in ipairs(participants :: { Player }) do
+					playerRoles[player] = "Runner"
+					player:SetAttribute("HRushPanyoPractice", practiceSolo)
+				end
 			end
 			-- MS_03 COUNTDOWN
 			matchState = "MS_03"
 			teleportToSpawns(getParticipants())
-			setRoles(startingTaya)
+			if currentMode == "ClassicTag" then
+				setRoles(startingTaya :: Instance)
+			else
+				broadcastState(nil)
+				if not PanyoMode.PrepareRound(getParticipants() :: { Player }, selectedMap, currentRound) then
+					warn("[MatchService] Panyo spawn unavailable; ending match safely")
+					abort = true
+					break
+				end
+			end
 			local cdDuration: number = MATCH.CountdownDuration or 5
-			print(string.format("[MatchService] Round %d: MS_03 Countdown (%d s). Starting Taya: %s", currentRound, cdDuration, startingTaya.Name))
+			if currentMode == "ClassicTag" then
+				print(string.format("[MatchService] Round %d: MS_03 Countdown (%d s). Starting Taya: %s", currentRound, cdDuration, (startingTaya :: Instance).Name))
+			end
 			waitPhase(IS_STUDIO and 3 or cdDuration)
+			if participantCount() == 0 then abort = true break end
 
 			-- MS_04 ROUND LIVE
 			matchState = "MS_04"
 			roundActive = true
 			broadcastState(nil)
-			local roundDuration: number = MATCH.RoundDuration or 150
+			local roundDuration: number = if currentMode == "AgawanNgPanyo" then Config.Panyo.RoundDuration else MATCH.RoundDuration or 150
 			print(string.format("[MatchService] Round %d: MS_04 Round Live (%d s)!", currentRound, roundDuration))
 			ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", workspace:GetServerTimeNow() + roundDuration)
+			if currentMode == "AgawanNgPanyo" and not PanyoMode.StartRound(roundDuration) then
+				warn("[MatchService] Panyo round could not start")
+				abort = true
+				break
+			end
 
 			local startTime = os.clock()
 
@@ -948,7 +1093,7 @@ local function runMatch()
 				local now = os.clock()
 
 				local taya = currentTaya
-				if taya and playerRoles[taya] == "Taya" then
+				if currentMode == "ClassicTag" and taya and playerRoles[taya] == "Taya" then
 					tayaTimeThisRound[taya] = (tayaTimeThisRound[taya] or 0) + 0.1
 					totalTayaTime[taya] = (totalTayaTime[taya] or 0) + 0.1
 					taya:SetAttribute("HRushTayaTime", math.floor(tayaTimeThisRound[taya] * 10) / 10)
@@ -959,8 +1104,12 @@ local function runMatch()
 					abort = true
 					break
 				end
+				if currentMode == "AgawanNgPanyo" and not practiceSolo and participantCount() < 2 then
+					break
+				end
 			end
 			roundActive = false
+			local panyoResults = if currentMode == "AgawanNgPanyo" then PanyoMode.EndRound() else nil
 			if abort then
 				break
 			end
@@ -970,6 +1119,50 @@ local function runMatch()
 			broadcastState(nil)
 			local roundEndDuration: number = MATCH.RoundEndDuration or 8
 			print(string.format("[MatchService] Round %d: MS_05 Round End (%d s). Calculating scores...", currentRound, roundEndDuration))
+
+			if currentMode == "AgawanNgPanyo" then
+				local results = panyoResults :: { any }
+				local validRound = not practiceSolo and participantCount() >= 2
+				if validRound then panyoValidRounds += 1 end
+				table.sort(results, function(a, b)
+					if a.left ~= b.left then return not a.left end
+					if a.time ~= b.time then return a.time > b.time end
+					if a.steals ~= b.steals then return a.steals > b.steals end
+					return a.userId < b.userId
+				end)
+				local pointsTable: { number } = MATCH.RoundPoints or { 8, 6, 5, 4, 3, 2, 1, 0 }
+				local entries = {}
+				local rank = 0
+				for index, result in ipairs(results) do
+					if index == 1 or result.left ~= results[index - 1].left
+						or result.time ~= results[index - 1].time or result.steals ~= results[index - 1].steals then
+						rank = index
+					end
+					local points = if validRound and not result.left and result.time > 0 then pointsTable[rank] or 0 else 0
+					if validRound and not result.left then
+						panyoTotalTime[result.player] = (panyoTotalTime[result.player] or 0) + result.time
+						panyoTotalSteals[result.player] = (panyoTotalSteals[result.player] or 0) + result.steals
+						matchPoints[result.player] = (matchPoints[result.player] or 0) + points
+					end
+					table.insert(entries, {
+						rank = rank, name = result.name, userId = result.userId, left = result.left,
+						possessionTime = result.time, possessionPoints = math.floor(result.time + 0.000001),
+						steals = result.steals, pointsAwarded = points,
+						totalPoints = matchPoints[result.player] or 0,
+					})
+				end
+				local recapWait = if IS_STUDIO then 3 else roundEndDuration
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					RoundRecapEvent:FireClient(player, {
+						mode = currentMode, entries = entries, round = currentRound,
+						totalRounds = totalRounds, nextIn = recapWait,
+						practice = practiceSolo, validRound = validRound,
+					})
+				end
+				waitPhase(recapWait)
+				if not practiceSolo and participantCount() < 2 then break end
+				continue
+			end
 
 			local ranked: { { player: Instance, tayaTime: number } } = {}
 			for _, p in ipairs(getParticipants()) do
@@ -1011,11 +1204,46 @@ local function runMatch()
 		end
 
 		-- MS_06 MATCH END
-		if not abort then
+		if not abort and (currentMode == "ClassicTag" or (not practiceSolo and panyoValidRounds > 0)) then
 			matchState = "MS_06"
 			broadcastState(nil)
 			local matchEndDuration: number = MATCH.MatchEndDuration or 15
 			print(string.format("[MatchService] MS_06 Match End (%d s). Determining Match MVP...", matchEndDuration))
+			if currentMode == "AgawanNgPanyo" then
+				local finalRankings = {}
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					table.insert(finalRankings, {
+						player = player, possessionTime = panyoTotalTime[player] or 0,
+						steals = panyoTotalSteals[player] or 0, points = matchPoints[player] or 0,
+					})
+				end
+				table.sort(finalRankings, function(a, b)
+					if a.possessionTime ~= b.possessionTime then return a.possessionTime > b.possessionTime end
+					if a.steals ~= b.steals then return a.steals > b.steals end
+					if a.points ~= b.points then return a.points > b.points end
+					return a.player.UserId < b.player.UserId
+				end)
+				local entries = {}
+				local rank = 0
+				for index, entry in ipairs(finalRankings) do
+					if index == 1 or entry.possessionTime ~= finalRankings[index - 1].possessionTime
+						or entry.steals ~= finalRankings[index - 1].steals
+						or entry.points ~= finalRankings[index - 1].points then
+						rank = index
+					end
+					table.insert(entries, {
+						rank = rank, isMVP = rank == 1 and entry.possessionTime > 0, name = entry.player.DisplayName,
+						userId = entry.player.UserId, possessionTime = entry.possessionTime,
+						possessionPoints = math.floor(entry.possessionTime + 0.000001),
+						steals = entry.steals, points = entry.points,
+					})
+				end
+				local podiumWait = if IS_STUDIO then 5 else matchEndDuration
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					MatchRecapEvent:FireClient(player, { mode = currentMode, entries = entries, nextIn = podiumWait })
+				end
+				waitPhase(podiumWait)
+			else
 
 			local finalRankings: { { player: Instance, points: number, totalTaya: number } } = {}
 			for _, p in ipairs(getParticipants()) do
@@ -1056,6 +1284,7 @@ local function runMatch()
 		})
 
 		waitPhase(podiumWait)
+			end
 		end
 		print("[MatchService] Returning to lobby.")
 	end

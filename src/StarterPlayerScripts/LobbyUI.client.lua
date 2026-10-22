@@ -4,6 +4,7 @@
 -- Responsibility: Lobby, queue, loading screen, and settings presentation.
 -- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
 -- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
+-- Task/spec: owner-approved first-person FOV setting and in-match settings, 2026-10-22.
 --[[
 	HABULAN RUSH - Lobby UI
 	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
@@ -367,6 +368,7 @@ end
 
 local gui = create("ScreenGui", {
 	Name = "LobbyUI",
+	Enabled = false,
 	ResetOnSpawn = false,
 	IgnoreGuiInset = true,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -1440,7 +1442,7 @@ do
 
 	local settingsRows: { [string]: any } = {}
 	local rowCards: { [string]: Instance } = {}
-	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "reducedCamera", "invertCameraY", "showPopups", "momentumBar", "momentumSounds" }
+	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "firstPersonFov", "reducedCamera", "invertCameraY", "showPopups", "momentumBar", "momentumSounds" }
 	c.CanvasSize = UDim2.fromOffset(0, #rowOrder * 84 + 112)
 	local rowTitles: { [string]: string } = {
 		master = "Master Volume",
@@ -1448,6 +1450,7 @@ do
 		sfx = "SFX Volume",
 		vfx = "VFX Intensity",
 		cameraSensitivity = "Camera Look Speed",
+		firstPersonFov = "First-Person FOV",
 		reducedCamera = "Reduce Motion",
 		invertCameraY = "Invert Camera Y",
 		showPopups = "Show Popups",
@@ -1462,12 +1465,20 @@ do
 		momentumSounds = true,
 	}
 
-	local function valueFromX(track: Frame, x: number): number
+	local function sliderBounds(key: string): (number, number)
+		if key == "firstPersonFov" then
+			return SharedConfig.Settings.FirstPersonFovMin, SharedConfig.Settings.FirstPersonFovMax
+		end
+		return 0, 100
+	end
+
+	local function valueFromX(key: string, track: Frame, x: number): number
 		local size = track.AbsoluteSize.X
 		if size <= 0 then
-			return 0
+			return ClientSettings.get(key) :: number
 		end
-		return math.clamp((x - track.AbsolutePosition.X) / size * 100, 0, 100)
+		local minValue, maxValue = sliderBounds(key)
+		return minValue + math.clamp((x - track.AbsolutePosition.X) / size, 0, 1) * (maxValue - minValue)
 	end
 
 	local function refreshSlider(key: string)
@@ -1484,9 +1495,11 @@ do
 		local fillFrame: Frame = row.fill
 		local knobFrame: Frame = row.knob
 		local valueLabel: TextLabel = row.value
-		fillFrame.Size = UDim2.fromScale(v / 100, 1)
-		knobFrame.Position = UDim2.fromScale(v / 100, 0.5)
-		valueLabel.Text = tostring(math.floor(v + 0.5))
+		local minValue, maxValue = sliderBounds(key)
+		local fraction = (v - minValue) / (maxValue - minValue)
+		fillFrame.Size = UDim2.fromScale(fraction, 1)
+		knobFrame.Position = UDim2.fromScale(fraction, 0.5)
+		valueLabel.Text = tostring(math.floor(v + 0.5)) .. (if key == "firstPersonFov" then "°" else "")
 	end
 
 	local function refreshToggle(key: string)
@@ -1511,6 +1524,7 @@ do
 	end
 
 	local dragKey: string? = nil
+	local dragInput: InputObject? = nil
 	local dragTracks: { [string]: Frame } = {}
 
 	local function createSliderRow(index: number, key: string)
@@ -1563,16 +1577,8 @@ do
 			if input.UserInputType == Enum.UserInputType.MouseButton1
 				or input.UserInputType == Enum.UserInputType.Touch then
 				dragKey = key
-				ClientSettings.set(key, valueFromX(track, input.Position.X))
-			end
-		end)
-		hit.InputEnded:Connect(function(input: InputObject)
-			if input.UserInputType == Enum.UserInputType.MouseButton1
-				or input.UserInputType == Enum.UserInputType.Touch then
-				if dragKey == key then
-					dragKey = nil
-					UIAudio.playUi("sliderEnd")
-				end
+				dragInput = input
+				ClientSettings.set(key, valueFromX(key, track, input.Position.X))
 			end
 		end)
 		settingsRows[key] = { fill = fill, knob = knob, value = valueLabel }
@@ -1630,11 +1636,11 @@ do
 	end
 
 	-- Camera and reduced-camera toggle rows (camera look, reduced effects).
-	createToggleRow(6, "reducedCamera", "No FOV kicks, shake, or aim camera.")
-	createToggleRow(7, "invertCameraY", "Push up to look down.")
-	createToggleRow(8, "showPopups", "Show momentum action text near your character.")
-	createToggleRow(9, "momentumBar", "Show the bottom-center momentum meter.")
-	createToggleRow(10, "momentumSounds", "Play momentum cues at your SFX volume.")
+	createToggleRow(7, "reducedCamera", "No FOV kicks, shake, or aim camera.")
+	createToggleRow(8, "invertCameraY", "Push up to look down.")
+	createToggleRow(9, "showPopups", "Show momentum action text near your character.")
+	createToggleRow(10, "momentumBar", "Show the bottom-center momentum meter.")
+	createToggleRow(11, "momentumSounds", "Play momentum cues at your SFX volume.")
 
 	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, #rowOrder * 84 + 8, 464, 56, function()
 		UIAudio.playUi("click")
@@ -1716,12 +1722,20 @@ do
 		if dragKey == nil then
 			return
 		end
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch then
+		if (input.UserInputType == Enum.UserInputType.MouseMovement
+			and dragInput ~= nil and dragInput.UserInputType == Enum.UserInputType.MouseButton1)
+			or input == dragInput then
 			local track = dragTracks[dragKey]
 			if track then
-				ClientSettings.set(dragKey, valueFromX(track, input.Position.X))
+				ClientSettings.set(dragKey, valueFromX(dragKey, track, input.Position.X))
 			end
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if input == dragInput then
+			dragKey = nil
+			dragInput = nil
+			UIAudio.playUi("sliderEnd")
 		end
 	end)
 
@@ -1756,7 +1770,8 @@ do
 			else
 				local v = ClientSettings.get(key)
 				if typeof(v) == "number" then
-					ClientSettings.set(key, v + dir * settingsStep)
+					local step = if key == "firstPersonFov" then SharedConfig.Settings.FirstPersonFovStep else settingsStep
+					ClientSettings.set(key, v + dir * step)
 				end
 			end
 		end
@@ -2398,8 +2413,7 @@ setupLobbyCamera()
 
 --------------------------------------------------------------------------
 -- MATCH INTEGRATION (lobby <-> match gate)
--- Lobby UI + lobby camera exist only while NOT in a match (HRushInMatch).
--- The in-match HUD (HRushHUD from UIController) hides itself; we don't touch it.
+-- Keep only the settings panel available during a match; lobby controls stay hidden.
 --------------------------------------------------------------------------
 local function setControlsEnabled(enabled)
 	task.spawn(function()
@@ -2422,7 +2436,19 @@ end
 local function applyMatchGate()
 	local inMatch = player:GetAttribute("HRushInMatch") == true
 
-	gui.Enabled = not inMatch
+	for _, group in groups do
+		group.Frame.Visible = not inMatch
+	end
+	pickerHolder.Visible = false
+	for _, panel in pairs(panels) do
+		panel.Token += 1
+		panel.Holder.Visible = false
+	end
+	currentPanel = nil
+	overlayToken += 1
+	overlay.Visible = false
+	gui.DisplayOrder = if inMatch then 60 else 5
+	gui.Enabled = true
 
 	pcall(function()
 		RunService:UnbindFromRenderStep("HabulanLobbyCamera")

@@ -7,13 +7,14 @@
 -- Refs: Settings screen task (UI/UX Spec section 7, T33 accessibility);
 -- camera overhaul Phase 4 (view mode key).
 -- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
+-- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local S = Config.Settings
 
-export type SettingKey = "master" | "music" | "sfx" | "vfx" | "reducedCamera" | "showPopups" | "momentumBar" | "momentumSounds" | "cameraSensitivity" | "invertCameraY" | "cameraEffectsIntensity" | "lookBackEnabled" | "chaserIndicatorEnabled" | "cameraViewMode"
+export type SettingKey = "master" | "music" | "sfx" | "vfx" | "reducedCamera" | "showPopups" | "momentumBar" | "momentumSounds" | "cameraSensitivity" | "firstPersonFov" | "invertCameraY" | "cameraEffectsIntensity" | "lookBackEnabled" | "chaserIndicatorEnabled" | "cameraViewMode"
 
 type NumberSpec = {
 	kind: string,
@@ -45,6 +46,7 @@ local SPECS: { [SettingKey]: SettingSpec } = {
 	momentumBar = { kind = "boolean", default = S.MomentumBarDefault },
 	momentumSounds = { kind = "boolean", default = S.MomentumSoundsDefault },
 	cameraSensitivity = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.CameraSensitivityDefault },
+	firstPersonFov = { kind = "number", min = S.FirstPersonFovMin, max = S.FirstPersonFovMax, step = S.FirstPersonFovStep, default = Config.Camera.FirstPerson.BaseFov },
 	invertCameraY = { kind = "boolean", default = S.InvertCameraYDefault },
 	cameraEffectsIntensity = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.CameraEffectsDefault },
 	lookBackEnabled = { kind = "boolean", default = S.LookBackDefault },

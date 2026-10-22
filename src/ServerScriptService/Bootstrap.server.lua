@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: build the playable arena so the place never loads empty.
 -- Task/spec: T08 arena bootstrap and T09 movement Step 1 Config migration.
+-- Task/spec: Agawan ng Panyo Kalsada pickup marker, approved 2026-10-23.
 --   Street baseplate (150x150), boundary walls, sidewalks, central basketball
 --   court, sari-sari store cover blocks, 4 vault-height jeepneys (roof <= 4),
 --   4 crate vaults, 2 low gaps for sliding, 8 equidistant spawns (r = 55),
@@ -311,6 +312,11 @@ local function buildGreybox()
 	buildWalls()
 	buildSidewalks()
 	buildCourt()
+	local panyoMarker = part("PanyoSpawn", Vector3.new(1, 1, 1), CFrame.new(0, 3, 0), Color3.new(1, 1, 1))
+	panyoMarker.Transparency = 1
+	panyoMarker.CanCollide = false
+	panyoMarker.CanTouch = false
+	panyoMarker.CanQuery = false
 	buildBuildings()
 	buildJeepneys()
 	buildCrates()

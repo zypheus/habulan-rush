@@ -3,9 +3,9 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: momentum-steps-2-4
-updated: 2026-10-22
-source: 2026-10-19 owner-pasted momentum task
+task: agawan-ng-panyo-all-phases
+updated: 2026-10-23
+source: 2026-10-23 owner-approved Agawan ng Panyo plan
 related:
   - ../AGENTS.md
   - ../docs/MOVEMENT_AUDIT.md
@@ -19,6 +19,12 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-23: Implemented the owner-approved mobile STEAL button refresh and persistent Carrier highlight and trail in source. The touch button now rechecks its actual visibility every 0.1 seconds, while the Carrier has a gold outline and movement trail with stronger timed reveals. Syntax, notes, diff whitespace, and Rojo build passed; fresh-build owner Studio acceptance remains pending; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
+- 2026-10-23: Phase 3 source review found and fixed an invalid-round scoring path: when a competitive Panyo round fell below two players, it awarded no match points but still added hold time and steals to final MVP totals. Only valid rounds now contribute to those totals. A fresh Rojo build and owner Studio matrix remain the acceptance steps; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
+- 2026-10-23: The project owner approved all Agawan ng Panyo phases. Repository source now includes the enabled mode vote, Kalsada-only Panyo round, server-observed pickup and steal, Carrier recovery, possession scoring, timed events, HUD, recaps, and original local cue files. Source checks and Rojo build pass. Owner Studio, mobile, and gamepad validation plus cue upload remain; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
+- 2026-10-23: Implemented the approved Agawan ng Panyo Phase 1 mode-selection foundation. Classic Tag is the sole enabled mode, so it is selected immediately and the existing map vote, MS_RPS, and three-round flow remain active. `MatchService` now publishes `HRushGameMode`, and a validated mode ballot plus `ModeVoteUI` are mapped for use after Panyo gameplay is built. The ballot is dormant while only Classic is enabled. Owner Studio regression remains pending; see [Phase 1 handoff](playtests/2026-10-23-panyo-phase1-handoff.md).
+- 2026-10-22: Implemented the owner-approved first-person FOV setting, then reduced its upper limit to 95 degrees at owner request. The 50–95 degree, 1-degree slider defaults to the existing 72-degree base and applies locally with the existing FOV catch-up; first-person effects are also capped at 95 degrees. The settings panel can open over the match HUD while lobby controls stay hidden. Owner Studio and device checks remain pending. See [first-person FOV handoff](playtests/2026-10-22-first-person-fov-handoff.md).
+- 2026-10-22: Replaced the server-played third-person tag animation with owner-supplied `rbxassetid://132133679924288`, superseding `139144393566205`. The first-person animation and tag logic are unchanged. Source syntax, notes, and Rojo build passed; arm-only blending and two-player playback await owner Studio testing.
 - 2026-10-22: The owner-approved wind dash VFX replacement is implemented in repository source. `WindDash` creates one Beam, three Trails, and two one-shot emitters with a 0.35-second cleanup; the old inline ribbon and sparkle are removed. Accepted live dashes broadcast a cosmetic observer event. Dash movement, input, and the unrelated in-progress EquipmentGlide edits are preserved. Syntax and Rojo build passed. The owner will perform final visual, two-player, wall-stop, mobile, and gamepad validation. See [wind dash handoff](playtests/2026-10-22-wind-dash-handoff.md).
 - 2026-10-19: The owner subsequently requested a local build of the slide chaining fix. Rojo built `HabulanRush.rbxlx` successfully (708545 bytes). The new source is in the generated place; it has not been published or tested in a live Studio round.
 - 2026-10-19: Fixed the generated-place slide momentum path in source. `MovementAuthority` had required a Runner `Sprint` ledger state and applied the old slide speed threshold to the entire slide; the client allowed a moving slide and predicted a gain. Rejected requests had no confirmed gain for `MomentumHUD` to show. The server now accepts moving grounded slides regardless of sprint ledger state, while a shared 80% role-sprint entry-speed rule gates only momentum. The client sends its pre-burst eligibility as a veto; the server independently checks observed speed. Slow slides still run and correct prediction without a popup. `Config.Movement.SlideCooldown` is 1.25 seconds from entry, `Config.Momentum.ChainWindow` is 2.5 seconds, and `DiminishWindow` stays 2.0. Debug traces are gated by `Config.Momentum.Debug = false`. Source syntax passed; no new Rojo build, publish, or live Studio validation was run per owner instruction. See [slide chaining handoff](playtests/2026-10-19-slide-chaining-handoff.md).
@@ -69,6 +75,11 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Added a Panyo touch-button recovery check and persistent client-only Carrier highlight and trail. The server-owned steal rules and Classic tag path remain unchanged.
+- Implemented the approved Agawan ng Panyo gameplay, event, UI, scoring, and audio source phases. Panyo is enabled in the ballot and restricted to the playable Kalsada map. Classic Tag retains its existing match branch.
+- Agawan ng Panyo Phase 1 mode selection foundation: mapped the dormant multi-mode ballot and UI, published match mode to participants, and kept Classic as the only enabled mode. No asset was added.
+- Added a live, memory-only first-person FOV slider with a 95-degree upper limit and in-match settings access; retained third-person FOV behavior and reset-to-defaults support.
+- Wired the owner-supplied replacement third-person tag animation ID, logged the new asset and superseded ID, refreshed the tag handoff, and rebuilt the place.
 - Ported the approved wind dash preview into source-owned `WindDash` and `[SD]` Config values; mapped `DashVFXEvent`, replaced the local legacy VFX, added server-accepted observer playback, and logged the three approved imported textures.
 - Slide chaining source fix and tuning: shared slide eligibility, slow-slide no-gain correction, 1.25-second entry cooldown, 2.5-second chain window, gated debug traces, and pure rule assertions. No new asset was added.
 - Momentum steps 1 to 4 source implementation is complete. Server sends value snapshots only to the owner and replicates `MomentumTier` on character models; all HUD, audio, and FOV effects are local.
@@ -151,6 +162,10 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner: in the fresh Rojo place, use two mobile clients to repeat A to B to A steals. After A loses possession, confirm STEAL reappears, the 2-second return block still rejects early attempts, and a valid later tag transfers possession once. Check PC and R2, the Carrier highlight and trail in third person, own first-person HUD without world effects, VFX 0 and 100, cleanup on death/drop/round end, and one Classic match.
+- Project owner: run the [Agawan ng Panyo full-mode checklist](playtests/2026-10-23-panyo-full-mode-handoff.md) in a fresh build with 1, 2, 4, and 8 clients. Check Classic regression, pickup and steal timing, recovery, scoring, recaps, events, and device controls. Include the invalid-round MVP case from the Phase 3 source review. Send the first failing case with client count, steps, server time, affected player, and `HRushPanyo*` attributes. Upload the five original cue WAV files through the project account and enter approved IDs in `Config.Panyo.Sounds` before expecting Panyo-specific audio.
+- Project owner: run the [first-person FOV handoff checklist](playtests/2026-10-22-first-person-fov-handoff.md) with two Studio clients, including 50/72/95 degrees, live changes, reset, match access, switching views, and mobile/gamepad controls.
+- Project owner: open the rebuilt `HabulanRush.rbxlx` with two clients and tag while walking and sprinting. Confirm `132133679924288` moves the arm, keeps the legs walking or sprinting, and is visible to the other client. Report any lower-body motion or replication issue.
 - Project owner: run the [wind dash handoff checklist](playtests/2026-10-22-wind-dash-handoff.md) in the newly built place. Review burst, ribbon thickness and direction, fade, one effect per dash, observer playback, wall stops, respawn, VFX settings at 0/50/100, and mobile/gamepad input. Report any visual adjustment needed before release.
 - Momentum: open the newly built `HabulanRush.rbxlx` and run the [slide chaining checklist](playtests/2026-10-19-slide-chaining-handoff.md) with at least two clients, plus gamepad and mobile. Then run the broader [steps 2-4 checklist](playtests/2026-10-19-momentum-steps-2-4-handoff.md). Keep the 30 studs/s ceiling and other momentum values provisional until chase results are reviewed. Confirm the three supplied sounds are competition-safe before release.
 - Project owner: review the MS_RPS doc lines, open the rebuilt `HabulanRush.rbxlx`, then run the [1, 2, and 8 player Studio cases](playtests/2026-10-18-rps-handoff.md), including the 3-second Studio pick feel, remote abuse, gamepad, mobile, and disconnect behavior. Supply approved reveal and result sound IDs if audio is wanted.
@@ -188,8 +203,11 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Blockers
 
+- The owner-reported mobile STEAL disappearance and new Carrier effects need a fresh-build Studio check. Source inspection cannot prove the ContextActionService button lifecycle or visual clarity on mobile.
+- Agawan ng Panyo is built from source but has no owner Studio, mobile, or gamepad validation yet. The five original WAV cues need owner upload and approved Roblox IDs; their runtime IDs are blank, so Panyo-specific cues are silent. Kalsada is the only playable Panyo map.
+- The replacement third-person tag animation has not been loaded or visually checked in Studio. Its arm-only blend, availability, and two-player replication remain pending owner validation; provenance confirmation remains pending before release.
 - Wind dash final acceptance remains with the project owner: close and gameplay views, wall-stop and interruption cleanup, repeated-dash residue, mobile touch, and full gamepad feel. No release or publish has occurred for this item.
-- The slide chaining fix is in the newly built `HabulanRush.rbxlx`, but live slide, popup, chain, two-player, mobile, and gamepad checks remain pending. Momentum steps 1 to 4 also await pure and client Command Bar assertions, two-player chase, perfect-roll receipt timing, cap, FOV, layout, and sound playback. Set presentation toggles in the lobby because the existing settings panel is hidden during a match.
+- The slide chaining fix is in the newly built `HabulanRush.rbxlx`, but live slide, popup, chain, two-player, mobile, and gamepad checks remain pending. Momentum steps 1 to 4 also await pure and client Command Bar assertions, two-player chase, perfect-roll receipt timing, cap, FOV, layout, and sound playback. In-match settings access now awaits owner validation.
 - MS_RPS gameplay, two-player, gamepad, and mobile validation are pending after a successful Rojo build. `RevealSoundId` and `ResultSoundId` are empty placeholders. The GDD, System Spec, production tracker, and DESIGN_LOCK revisions need owner sign-off.
 - The animation regression repair has no Studio validation yet by owner request. Existing movement animation playback, first-person arm visibility and cleanup, and third-person tag replication are pending project-owner testing.
 - Simple click tagging and both supplied animations have no Studio validation yet by owner request. Two-player replication, first-person isolation, gamepad, and mobile behavior are pending project-owner testing.
@@ -202,7 +220,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 - Camera Phase 3 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
 - Camera Phase 2 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
 - Camera Phase 1 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
-- Pre-existing: the in-match HUD gear opens a settings panel that cannot render in match, so mid-match settings changes do nothing. Phase 1 documents this and does not change the in-match settings flow.
+- The first-person FOV slider and in-match settings panel have not been visually tested. Owner validation must confirm match access, no visible lobby controls, live FOV changes, and mouse, touch, and gamepad input.
 - Part 2 implementation and solo Studio fixture evidence are complete, but required two-player, mobile, and gamepad validation remains pending.
 - Manual 2-player Studio validation is still required for gameplay work.
 - Published Batch A and B animations are logged as original project-owned assets. Unrelated audio and run-style catalog IDs still need their own release eligibility review.
@@ -222,7 +240,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 5. Keep Coins, Gems, and Shop presentation unchanged for now. Do not add purchases or Robux transactions.
 6. The project has one human maintainer. Duplicate source removal is approved after diff review and canonical ownership assignment.
 7. Codex is the primary coding agent. Keep live state in this Obsidian-visible note; use other agents only when explicitly approved.
-8. Roblox Studio MCP may support all features, inspection, automation, and tests. Repository source remains canonical.
+8. Current AGENTS.md limits Studio MCP to read-only inspection when explicitly requested. Studio testing and validation belong to the project owner. Repository source remains canonical.
 9. Slide grants no invulnerability. It lowers the vertical collision and target profile for low gaps. Touch tag remains valid, and pounce uses the reduced slide profile when authoritative hit validation is implemented.
 10. Persist settings later in a dedicated versioned server DataStore with clamped values, `UpdateAsync`, retry/backoff, session caching, leave saves, and shutdown saves. Do this after core authority work.
 11. Movement upgrade Steps 0 and 1 are approved. Step 2 is not approved yet.
@@ -250,9 +268,17 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 33. The owner-supplied `rbxassetid://74829353930740` (`HRush_ExaggeratedSprint`) replaces the Batch A sprint ID in `Config.Animations.Sprint`. Studio metadata probe: 0.6 s, Movement priority, looped, 48 keyframes. The previous ID `132688446420207` is superseded.
 34. The owner-supplied `rbxassetid://74307357863566`, `rbxassetid://84863749801510`, `rbxassetid://88319270506819`, and `rbxassetid://104821646839230` replace the Batch A JumpStart, Fall, Land, and LandHard IDs in `Config.Animations`. The previous IDs `115591963738630`, `106234834891508`, `83446879560399`, and `93067099789487` are superseded. The new rows are logged Approved at owner direction; no Studio metadata probe was run.
 35. For the MS_RPS item, remove MS_02 from the live match loop. Keep the old draft UI and Config value dormant until a separate cleanup is approved. MS_RPS runs before MS_03 each round.
+36. Agawan ng Panyo planning scope and Phase 1 were approved. The later owner instruction approved implementation through all phases and enabled the Panyo ballot choice.
 
 ## Validation
 
+- 2026-10-23 Panyo mobile STEAL and Carrier feedback: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio execution or gameplay test was run by the agent.
+- 2026-10-23 Agawan ng Panyo Phase 3 source review: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed after the invalid-round MVP total fix. The defect was reproduced by source path review, not by a Studio playtest. The owner-run 1, 2, 4, and 8-client matrix and Classic regression are pending.
+- 2026-10-23 Agawan ng Panyo full mode: Luau source syntax, notes, `git diff --check`, and Rojo build passed. No Studio execution, gameplay test, mobile test, or gamepad test was run by the agent. Original cue WAV files were generated locally but cannot play in Roblox until owner upload and ID entry.
+- 2026-10-23 Agawan ng Panyo Phase 1: source syntax, notes, `git diff --check`, and Rojo build passed. No Studio execution or playtest was run by the agent; owner Classic regression remains pending. The two-choice ballot is dormant until Phase 2 enables Panyo.
+- 2026-10-22 first-person FOV 95-degree limit: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio test was run; owner should confirm the slider and final first-person camera stop at 95 degrees.
+- 2026-10-22 first-person FOV setting: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, and Rojo build passed. Settings range, in-match panel visibility, device input, and two-player behavior still require owner Studio testing; no Studio execution was run by the agent.
+- 2026-10-22 third-person tag animation replacement: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, and Rojo build passed. No Studio execution or playtest was run; animation metadata, arm-only blending, and two-player visibility are unverified.
 - 2026-10-22 wind dash: syntax, notes, and `git diff --check` passed; Rojo rebuilt `HabulanRush.rbxlx` after the final source patch and mapped `WindDash` plus `DashVFXEvent`. An earlier two-client Studio run observed one local and one remote rig from an accepted dash, sideways alignment, automatic cleanup, a gamepad ButtonB observer rig, and VFX scales at 0/50/100. A later direct module probe verified death and respawn cleanup. These are implementation checks; the owner has reserved final visual and device validation.
 - 2026-10-19 slide chaining local build: owner-requested `rojo build default.project.json -o HabulanRush.rbxlx` passed and generated a 708545-byte place. No publish or Studio gameplay run was performed.
 - 2026-10-19 slide chaining: source syntax passed. Pure Studio assertions were updated but have not been run; two-player, mobile, and gamepad gameplay remain pending. No Rojo build or publish was run per owner instruction.

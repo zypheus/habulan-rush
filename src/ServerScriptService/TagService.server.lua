@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: validate click tag requests, select a target, and replicate third-person tag animation.
 -- Task/spec: simple click tagging with perspective-specific animations, approved 2026-10-18.
+-- Task/spec: Agawan ng Panyo server-validated steals, approved 2026-10-23.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +11,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local PanyoMode = require(ServerScriptService:WaitForChild("PanyoMode"))
 local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
 local RequestTag = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RequestTag") :: RemoteEvent
 local commitInstance = ServerScriptService:WaitForChild("HRUSH_CommitTag", 10)
@@ -87,9 +89,10 @@ local function playThirdPersonAnimation(player: Player, character: Model, humano
 end
 
 local function canAttempt(player: Player): (boolean, Model?, Humanoid?, BasePart?)
+	local isPanyo = player:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
 	if player:GetAttribute("HRushInMatch") ~= true
 		or player:GetAttribute("HRushState") ~= "MS_04"
-		or player:GetAttribute("HRushRole") ~= "Taya"
+		or (if isPanyo then not PanyoMode.CanAttemptSteal(player) else player:GetAttribute("HRushRole") ~= "Taya")
 		or player:GetAttribute("HRushStunned") == true
 		or player:GetAttribute("HRushAbilityBusy") == true
 	then
@@ -121,9 +124,15 @@ local function validTarget(
 		return false, math.huge
 	end
 	local now = Workspace:GetServerTimeNow()
-	local safeUntil = target:GetAttribute("HRushTagSafeUntil")
-	if typeof(safeUntil) == "number" and safeUntil > now then
-		return false, math.huge
+	if target:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then
+		if target ~= PanyoMode.GetCarrier() or not PanyoMode.CanBeStolen(target) then
+			return false, math.huge
+		end
+	else
+		local safeUntil = target:GetAttribute("HRushTagSafeUntil")
+		if typeof(safeUntil) == "number" and safeUntil > now then
+			return false, math.huge
+		end
 	end
 	local immuneUntil = target:GetAttribute("HRushTagActionImmuneUntil")
 	if typeof(immuneUntil) == "number" and immuneUntil > now then

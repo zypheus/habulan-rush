@@ -726,3 +726,13 @@ Found by project-owner testing right after the Phase 4 report: after entering fi
 - `scripts/check-notes.ps1` passed on 2026-10-18.
 - Rojo build passed on 2026-10-18 and regenerated `HabulanRush.rbxlx`.
 - Studio repro pending: enter first person, pounce or vault once, return to third person, and confirm the body turns toward movement again and `Humanoid.AutoRotate` reads true.
+
+---
+
+## First-person FOV setting and match access (2026-10-22)
+
+The owner-approved `firstPersonFov` slider supersedes the earlier fixed first-person base FOV and in-match settings-panel limitation described above. It keeps the existing 72-degree default, offers 50 to 120 degrees in 1-degree steps, and remains local to the current session. `CameraDirector` uses it only in first person, preserves the movement and momentum additions and FOV catch-up, and caps the final first-person target at the camera's 120-degree limit.
+
+`LobbyUI` now keeps its settings panel available above the match HUD while hiding lobby controls and other panels during matches. The H key, ButtonSelect, and HUD gear can open it; Reset to Defaults restores 72 degrees. Syntax and Rojo build passed. Live UI, camera, mobile, gamepad, and two-player validation remain with the project owner.
+
+Owner revision on 2026-10-22: the slider maximum and final first-person FOV cap are now 95 degrees. The earlier 120-degree limit in this section is superseded; the 50-degree minimum and 72-degree default are unchanged.

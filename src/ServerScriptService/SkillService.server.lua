@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: validate skill casts (RequestSkill), keep the server-side
 -- Task/spec: simple click-to-tag integration, approved 2026-10-18.
+-- Task/spec: Agawan ng Panyo compatible skill gate, approved 2026-10-23.
 --                 cooldown ledger, then split the reply: SkillApproved goes
 --                 ONLY to the requesting player, SkillVFX goes to ALL players
 --                 for visuals. Denies are silent.
@@ -397,6 +398,14 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, di
 	if sk == nil then
 		deny(player, skillId, "unknown skill")
 		return
+	end
+	if player:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then
+		local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
+		if player:GetAttribute("HRushInMatch") ~= true or skillId ~= "RS_01"
+			or (typeof(carrierId) == "number" and carrierId == player.UserId) then
+			deny(player, skillId, "unavailable in Panyo")
+			return
+		end
 	end
 
 	-- Role gate: only enforced while the debug flag is off. The server cannot

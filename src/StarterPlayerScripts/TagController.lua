@@ -3,6 +3,8 @@
 -- Owner: Project Owner
 -- Responsibility: click, R2, and touch tag input plus isolated first-person animation playback.
 -- Task/spec: repair the character animation conflict in simple click tagging, approved 2026-10-18.
+-- Task/spec: Agawan ng Panyo steal input, approved 2026-10-23.
+-- Task/spec: Panyo mobile STEAL button recovery, approved 2026-10-23.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -37,11 +39,16 @@ local viewModelArms: { BasePart } = {}
 local hiddenCharacterArms: { [BasePart]: number } = {}
 local firstPersonPlaying = false
 local playGeneration = 0
+local touchRefreshElapsed = 0
+local lastTouchButton: Instance? = nil
+local lastTouchTitle = ""
 
 local function canTag(): boolean
+	local isPanyo = localPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
+	local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
 	return localPlayer:GetAttribute("HRushInMatch") == true
 		and localPlayer:GetAttribute("HRushState") == "MS_04"
-		and localPlayer:GetAttribute("HRushRole") == "Taya"
+		and (if isPanyo then typeof(carrierId) == "number" and carrierId ~= localPlayer.UserId else localPlayer:GetAttribute("HRushRole") == "Taya")
 		and localPlayer:GetAttribute("HRushStunned") ~= true
 		and localPlayer:GetAttribute("HRushAbilityBusy") ~= true
 end
@@ -201,8 +208,17 @@ end
 
 local function updateTouchButton()
 	local button = ContextActionService:GetButton(ACTION)
-	if button ~= nil then
-		button.Visible = canTag()
+	if button == nil then
+		lastTouchButton = nil
+		return
+	end
+	local visible = canTag()
+	if button.Visible ~= visible then button.Visible = visible end
+	local title = if localPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then "STEAL" else "TAG"
+	if button ~= lastTouchButton or title ~= lastTouchTitle then
+		ContextActionService:SetTitle(ACTION, title)
+		lastTouchButton = button
+		lastTouchTitle = title
 	end
 end
 
@@ -220,7 +236,12 @@ function TagController.start()
 	end
 	localPlayer.CharacterAdded:Connect(buildViewModel)
 
-	RunService.RenderStepped:Connect(function()
+	RunService.RenderStepped:Connect(function(dt)
+		touchRefreshElapsed += dt
+		if touchRefreshElapsed >= 0.1 then
+			touchRefreshElapsed = 0
+			if UserInputService.TouchEnabled then updateTouchButton() end
+		end
 		if not firstPersonPlaying then
 			return
 		end
@@ -255,9 +276,10 @@ function TagController.start()
 	ContextActionService:SetTitle(ACTION, "TAG")
 	ContextActionService:SetPosition(ACTION, UDim2.fromScale(0.84, 0.72))
 
-	for _, attribute in { "HRushInMatch", "HRushState", "HRushRole", "HRushStunned", "HRushAbilityBusy" } do
+	for _, attribute in { "HRushInMatch", "HRushState", "HRushRole", "HRushGameMode", "HRushStunned", "HRushAbilityBusy" } do
 		localPlayer:GetAttributeChangedSignal(attribute):Connect(updateTouchButton)
 	end
+	ReplicatedStorage:GetAttributeChangedSignal("HRushPanyoCarrierUserId"):Connect(updateTouchButton)
 	task.defer(updateTouchButton)
 end
 

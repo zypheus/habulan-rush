@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: Agawan ng Panyo compatible skill presentation, approved 2026-10-23.
 -- StarterPlayerScripts/MovementController.client.lua
 -- Owner: Project Owner
 -- Responsibility: client input, predicted movement, animation, and presentation.
@@ -396,12 +397,17 @@ end
 -- but is skipped while Config.Debug.AllowAnyRoleForSkills is on, so any role
 -- can test skills; flip the flag off to restore the Runner-only rule.
 local function grantedSkillId(): string
+	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then
+		local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
+		if carrierId == LocalPlayer.UserId then return "" end
+	end
 	if role ~= "Runner" and not Config.Debug.AllowAnyRoleForSkills then
 		return ""
 	end
 	for _, id in Config.Skills.testGrant do
 		local sk = Config.Skills[id]
-		if sk and (Config.Debug.AllowAnyRoleForSkills or sk.role == role) then
+		if sk and (Config.Debug.AllowAnyRoleForSkills or sk.role == role)
+			and (LocalPlayer:GetAttribute("HRushGameMode") ~= "AgawanNgPanyo" or id == "RS_01") then
 			return id
 		end
 	end
@@ -411,6 +417,7 @@ end
 -- RS_03 grant for the UI slot: same TEMP list and role gate as above, but
 -- for Tsinelas Throw specifically (grantedSkillId returns the first grant).
 local function grantedTsinelas(): string
+	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then return "" end
 	if role ~= "Runner" and not Config.Debug.AllowAnyRoleForSkills then
 		return ""
 	end
@@ -1979,6 +1986,7 @@ end
 -- Same gates as the cast: aiming is only entered and only fires while a
 -- throw right now would be valid.
 local function tsinelasCanCast(): boolean
+	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then return false end
 	if not roundLive or inputLocked then
 		return false
 	end
@@ -2469,6 +2477,10 @@ local function launchSkill()
 end
 
 local function requestSkill()
+	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
+		and ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId") == LocalPlayer.UserId then
+		return
+	end
 	if not roundLive or inputLocked then
 		return -- round gate (countdown, lobby, round end)
 	end
