@@ -19,6 +19,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Run styles | `src/ReplicatedStorage/Cosmetics/RunStyles.lua` | Replicated cosmetic definitions | Project Owner |
 | Remotes | `default.project.json`, `ReplicatedStorage.Remotes` | Client/server API instances; server validates client requests | Project Owner |
 | MomentumUpdate remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-to-owner momentum snapshots and accepted action gains | Project Owner |
+| DashVFXEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-accepted dash cosmetic broadcast; clients make no gameplay decision | Project Owner |
 | RPS remotes | `default.project.json`, `ReplicatedStorage.Remotes` | StageStart, Reveal, Result server presentation and validated SubmitSign request | Project Owner |
 
 ## Server

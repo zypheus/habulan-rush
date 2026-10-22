@@ -7,6 +7,7 @@
 -- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
 -- Task/spec: momentum slice 1, server authority and shared tuning, 2026-10-19.
 -- Task/spec: slide chaining tuning and entry speed, 2026-10-19.
+-- Task/spec: source-owned wind dash VFX, approved 2026-10-22.
 
 local Config = {}
 
@@ -79,6 +80,21 @@ Config.Movement = {
 	VaultGeometryTolerance = 0.10, -- [SD] Part 2 contact-settling tolerance for height, depth, and drop rays
 	VaultGroundProbeDepth = 20.0, -- [SD] Part 2 ground-below ray depth for airborne absolute-cap checks
 	VaultCollisionBoxScale = 0.75, -- [SD] Part 2 root blockcast scale during the scripted arc
+	EquipmentGlideMinGroundClearance = 8.0, -- [SD] kite bridge clearance below feet for airborne entry
+	EquipmentGlideGroundProbeDepth = 100.0, -- [SD] kite bridge downward clearance probe
+	EquipmentGlideCeilingPadding = 2.0, -- [SD] extra launch headroom above the requested rise
+	EquipmentGlideCollisionSkin = 0.05, -- [SD] stop short of solid contact during server motion
+	EquipmentGlideLandingTolerance = 0.2, -- [SD] feet-to-floor contact accepted as a landing
+	EquipmentGlideMaxDuration = 5.0, -- [SD] maximum accepted glide seconds per request
+	EquipmentGlideMaxLaunchRise = 30.0, -- [SD] maximum accepted launch rise in studs
+	EquipmentGlideMaxLaunchDuration = 2.0, -- [SD] maximum accepted launch seconds
+	EquipmentGlideMaxHorizontalSpeed = 50.0, -- [SD] maximum accepted glide horizontal speed
+	EquipmentGlideMaxDownwardSpeed = 50.0, -- [SD] maximum accepted glide descent speed
+	EquipmentGlideMaxTravelDistance = 100.0, -- [SD] maximum accepted horizontal travel
+	EquipmentGlideMaxTurnDegreesPerSecond = 360.0, -- [SD] maximum accepted steering rate
+	EquipmentGlideSteerSendInterval = 0.1, -- [SD] client steer-intent sample period
+	EquipmentGlideSteerMinInterval = 0.03, -- [SD] minimum accepted server steer interval
+	EquipmentGlideSteerTimeout = 0.5, -- [SD] ignore stale steer intent after this time
 	VaultLandingNormalMin = 0.50, -- [SD] Part 2 minimum upward normal for an arc-end landing contact
 	VaultLandingCollisionAlpha = 0.85, -- [SD] Part 2 earliest arc fraction that can settle on landing ground
 	VaultBoundaryLogCooldown = 1.0, -- [SD] Part 2 throttle for repeated mantle-boundary diagnostics
@@ -114,17 +130,58 @@ Config.Movement = {
 	PostTagSpeedBoostMult     = 1.20,
 	PostTagSpeedBoostDuration = 2.0,
 	DashVFX = {
-		Enabled          = true,
-		TrailLifetime    = 0.35,
-		BurstCount       = 16,
-		ParticleLifetime = 0.30,
-		ParticleSpeedMin = 8,
-		ParticleSpeedMax = 18,
-		ColorStart       = Color3.fromRGB(130, 225, 255),
-		ColorEnd         = Color3.fromRGB(150, 130, 255),
-		SizeStart        = 0.7,
-		TransparencyIn   = 0.2,
-		LightEmission    = 0.7,
+		Enabled = true, -- [SD] source-owned cosmetic wind dash
+		Texture = "rbxassetid://12402893521", -- [SD] owner-cleared VFX Studio wind texture
+		TotalTime = 0.35, -- [SD] final clear time after dash input
+		BurstTime = 0.03, -- [SD] strongest pulse within the first 0.07 s
+		RibbonStart = 0.07, -- [SD] ribbon and first fleck beat
+		FleckSecondTime = 0.13, -- [SD] sparse second fleck beat
+		RibbonStop = 0.22, -- [SD] stop writing Trail segments
+		TrailLifetime = 0.13, -- [SD] last segments clear near TotalTime
+		BurstCount = 8, -- [SD] 14 particles total at full intensity
+		FleckCount = 3, -- [SD] emitted twice
+		FootOffset = -2.65, -- [SD] pulse height relative to HumanoidRootPart
+		GuideOffset = -1.25, -- [SD] ribbon height relative to HumanoidRootPart
+		BeamStartOffset = Vector3.new(0, 1.3, 0.8), -- [SD] source point above rear foot
+		RibbonOffsets = { -- [SD] three separated strips around the moving guide
+			{ Vector3.new(-0.95, 0.08, 0), Vector3.new(-0.3, 0.14, 0) },
+			{ Vector3.new(0.05, 0.9, 0), Vector3.new(0.65, 0.84, 0) },
+			{ Vector3.new(0.85, -0.45, 0), Vector3.new(1.4, -0.38, 0) },
+		},
+		GuideSway = 0.65, -- [SD] lateral wind bend, studs
+		GuideLift = 0.18, -- [SD] vertical wind bend, studs
+		WidthFloor = 0.45, -- [SD] minimum nonzero width share at low VFX settings
+		TrailWidths = { 0.8, 0.7, 1.8 }, -- [SD] visible peak widths
+		BeamWidths = { 0.12, 0.75 }, -- [SD] narrow start, wider moving end
+		BeamCurves = { -2.1, 1.4 }, -- [SD] compressed arc, not lightning
+		TrailWidthProfile = { -- [SD] broad middle with tapered leading and trailing ends
+			{ 0, 0.02 }, { 0.18, 1 }, { 0.55, 0.75 }, { 0.85, 0.3 }, { 1, 0 },
+		},
+		TrailTransparency = { -- [SD] staggered opacity keeps three strips distinct
+			NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.38), NumberSequenceKeypoint.new(0.25, 0.48), NumberSequenceKeypoint.new(0.55, 0.7), NumberSequenceKeypoint.new(0.85, 1), NumberSequenceKeypoint.new(1, 1) }),
+			NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.46), NumberSequenceKeypoint.new(0.25, 0.55), NumberSequenceKeypoint.new(0.55, 0.76), NumberSequenceKeypoint.new(0.85, 1), NumberSequenceKeypoint.new(1, 1) }),
+			NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.6, 0.28), NumberSequenceKeypoint.new(1, 1) }),
+		},
+		BeamTransparency = NumberSequence.new({ -- [SD] visible center with thin faded ends
+			NumberSequenceKeypoint.new(0, 0.92), NumberSequenceKeypoint.new(0.24, 0.58),
+			NumberSequenceKeypoint.new(0.75, 0.35), NumberSequenceKeypoint.new(1, 0.68),
+		}),
+		BurstSize = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(0.25, 0.95), NumberSequenceKeypoint.new(1, 0) }), -- [SD]
+		BurstTransparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.3, 0.15), NumberSequenceKeypoint.new(1, 1) }), -- [SD]
+		FleckSize = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.14), NumberSequenceKeypoint.new(0.6, 0.11), NumberSequenceKeypoint.new(1, 0) }), -- [SD]
+		FleckTransparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.22), NumberSequenceKeypoint.new(0.5, 0.5), NumberSequenceKeypoint.new(1, 1) }), -- [SD]
+		BurstSpread = Vector2.new(32, 24), -- [SD] foot burst cone
+		FleckSpread = Vector2.new(8, 10), -- [SD] narrow backward flecks
+		BurstAcceleration = Vector3.new(0, -26, 0), -- [SD] quick ground settle
+		RibbonLightEmission = 0.2, -- [SD] restrained glow
+		RibbonBrightness = 1.25, -- [SD] restrained highlight
+		White = Color3.fromRGB(255, 255, 255), -- [SD] wind highlight
+		PaleCyan = Color3.fromRGB(206, 241, 255), -- [SD] pale wind body
+		IcyBlue = Color3.fromRGB(151, 218, 255), -- [SD] blue edge
+		BurstSpeed = NumberRange.new(7, 14), -- [SD] foot pulse speed, studs/s
+		FleckSpeed = NumberRange.new(12, 20), -- [SD] backward fleck speed, studs/s
+		BurstLifetime = NumberRange.new(0.08, 0.13), -- [SD] brief foot pulse
+		FleckLifetime = NumberRange.new(0.08, 0.14), -- [SD] brief air flecks
 	},
 }
 

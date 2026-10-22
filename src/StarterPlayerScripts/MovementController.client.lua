@@ -6,6 +6,7 @@
 -- Task/spec: movement upgrade Part 2 landing owner and chest-level Vault, approved 2026-10-16.
 -- Task/spec: momentum steps 2 to 4, 2026-10-19.
 -- Task/spec: slide chaining and entry speed, 2026-10-19.
+-- Task/spec: source-owned wind dash VFX and accepted-dash observer presentation, 2026-10-22.
 -- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
 --
 -- Responsibilities:
@@ -29,7 +30,7 @@
 --     NOTE (playtest): spawn straight into the lobby and press C — no
 --     FIND MATCH needed to test slide; MatchService owns MS_02-MS_06.
 --   • Bindings (UI/UX Spec §4): PC Shift/Q/C/E · Gamepad L2-stick/B/R1/X · Touch
---   • Dash VFX: rear Trail ribbon + particle burst on Q (Config.Movement.DashVFX)
+--   • Dash VFX: local wind burst and four ribbons; accepted live dashes render for observers.
 --   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
 --   • Skill RS_01 Luksong Baka (T18 slice): request + facing to SkillService,
 --     server validates (round/stun/ground/airborne/CD) and broadcasts SkillEvent,
@@ -82,6 +83,7 @@ end
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 -- Sibling module (same Rojo sync): cosmetic scale and reduced camera flag.
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+local WindDash = require(ReplicatedStorage:WaitForChild("VFX"):WaitForChild("WindDash"))
 
 -- ── Player / character refs ──────────────────────────────────────────────────
 local LocalPlayer = Players.LocalPlayer
@@ -92,6 +94,7 @@ local HRP: BasePart  -- HumanoidRootPart
 -- ── Remotes ──────────────────────────────────────────────────────────────────
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestDash = Remotes:WaitForChild("RequestDash") :: RemoteEvent
+local DashVFXEvent = Remotes:WaitForChild("DashVFXEvent") :: UnreliableRemoteEvent
 local RequestMovementState = Remotes:WaitForChild("RequestMovementState") :: RemoteEvent
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 local TagEvent = Remotes:WaitForChild("TagEvent") :: RemoteEvent
@@ -464,97 +467,22 @@ local function pushAttributes(force: boolean?)
 	LocalPlayer:SetAttribute("HRushAiming", if tsinelasAiming then "RS_03" else "")
 end
 
--- ── Dash VFX (client-side juice) ─────────────────────────────────────────────
--- Game-feel medium tier: transient ribbon + particle burst on the Q event —
--- 2 cheap channels, decays to rest via TrailLifetime/ParticleLifetime, never
--- touches input or simulation. All values from Config.Movement.DashVFX.
-local dashTrail: Trail? = nil
-local dashEmitter: ParticleEmitter? = nil
+-- ── Dash VFX ───────────────────────────────────────────────────────────────────
+-- WindDash owns all cosmetic instances. A completed glide keeps its brief tail;
+-- interruptions and character removal cancel it immediately.
+local dashFX: any = nil
 
-local function buildDashFX(char: Model)
-	dashTrail = nil
-	dashEmitter = nil
-	if not Mv.DashVFX.Enabled then
-		return
+local function startDashFX(direction: Vector3, position: Vector3)
+	if dashFX then
+		dashFX.Cancel()
 	end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not (hrp and hrp:IsA("BasePart")) then
-		return
-	end
-
-	-- Ribbon anchors: rear corners of HumanoidRootPart (character faces -Z,
-	-- so +Z offset = behind the player — the streak trails the dash path).
-	local attA = Instance.new("Attachment")
-	attA.Name = "DashFX_A"
-	attA.Position = Vector3.new(-0.9, -0.5, 0.9)
-	attA.Parent = hrp
-	local attB = Instance.new("Attachment")
-	attB.Name = "DashFX_B"
-	attB.Position = Vector3.new(0.9, -0.5, 0.9)
-	attB.Parent = hrp
-
-	local trail = Instance.new("Trail")
-	trail.Name = "DashTrail"
-	trail.Attachment0 = attA
-	trail.Attachment1 = attB
-	trail.FaceCamera = true
-	trail.Lifetime = Mv.DashVFX.TrailLifetime
-	trail.Color = ColorSequence.new(Mv.DashVFX.ColorStart, Mv.DashVFX.ColorEnd)
-	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, Mv.DashVFX.TransparencyIn),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	trail.Enabled = false -- on only while dashing; segments linger after disable
-	trail.Parent = hrp
-	dashTrail = trail
-
-	-- One-shot burst emitter at the heels. Rate 0 → particles only via Emit().
-	-- Emitted in WORLD space (not locked to part) so streaks stay behind while
-	-- the character glides forward 12 studs.
-	local attEmit = Instance.new("Attachment")
-	attEmit.Name = "DashFX_Emit"
-	attEmit.Position = Vector3.new(0, -0.5, 1.0)
-	attEmit.Parent = hrp
-
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "DashBurst"
-	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	emitter.Rate = 0
-	emitter.Lifetime = NumberRange.new(Mv.DashVFX.ParticleLifetime)
-	emitter.Speed = NumberRange.new(Mv.DashVFX.ParticleSpeedMin, Mv.DashVFX.ParticleSpeedMax)
-	emitter.SpreadAngle = Vector2.new(30, 30)
-	emitter.EmissionDirection = Enum.NormalId.Back
-	emitter.Acceleration = Vector3.new(0, -8, 0) -- slight settle, no float-up
-	emitter.Color = ColorSequence.new(Mv.DashVFX.ColorStart, Mv.DashVFX.ColorEnd)
-	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, Mv.DashVFX.SizeStart),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, Mv.DashVFX.TransparencyIn),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	emitter.LightEmission = Mv.DashVFX.LightEmission
-	emitter.Parent = attEmit
-	dashEmitter = emitter
+	dashFX = WindDash.Play(Character, direction, position, 0, VfxScale.cosmetic())
 end
 
-local function startDashFX()
-	if dashTrail then
-		dashTrail.Enabled = true
-	end
-	if dashEmitter then
-		local n = VfxScale.count(Mv.DashVFX.BurstCount)
-		if n > 0 then
-			dashEmitter:Emit(n)
-		end
-	end
-end
-
-local function stopDashFX()
-	-- Disabling stops new ribbon segments; existing ones fade over TrailLifetime.
-	if dashTrail then
-		dashTrail.Enabled = false
+local function stopDashFX(completed: boolean?)
+	if not completed and dashFX then
+		dashFX.Cancel()
+		dashFX = nil
 	end
 end
 
@@ -758,14 +686,14 @@ end
 -- No stamina cost. Movement is linear start→end (constant velocity 60 st/s);
 -- a forward raycast clamps the target so the dash stops at walls instead of
 -- phasing through. Server is notified via RequestDash (validates cooldown/round).
-local function cancelDash()
+local function cancelDash(completed: boolean?)
 	if dashConn then
 		dashConn:Disconnect()
 		dashConn = nil
 	end
 	isDashing = false
 	stopDashAnim() -- dash anim lives strictly inside the dash window
-	stopDashFX()
+	stopDashFX(completed)
 	applySpeed()
 	pushAttributes()
 end
@@ -827,7 +755,7 @@ local function performDash()
 	end
 
 	-- VFX: ribbon on during the glide + one-shot particle burst at the heels.
-	startDashFX()
+	startDashFX(moveDir, HRP.Position)
 	playDashSound()
 
 	-- Animation: sprint yields for exactly the dash window, then resumes.
@@ -867,7 +795,7 @@ local function performDash()
 		local face = HRP.CFrame - HRP.CFrame.Position
 		HRP.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha)) * face
 		if alpha >= 1 then
-			cancelDash() -- move done; anim cut with it, sprint resumes at once
+			cancelDash(true) -- move done; visual tail fades after the glide
 		end
 	end)
 end
@@ -3257,6 +3185,7 @@ end
 function vault.onCharacterAdded(char: Model)
 	Character = char
 	-- Cancel any in-flight dash tied to the old character.
+	stopDashFX(false)
 	if dashConn then
 		dashConn:Disconnect()
 		dashConn = nil
@@ -3267,7 +3196,6 @@ function vault.onCharacterAdded(char: Model)
 	end
 	Humanoid = char:WaitForChild("Humanoid") :: Humanoid
 	HRP = char:WaitForChild("HumanoidRootPart") :: BasePart
-	buildDashFX(char) -- dash trail + burst rig (rebuilt per respawn)
 	loadAnimTracks() -- sprint/slide tracks (rebuilt per respawn)
 
 	-- Reset state on respawn
@@ -3491,6 +3419,7 @@ function vault.onCharacterAdded(char: Model)
 			dashConn = nil
 		end
 		isDashing = false
+		stopDashFX(false)
 		boostLeft = 0.0
 	end)
 
@@ -3505,6 +3434,39 @@ if LocalPlayer.Character then
 	task.spawn(vault.onCharacterAdded, LocalPlayer.Character)
 end
 LocalPlayer.CharacterAdded:Connect(vault.onCharacterAdded)
+
+local function finiteVFXVector(value: any): boolean
+	return typeof(value) == "Vector3"
+		and value.X == value.X and value.Y == value.Y and value.Z == value.Z
+		and math.abs(value.X) < 100000 and math.abs(value.Y) < 100000 and math.abs(value.Z) < 100000
+end
+
+DashVFXEvent.OnClientEvent:Connect(function(userId: any, direction: any, startPosition: any, serverTime: any)
+	if typeof(userId) ~= "number" or userId % 1 ~= 0 or userId == LocalPlayer.UserId then
+		return
+	end
+	if not finiteVFXVector(direction) or not finiteVFXVector(startPosition) then
+		return
+	end
+	if typeof(serverTime) ~= "number" or serverTime ~= serverTime or math.abs(serverTime) == math.huge then
+		return
+	end
+	local flat = Vector3.new(direction.X, 0, direction.Z)
+	if math.abs(direction.Y) > 0.05 or flat.Magnitude < 0.95 or flat.Magnitude > 1.05 then
+		return
+	end
+	local age = Workspace:GetServerTimeNow() - serverTime
+	if age < -0.1 or age >= Mv.DashVFX.TotalTime then
+		return
+	end
+	local player = Players:GetPlayerByUserId(userId)
+	local character = player and player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not (character and root and root:IsA("BasePart")) then
+		return
+	end
+	WindDash.Play(character, flat.Unit, startPosition, math.max(0, age), VfxScale.cosmetic())
+end)
 
 -- LandingController is the single client owner for normal landing classification,
 -- landing animation, impact events, and the short hard-landing speed penalty.

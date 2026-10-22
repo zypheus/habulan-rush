@@ -31,6 +31,7 @@
         "RequestTag":      { "$className": "RemoteEvent" },
         "RequestSkill":    { "$className": "RemoteEvent" },
         "RequestDash":     { "$className": "RemoteEvent" },
+        "DashVFXEvent":    { "$className": "UnreliableRemoteEvent" },
         "RequestMovementState": { "$className": "RemoteEvent" },
         "MomentumUpdate": { "$className": "RemoteEvent" },
         "PickSkill":       { "$className": "RemoteEvent" },

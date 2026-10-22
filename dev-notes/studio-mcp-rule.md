@@ -1,20 +1,21 @@
 ---
 title: studio mcp rule
-type: seed
-status: unverified
+type: rule
+status: approved
 owner: team
 task: none
-updated: 2026-10-14
-source: unverified (no written rule found in the repo)
+updated: 2026-10-22
+source: AGENTS.md
 related:
   - ./00-index.md
   - ./rebuild-and-test-rule.md
 ---
 
-No written Studio MCP rule exists in the repo. This note records the related evidence only.
+The project owner performs all testing in Roblox Studio. Agents must not run automated tests, playtests, or test fixtures in Studio.
 
-## Related evidence
+## Rules
 
-- AGENTS.md:58-59 forbids editing scripts inside Studio and requires edit, rebuild, and retest from `src/`.
-- `.agents/skills/roblox-tooling/references/full.md:35` warns that MCP-driven Studio edits fight a running Rojo serve and that the winning side must be explicit.
-- The claimed rule (read plus Play tests only, no edits through MCP) is unverified. Confirm it with the team before treating it as policy.
+- Agents must never invoke `start_stop_play`, `execute_luau`, or `StudioTestService`.
+- Agents must never inject temporary test scripts into Studio.
+- Studio MCP is limited to read-only metadata inspection when explicitly requested.
+- Each code change concludes with syntax checks, a Rojo build, and a manual test checklist for the project owner.

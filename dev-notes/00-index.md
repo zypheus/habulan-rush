@@ -53,7 +53,7 @@ The live tracker is [current task](./current-task.md). It is short, Obsidian-vis
 
 1. Read [current task](./current-task.md) and the latest relevant note in [handoffs](./handoffs/).
 2. Edit code under `src/`. Never edit scripts inside Studio.
-3. Rebuild with Rojo and reopen the place before testing.
-4. Test in Studio. Record results in a [playtests](./playtests/) note.
+3. Rebuild with Rojo. Prepare a manual testing checklist for the project owner.
+4. The project owner tests in Studio and records results in a [playtests](./playtests/) note.
 5. Log AI work in [AI_LOG.md](../AI_LOG.md) and assets in [ASSET_LOG.md](../ASSET_LOG.md).
 6. End the session with a [handoffs](./handoffs/) note.

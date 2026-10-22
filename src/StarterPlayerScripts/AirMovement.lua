@@ -4,6 +4,7 @@
 -- Responsibility: normal jump grace windows, falling physics, and horizontal air limits.
 -- Task/spec: simple click-to-tag integration, approved 2026-10-18.
 -- Task/spec: movement upgrade Parts 1 and 2 jump priority and committed air direction, approved 2026-10-16.
+-- Task/spec: yield air physics and send steer intent during server equipment glide, 2026-10-22.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,6 +31,8 @@ local fallForce: VectorForce? = nil
 local stateConnection: RBXScriptConnection? = nil
 local diedConnection: RBXScriptConnection? = nil
 local simulationConnection: RBXScriptConnection? = nil
+local glideSteerRemote: RemoteEvent? = nil
+local lastGlideSteerAt = 0.0
 
 local wasGrounded = false
 local lastGroundedAt = 0.0
@@ -91,6 +94,7 @@ end
 local function movementAllowed(): boolean
 	local state = LocalPlayer:GetAttribute("HRushState")
 	return LocalPlayer:GetAttribute("HRushStunned") ~= true
+		and LocalPlayer:GetAttribute("HRushMovementState") ~= "Glide"
 		and LocalPlayer:GetAttribute("HRushVaulting") ~= true
 		and LocalPlayer:GetAttribute("HRushRolling") ~= true
 		and LocalPlayer:GetAttribute("IsAirborne") ~= true
@@ -101,6 +105,7 @@ local function scriptedMovementActive(): boolean
 	return LocalPlayer:GetAttribute("HRushVaulting") == true
 		or LocalPlayer:GetAttribute("HRushDashing") == true
 		or LocalPlayer:GetAttribute("IsAirborne") == true
+		or LocalPlayer:GetAttribute("HRushMovementState") == "Glide"
 end
 
 local function applyHorizontalVelocity(part: BasePart, horizontal: Vector3)
@@ -263,6 +268,14 @@ local function bindCharacter(newCharacter: Model)
 			return
 		end
 		local now = os.clock()
+		if LocalPlayer:GetAttribute("HRushMovementState") == "Glide"
+			and glideSteerRemote ~= nil
+			and now - lastGlideSteerAt >= Movement.EquipmentGlideSteerSendInterval
+		then
+			lastGlideSteerAt = now
+			local move = newHumanoid.MoveDirection
+			glideSteerRemote:FireServer(Vector3.new(move.X, 0, move.Z))
+		end
 		local grounded = newHumanoid.FloorMaterial ~= Enum.Material.Air
 		if grounded then
 			lastGroundedAt = now
@@ -352,6 +365,11 @@ function AirMovement.start(startOptions: Options?)
 	end
 	started = true
 	options = startOptions or {}
+	task.spawn(function()
+		local remotes = ReplicatedStorage:WaitForChild("Remotes")
+		local remote = remotes:WaitForChild("EquipmentGlideSteer")
+		if remote:IsA("RemoteEvent") then glideSteerRemote = remote end
+	end)
 	UserInputService.JumpRequest:Connect(onJumpRequest)
 	RunService:BindToRenderStep(AIR_CONTROL_BIND, Enum.RenderPriority.Character.Value + 1, updateAirControl)
 	LocalPlayer.CharacterAdded:Connect(bindCharacter)

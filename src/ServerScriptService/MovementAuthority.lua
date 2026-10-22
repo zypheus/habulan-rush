@@ -7,6 +7,8 @@
 -- Task/spec: momentum slice 1, server-owned gains, decay, and speed allowance, 2026-10-19.
 -- Task/spec: momentum steps 2 to 4, validated roll intent and character tier, 2026-10-19.
 -- Task/spec: slide chaining and entry speed, 2026-10-19.
+-- Task/spec: server-owned equipment launch and glide bridge, 2026-10-22.
+-- Task/spec: accepted-dash cosmetic broadcast, approved 2026-10-22.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -57,13 +59,43 @@ type Ledger = {
 	connections: { RBXScriptConnection },
 }
 
+type EquipmentGlide = {
+	sourceId: string,
+	character: Model,
+	humanoid: Humanoid,
+	root: BasePart,
+	params: RaycastParams,
+	phase: string,
+	acceptedAt: number,
+	phaseStartedAt: number,
+	glideStartY: number,
+	origin: Vector3,
+	launchRise: number,
+	launchDuration: number,
+	duration: number,
+	horizontalSpeedCap: number,
+	downwardSpeed: number,
+	maxTravelDistance: number,
+	steeringTurnDegreesPerSecond: number,
+	direction: Vector3,
+	speed: number,
+	steer: Vector3,
+	steerAt: number,
+	onPhase: (string) -> (),
+	onEnded: (string) -> (),
+	previousNetworkOwner: Player?,
+	restoreAutoOwnership: boolean,
+}
+
 local MovementAuthority = {}
 
 local started = false
 local movement: any = nil
 local momentum: any = nil
 local momentumUpdate: RemoteEvent
+local dashVfxEvent: UnreliableRemoteEvent
 local ledgers: { [Player]: Ledger } = {}
+local equipmentGlides: { [Player]: EquipmentGlide } = {}
 
 local function updateMomentumTier(player: Player, value: number)
 	local character = player.Character
@@ -275,6 +307,301 @@ local function validateCommon(player: Player, ledger: Ledger): (Humanoid?, BaseP
 	return humanoid, root
 end
 
+local function glideParams(character: Model): RaycastParams
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	params.IgnoreWater = true
+	params.RespectCanCollide = true
+	return params
+end
+
+local function glideBox(humanoid: Humanoid, root: BasePart): Vector3
+	return Vector3.new(
+		math.max(root.Size.X + 1, 3),
+		root.Size.Y + humanoid.HipHeight * 2,
+		math.max(root.Size.Z + 1, 3)
+	)
+end
+
+local function notifyGlidePhase(record: EquipmentGlide, phase: string)
+	record.phase = phase
+	local ok, err = pcall(record.onPhase, phase)
+	if not ok then warn("[MovementAuthority] equipment glide phase callback: " .. tostring(err)) end
+end
+
+local function finishEquipmentGlide(player: Player, reason: string, notify: boolean): boolean
+	local record = equipmentGlides[player]
+	if record == nil then return false end
+	equipmentGlides[player] = nil
+	if record.character:GetAttribute("HRushMovementState") == "Glide" then
+		record.character:SetAttribute("HRushMovementState", nil)
+	end
+	record.character:SetAttribute("HRushEquipmentGlide", nil)
+	local ledger = ledgers[player]
+	if ledger ~= nil and ledger.state == "Glide" then
+		setState(player, ledger, "Walk")
+		ledger.lastPosition = nil
+		ledger.lastSampleAt = os.clock()
+		if record.humanoid.FloorMaterial == Enum.Material.Air then
+			ledger.airStartedAt = os.clock()
+			ledger.takeoffObserved = true
+		end
+	end
+	if record.root.Parent ~= nil then
+		if reason == "Landed" or record.phase == "Launching" then
+			record.root.AssemblyLinearVelocity = Vector3.zero
+		else
+			record.root.AssemblyLinearVelocity = record.direction * record.speed
+				- Vector3.yAxis * record.downwardSpeed
+		end
+		pcall(function()
+			if record.restoreAutoOwnership then
+				record.root:SetNetworkOwnershipAuto()
+			else
+				record.root:SetNetworkOwner(record.previousNetworkOwner)
+			end
+		end)
+	end
+	if notify then
+		local ok, err = pcall(record.onEnded, reason)
+		if not ok then warn("[MovementAuthority] equipment glide end callback: " .. tostring(err)) end
+	end
+	return true
+end
+
+local function validGlideNumber(value: any, maximum: number): boolean
+	return typeof(value) == "number" and finiteNumber(value :: number)
+		and value > 0 and value <= maximum
+end
+
+function MovementAuthority.beginEquipmentGlide(
+	player: Player,
+	request: any,
+	onPhase: (string) -> (),
+	onEnded: (string) -> ()
+): (boolean, string?)
+	if not started or movement == nil then return false, "Unavailable" end
+	if typeof(player) ~= "Instance" or not player:IsA("Player") or player.Parent ~= Players then
+		return false, "InvalidPlayer"
+	end
+	if typeof(request) ~= "table" or type(onPhase) ~= "function" or type(onEnded) ~= "function" then
+		return false, "InvalidRequest"
+	end
+	if typeof(request.sourceId) ~= "string" or #request.sourceId == 0 or #request.sourceId > 128 then
+		return false, "InvalidRequest"
+	end
+	if request.mode ~= "GroundLaunch" and request.mode ~= "AirborneGlide" then
+		return false, "InvalidMode"
+	end
+	if not validGlideNumber(request.duration, movement.EquipmentGlideMaxDuration)
+		or not validGlideNumber(request.launchRise, movement.EquipmentGlideMaxLaunchRise)
+		or not validGlideNumber(request.launchDuration, movement.EquipmentGlideMaxLaunchDuration)
+		or not validGlideNumber(request.horizontalSpeedCap, movement.EquipmentGlideMaxHorizontalSpeed)
+		or not validGlideNumber(request.downwardSpeed, movement.EquipmentGlideMaxDownwardSpeed)
+		or not validGlideNumber(request.maxTravelDistance, movement.EquipmentGlideMaxTravelDistance)
+		or not validGlideNumber(request.steeringTurnDegreesPerSecond, movement.EquipmentGlideMaxTurnDegreesPerSecond)
+	then
+		return false, "InvalidRequest"
+	end
+	local ledger = ledgers[player]
+	if ledger == nil or not isLiveParticipant(player) then return false, "RoundEnd" end
+	if equipmentGlides[player] ~= nil then return false, "AlreadyGliding" end
+	if player:GetAttribute("HRushStunned") == true
+		or player:GetAttribute("IsAirborne") == true
+		or player:GetAttribute("HRushPouncing") == true
+		or (ledger.state ~= "Walk" and ledger.state ~= "Sprint")
+	then
+		return false, "BlockedState"
+	end
+	local character = player.Character
+	local humanoid, root = liveCharacter(player)
+	if character == nil or humanoid == nil or root == nil or root.Anchored then
+		return false, "CharacterUnavailable"
+	end
+	local canOwn = root:CanSetNetworkOwnership()
+	if not canOwn then return false, "NetworkOwnership" end
+	local params = glideParams(character)
+	local box = glideBox(humanoid, root)
+	if request.mode == "GroundLaunch" then
+		if humanoid.FloorMaterial == Enum.Material.Air then return false, "NotGrounded" end
+		local rise = request.launchRise :: number
+		local headroom = rise + movement.EquipmentGlideCeilingPadding
+		if Workspace:Raycast(root.Position, Vector3.yAxis * headroom, params) ~= nil
+			or Workspace:Blockcast(root.CFrame, box, Vector3.yAxis * headroom, params) ~= nil
+		then
+			return false, "NoHeadroom"
+		end
+	else
+		if humanoid.FloorMaterial ~= Enum.Material.Air or root.AssemblyLinearVelocity.Y >= 0 then
+			return false, "NotDescending"
+		end
+		local hit = Workspace:Raycast(root.Position,
+			-Vector3.yAxis * movement.EquipmentGlideGroundProbeDepth, params)
+		local feetY = root.Position.Y - root.Size.Y * 0.5 - humanoid.HipHeight
+		if hit == nil or feetY - hit.Position.Y < movement.EquipmentGlideMinGroundClearance then
+			return false, "NoClearance"
+		end
+	end
+	local previousOwner = root:GetNetworkOwner()
+	local ownerOk = pcall(function() root:SetNetworkOwner(nil) end)
+	if not ownerOk then return false, "NetworkOwnership" end
+	local flatVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 0, root.AssemblyLinearVelocity.Z)
+	local facing = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	local direction = if flatVelocity.Magnitude > movement.ServerDirectionMinMagnitude
+		then flatVelocity.Unit else if facing.Magnitude > 0 then facing.Unit else Vector3.zAxis
+	local now = os.clock()
+	local record: EquipmentGlide = {
+		sourceId = request.sourceId,
+		character = character,
+		humanoid = humanoid,
+		root = root,
+		params = params,
+		phase = "",
+		acceptedAt = now,
+		phaseStartedAt = now,
+		glideStartY = root.Position.Y,
+		origin = root.Position,
+		launchRise = request.launchRise,
+		launchDuration = request.launchDuration,
+		duration = request.duration,
+		horizontalSpeedCap = request.horizontalSpeedCap,
+		downwardSpeed = request.downwardSpeed,
+		maxTravelDistance = request.maxTravelDistance,
+		steeringTurnDegreesPerSecond = request.steeringTurnDegreesPerSecond,
+		direction = direction,
+		speed = math.min(flatVelocity.Magnitude, request.horizontalSpeedCap),
+		steer = Vector3.zero,
+		steerAt = 0,
+		onPhase = onPhase,
+		onEnded = onEnded,
+		previousNetworkOwner = previousOwner,
+		restoreAutoOwnership = previousOwner == player,
+	}
+	equipmentGlides[player] = record
+	character:SetAttribute("HRushMovementState", "Glide")
+	character:SetAttribute("HRushEquipmentGlide", true)
+	setState(player, ledger, "Glide")
+	ledger.rollRequestUntil = 0
+	ledger.rollRequestedAt = 0
+	ledger.rollIntentAt = 0
+	notifyGlidePhase(record, if request.mode == "GroundLaunch" then "Launching" else "Gliding")
+	return true, nil
+end
+
+function MovementAuthority.endEquipmentGlide(player: Player, sourceId: string, reason: string): boolean
+	local record = equipmentGlides[player]
+	if record == nil or record.sourceId ~= sourceId then return false end
+	return finishEquipmentGlide(player, if type(reason) == "string" then reason else "Cancelled", false)
+end
+
+local function steerEquipmentGlide(player: Player, value: unknown)
+	local record = equipmentGlides[player]
+	if record == nil or not finiteVector(value) then return end
+	local input = value :: Vector3
+	if math.abs(input.Y) > movement.ServerDirectionMinMagnitude or input.Magnitude > 1.1 then return end
+	local now = os.clock()
+	if now - record.steerAt < movement.EquipmentGlideSteerMinInterval then return end
+	record.steer = if input.Magnitude > movement.ServerDirectionMinMagnitude then input.Unit else Vector3.zero
+	record.steerAt = now
+end
+
+local function stepEquipmentGlide(player: Player, now: number, dt: number)
+	local record = equipmentGlides[player]
+	if record == nil then return end
+	if not isLiveParticipant(player) then
+		finishEquipmentGlide(player, "RoundEnd", true)
+		return
+	end
+	if player.Character ~= record.character or record.root.Parent == nil then
+		finishEquipmentGlide(player, "CharacterRemoving", true)
+		return
+	end
+	if record.humanoid.Health <= 0 then
+		finishEquipmentGlide(player, "Death", true)
+		return
+	end
+	local delta: Vector3
+	if record.phase == "Launching" then
+		local alpha = math.clamp((now - record.phaseStartedAt) / record.launchDuration, 0, 1)
+		local target = Vector3.new(record.origin.X,
+			record.origin.Y + record.launchRise * alpha, record.origin.Z)
+		delta = target - record.root.Position
+	else
+		if now - record.phaseStartedAt >= record.duration then
+			finishEquipmentGlide(player, "Duration", true)
+			return
+		end
+		local feetY = record.root.Position.Y - record.root.Size.Y * 0.5 - record.humanoid.HipHeight
+		local floor = Workspace:Raycast(record.root.Position,
+			-Vector3.yAxis * (record.root.Size.Y * 0.5 + record.humanoid.HipHeight + 1), record.params)
+		if floor ~= nil
+			and floor.Normal.Y >= movement.VaultLandingNormalMin
+			and feetY - floor.Position.Y <= movement.EquipmentGlideLandingTolerance
+		then
+			finishEquipmentGlide(player, "Landed", true)
+			return
+		end
+		local steer = if now - record.steerAt <= movement.EquipmentGlideSteerTimeout
+			then record.steer else Vector3.zero
+		if steer.Magnitude > 0 then
+			local current = record.direction
+			local angle = math.atan2(current.X * steer.Z - current.Z * steer.X, current:Dot(steer))
+			local maxTurn = math.rad(record.steeringTurnDegreesPerSecond) * dt
+			local turn = math.clamp(angle, -maxTurn, maxTurn)
+			record.direction = CFrame.fromAxisAngle(Vector3.yAxis, -turn):VectorToWorldSpace(current).Unit
+			record.speed = record.horizontalSpeedCap
+		end
+		local targetY = record.glideStartY - record.downwardSpeed * (now - record.phaseStartedAt)
+		delta = record.direction * record.speed * dt
+			+ Vector3.yAxis * (targetY - record.root.Position.Y)
+		local startOffset = record.root.Position - record.origin
+		local flatStart = Vector3.new(startOffset.X, 0, startOffset.Z)
+		local flatDelta = Vector3.new(delta.X, 0, delta.Z)
+		if (flatStart + flatDelta).Magnitude > record.maxTravelDistance then
+			local low, high = 0.0, 1.0
+			for _ = 1, 12 do
+				local mid = (low + high) * 0.5
+				if (flatStart + flatDelta * mid).Magnitude <= record.maxTravelDistance then
+					low = mid
+				else
+					high = mid
+				end
+			end
+			delta *= low
+		end
+	end
+	if delta.Magnitude > 0 then
+		local hit = Workspace:Blockcast(record.root.CFrame,
+			glideBox(record.humanoid, record.root), delta, record.params)
+		if hit ~= nil then
+			local safeDistance = math.max(0, hit.Distance - movement.EquipmentGlideCollisionSkin)
+			if safeDistance > 0 then
+				record.character:PivotTo(record.character:GetPivot() + delta.Unit * safeDistance)
+			end
+			finishEquipmentGlide(player,
+				if record.phase == "Gliding" and hit.Normal.Y >= movement.VaultLandingNormalMin
+					then "Landed" else "Obstruction", true)
+			return
+		end
+		record.character:PivotTo(record.character:GetPivot() + delta)
+	end
+	record.root.AssemblyLinearVelocity = Vector3.zero
+	record.root.AssemblyAngularVelocity = Vector3.zero
+	if record.phase == "Launching" then
+		if now - record.phaseStartedAt >= record.launchDuration then
+			record.phaseStartedAt = now
+			record.glideStartY = record.root.Position.Y
+			notifyGlidePhase(record, "Gliding")
+		end
+	else
+		local offset = record.root.Position - record.origin
+		if Vector3.new(offset.X, 0, offset.Z).Magnitude >= record.maxTravelDistance - movement.EquipmentGlideCollisionSkin then
+			finishEquipmentGlide(player, "Distance", true)
+		end
+	end
+end
+
 local function beginRoll(player: Player, ledger: Ledger, root: BasePart, role: string, now: number)
 	local baseSpeed = roleSpeed(player, role == "Runner")
 	if now < ledger.boostUntil and role == "Runner" then
@@ -463,6 +790,10 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 	if role ~= "Runner" and role ~= "Taya" then
 		recordViolation(player, ledger, "request_role", tostring(role))
 		return
+	end
+	if equipmentGlides[player] ~= nil then
+		if action == "Sprint" or action == "RollIntent" then return end
+		finishEquipmentGlide(player, "Cancelled", true)
 	end
 	if action == "RollIntent" then
 		if typeof(directionValue) ~= "number"
@@ -664,11 +995,18 @@ local function handleDash(player: Player, direction: unknown)
 		recordViolation(player, ledger, "dash_state", ledger.state)
 		return
 	end
+	if equipmentGlides[player] ~= nil then
+		finishEquipmentGlide(player, "Cancelled", true)
+	end
 
 	ledger.dashReadyAt = now + movement.DashCooldown
 	ledger.dashUntil = now + movement.DashDuration
 	player:SetAttribute("HRushTagActionImmuneUntil", Workspace:GetServerTimeNow() + movement.DashTagInvulnTime)
 	setState(player, ledger, "Dash")
+	local horizontal = Vector3.new((direction :: Vector3).X, 0, (direction :: Vector3).Z)
+	if horizontal.Magnitude > 0.01 then
+		dashVfxEvent:FireAllClients(player.UserId, horizontal.Unit, root.Position, Workspace:GetServerTimeNow())
+	end
 end
 
 local function observePlayer(player: Player, ledger: Ledger, now: number)
@@ -713,7 +1051,7 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 	end
 
 	if humanoid ~= nil and root ~= nil then
-		local scriptedAir = player:GetAttribute("IsAirborne") == true or ledger.state == "Vault"
+		local scriptedAir = player:GetAttribute("IsAirborne") == true or ledger.state == "Vault" or ledger.state == "Glide"
 			or player:GetAttribute("HRushPouncing") == true
 		local grounded = humanoid.FloorMaterial ~= Enum.Material.Air
 		local verticalVelocity = root.AssemblyLinearVelocity.Y
@@ -793,6 +1131,7 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 	if not isLiveParticipant(player)
 		or player:GetAttribute("HRushStunned") == true
 		or player:GetAttribute("IsAirborne") == true
+		or equipmentGlides[player] ~= nil
 	then
 		ledger.lastPosition = nil
 		ledger.lastSampleAt = now
@@ -868,6 +1207,7 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 end
 
 local function bindCharacter(player: Player, ledger: Ledger, character: Model)
+	finishEquipmentGlide(player, "CharacterRemoving", true)
 	resetLedger(player, ledger)
 	if character:GetAttribute("MomentumTier") == nil then
 		character:SetAttribute("MomentumTier", 0)
@@ -880,6 +1220,7 @@ local function bindCharacter(player: Player, ledger: Ledger, character: Model)
 		local humanoid = character:WaitForChild("Humanoid", movement.ServerCharacterWaitTimeout)
 		if humanoid ~= nil and humanoid:IsA("Humanoid") and player.Character == character then
 			ledger.diedConnection = humanoid.Died:Connect(function()
+				finishEquipmentGlide(player, "Death", true)
 				resetLedger(player, ledger)
 			end)
 		end
@@ -937,22 +1278,33 @@ local function attachPlayer(player: Player)
 	table.insert(ledger.connections, player.CharacterAdded:Connect(function(character)
 		bindCharacter(player, ledger, character)
 	end))
+	table.insert(ledger.connections, player.CharacterRemoving:Connect(function()
+		finishEquipmentGlide(player, "CharacterRemoving", true)
+	end))
 	table.insert(ledger.connections, player:GetAttributeChangedSignal("HRushRole"):Connect(function()
 		local previousRole = ledger.lastRole
 		local nextRole = tostring(player:GetAttribute("HRushRole") or "Runner")
 		resetLedger(player, ledger)
+		if equipmentGlides[player] ~= nil then
+			setState(player, ledger, "Glide")
+		end
 		if previousRole == "Taya" and nextRole == "Runner" then
 			ledger.boostUntil = os.clock() + movement.PostTagSpeedBoostDuration
 		end
 		ledger.lastRole = nextRole
 	end))
 	table.insert(ledger.connections, player:GetAttributeChangedSignal("HRushStunned"):Connect(function()
+		if player:GetAttribute("HRushStunned") == true then
+			finishEquipmentGlide(player, "Cancelled", true)
+		end
 		resetLedger(player, ledger)
 	end))
 	table.insert(ledger.connections, player:GetAttributeChangedSignal("HRushInMatch"):Connect(function()
+		if not isLiveParticipant(player) then finishEquipmentGlide(player, "RoundEnd", true) end
 		resetLedger(player, ledger)
 	end))
 	table.insert(ledger.connections, player:GetAttributeChangedSignal("HRushState"):Connect(function()
+		if not isLiveParticipant(player) then finishEquipmentGlide(player, "RoundEnd", true) end
 		resetLedger(player, ledger)
 	end))
 
@@ -962,6 +1314,7 @@ local function attachPlayer(player: Player)
 end
 
 local function detachPlayer(player: Player)
+	finishEquipmentGlide(player, "CharacterRemoving", true)
 	local ledger = ledgers[player]
 	if ledger == nil then
 		return
@@ -1029,24 +1382,40 @@ function MovementAuthority.start()
 	assert(remotes ~= nil and remotes:IsA("Folder"), "Remotes folder missing")
 	local requestMovementState = remotes:WaitForChild("RequestMovementState", 10)
 	local requestDash = remotes:WaitForChild("RequestDash", 10)
+	local dashVfxRemote = remotes:WaitForChild("DashVFXEvent", 10)
 	local momentumRemote = remotes:WaitForChild("MomentumUpdate", 10)
+	local glideSteerRemote = remotes:FindFirstChild("EquipmentGlideSteer")
+	if glideSteerRemote == nil then
+		glideSteerRemote = Instance.new("RemoteEvent")
+		glideSteerRemote.Name = "EquipmentGlideSteer"
+		glideSteerRemote.Parent = remotes
+	end
+	assert(glideSteerRemote:IsA("RemoteEvent"), "EquipmentGlideSteer must be a RemoteEvent")
 	assert(requestMovementState ~= nil and requestMovementState:IsA("RemoteEvent"), "RequestMovementState missing")
 	assert(requestDash ~= nil and requestDash:IsA("RemoteEvent"), "RequestDash missing")
+	assert(dashVfxRemote ~= nil and dashVfxRemote:IsA("UnreliableRemoteEvent"), "DashVFXEvent missing")
 	assert(momentumRemote ~= nil and momentumRemote:IsA("RemoteEvent"), "MomentumUpdate missing")
 	momentumUpdate = momentumRemote :: RemoteEvent
+	dashVfxEvent = dashVfxRemote :: UnreliableRemoteEvent
 
 	requestMovementState.OnServerEvent:Connect(handleMovementState)
 	requestDash.OnServerEvent:Connect(handleDash)
+	local steerRemote = glideSteerRemote :: RemoteEvent
+	steerRemote.OnServerEvent:Connect(steerEquipmentGlide)
 	Players.PlayerAdded:Connect(attachPlayer)
 	Players.PlayerRemoving:Connect(detachPlayer)
 	ReplicatedStorage:GetAttributeChangedSignal("HRushRoundState"):Connect(function()
 		for player, ledger in ledgers do
+			if ReplicatedStorage:GetAttribute("HRushRoundState") ~= "MS_04" then
+				finishEquipmentGlide(player, "RoundEnd", true)
+			end
 			resetLedger(player, ledger)
 		end
 	end)
-	RunService.Heartbeat:Connect(function()
+	RunService.Heartbeat:Connect(function(dt: number)
 		local now = os.clock()
 		for player, ledger in ledgers do
+			stepEquipmentGlide(player, now, dt)
 			observePlayer(player, ledger, now)
 		end
 	end)

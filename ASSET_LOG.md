@@ -16,6 +16,14 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Wind dash VFX textures, 2026-10-22
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-22 | Wind streak `rbxassetid://12402893521` (`65`) | Texture | VFX Studio import; Studio reports creator Ekzotericheskiy | Competition-safe rights confirmed by project owner | Runtime `WindDash` burst, Beam, ribbon, and flecks; Studio preview | Approved | Existing imported texture reused; no upload. |
+| 2026-10-22 | `HIT EFFECTS 2` `rbxassetid://10198439352` | Texture | VFX Studio import; Studio reports creator ReiAkaris | Competition-safe rights confirmed by project owner | Original Studio `FOOT PULSE` comparison asset | Approved | Preserved in Studio; not referenced by runtime source. |
+| 2026-10-22 | `Images/CrystalDebris` `rbxassetid://18453368738` | Texture | VFX Studio import; Studio reports creator Zynclys | Competition-safe rights confirmed by project owner | Original Studio `FOOT PULSE` comparison asset | Approved | Preserved in Studio; not referenced by runtime source. |
+
 ### Momentum cues, 2026-10-19
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |

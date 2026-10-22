@@ -4,7 +4,7 @@ type: task
 status: active
 owner: project-owner
 task: momentum-steps-2-4
-updated: 2026-10-19
+updated: 2026-10-22
 source: 2026-10-19 owner-pasted momentum task
 related:
   - ../AGENTS.md
@@ -19,6 +19,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-22: The owner-approved wind dash VFX replacement is implemented in repository source. `WindDash` creates one Beam, three Trails, and two one-shot emitters with a 0.35-second cleanup; the old inline ribbon and sparkle are removed. Accepted live dashes broadcast a cosmetic observer event. Dash movement, input, and the unrelated in-progress EquipmentGlide edits are preserved. Syntax and Rojo build passed. The owner will perform final visual, two-player, wall-stop, mobile, and gamepad validation. See [wind dash handoff](playtests/2026-10-22-wind-dash-handoff.md).
 - 2026-10-19: The owner subsequently requested a local build of the slide chaining fix. Rojo built `HabulanRush.rbxlx` successfully (708545 bytes). The new source is in the generated place; it has not been published or tested in a live Studio round.
 - 2026-10-19: Fixed the generated-place slide momentum path in source. `MovementAuthority` had required a Runner `Sprint` ledger state and applied the old slide speed threshold to the entire slide; the client allowed a moving slide and predicted a gain. Rejected requests had no confirmed gain for `MomentumHUD` to show. The server now accepts moving grounded slides regardless of sprint ledger state, while a shared 80% role-sprint entry-speed rule gates only momentum. The client sends its pre-burst eligibility as a veto; the server independently checks observed speed. Slow slides still run and correct prediction without a popup. `Config.Movement.SlideCooldown` is 1.25 seconds from entry, `Config.Momentum.ChainWindow` is 2.5 seconds, and `DiminishWindow` stays 2.0. Debug traces are gated by `Config.Momentum.Debug = false`. Source syntax passed; no new Rojo build, publish, or live Studio validation was run per owner instruction. See [slide chaining handoff](playtests/2026-10-19-slide-chaining-handoff.md).
 - 2026-10-19: Successful normal and perfect roll popups now remain visible for 3 seconds total. The existing 0.6-second rise and fade plays after a 2.4-second hold; slide popups keep the original 0.6-second timing. `Config.Momentum.Fx.RollPopupTime` owns the roll duration. Source validation and Rojo rebuild passed; Studio visual timing remains pending.
@@ -68,6 +69,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Ported the approved wind dash preview into source-owned `WindDash` and `[SD]` Config values; mapped `DashVFXEvent`, replaced the local legacy VFX, added server-accepted observer playback, and logged the three approved imported textures.
 - Slide chaining source fix and tuning: shared slide eligibility, slow-slide no-gain correction, 1.25-second entry cooldown, 2.5-second chain window, gated debug traces, and pure rule assertions. No new asset was added.
 - Momentum steps 1 to 4 source implementation is complete. Server sends value snapshots only to the owner and replicates `MomentumTier` on character models; all HUD, audio, and FOV effects are local.
 - Extended the MS_RPS pick window in Config to 5 seconds live and 3 seconds in Studio; no other phase timing changed.
@@ -149,6 +151,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner: run the [wind dash handoff checklist](playtests/2026-10-22-wind-dash-handoff.md) in the newly built place. Review burst, ribbon thickness and direction, fade, one effect per dash, observer playback, wall stops, respawn, VFX settings at 0/50/100, and mobile/gamepad input. Report any visual adjustment needed before release.
 - Momentum: open the newly built `HabulanRush.rbxlx` and run the [slide chaining checklist](playtests/2026-10-19-slide-chaining-handoff.md) with at least two clients, plus gamepad and mobile. Then run the broader [steps 2-4 checklist](playtests/2026-10-19-momentum-steps-2-4-handoff.md). Keep the 30 studs/s ceiling and other momentum values provisional until chase results are reviewed. Confirm the three supplied sounds are competition-safe before release.
 - Project owner: review the MS_RPS doc lines, open the rebuilt `HabulanRush.rbxlx`, then run the [1, 2, and 8 player Studio cases](playtests/2026-10-18-rps-handoff.md), including the 3-second Studio pick feel, remote abuse, gamepad, mobile, and disconnect behavior. Supply approved reveal and result sound IDs if audio is wanted.
 - Project owner: confirm walk, sprint, jump, fall, landing, dash, slide, roll, and vault animations work before and after tag attempts. Then verify first-person tag arms are local-only and the Action4 third-person tag clip is visible to both players.
@@ -185,6 +188,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Blockers
 
+- Wind dash final acceptance remains with the project owner: close and gameplay views, wall-stop and interruption cleanup, repeated-dash residue, mobile touch, and full gamepad feel. No release or publish has occurred for this item.
 - The slide chaining fix is in the newly built `HabulanRush.rbxlx`, but live slide, popup, chain, two-player, mobile, and gamepad checks remain pending. Momentum steps 1 to 4 also await pure and client Command Bar assertions, two-player chase, perfect-roll receipt timing, cap, FOV, layout, and sound playback. Set presentation toggles in the lobby because the existing settings panel is hidden during a match.
 - MS_RPS gameplay, two-player, gamepad, and mobile validation are pending after a successful Rojo build. `RevealSoundId` and `ResultSoundId` are empty placeholders. The GDD, System Spec, production tracker, and DESIGN_LOCK revisions need owner sign-off.
 - The animation regression repair has no Studio validation yet by owner request. Existing movement animation playback, first-person arm visibility and cleanup, and third-person tag replication are pending project-owner testing.
@@ -249,6 +253,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Validation
 
+- 2026-10-22 wind dash: syntax, notes, and `git diff --check` passed; Rojo rebuilt `HabulanRush.rbxlx` after the final source patch and mapped `WindDash` plus `DashVFXEvent`. An earlier two-client Studio run observed one local and one remote rig from an accepted dash, sideways alignment, automatic cleanup, a gamepad ButtonB observer rig, and VFX scales at 0/50/100. A later direct module probe verified death and respawn cleanup. These are implementation checks; the owner has reserved final visual and device validation.
 - 2026-10-19 slide chaining local build: owner-requested `rojo build default.project.json -o HabulanRush.rbxlx` passed and generated a 708545-byte place. No publish or Studio gameplay run was performed.
 - 2026-10-19 slide chaining: source syntax passed. Pure Studio assertions were updated but have not been run; two-player, mobile, and gamepad gameplay remain pending. No Rojo build or publish was run per owner instruction.
 - 2026-10-19 roll popup duration: source syntax, notes, diff whitespace, and Rojo place build passed. Studio visual timing remains pending.
