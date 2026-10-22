@@ -3,9 +3,9 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: agawan-ng-panyo-all-phases
+task: lihim-na-target-all-phases
 updated: 2026-10-23
-source: 2026-10-23 owner-approved Agawan ng Panyo plan
+source: 2026-10-23 owner-approved Lihim na Target all-phases plan
 related:
   - ../AGENTS.md
   - ../docs/MOVEMENT_AUDIT.md
@@ -19,6 +19,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-23: Implemented the approved Lihim na Target phases in repository source and rebuilt `HabulanRush.rbxlx`. The mode uses private server-owned target cycles, validated click/R2/mobile captures, protections and streaks, 120-second rounds, practice rules, timed hints, a private HUD, and Hunt recaps. Syntax, notes, diff whitespace, and Rojo checks passed. Owner Studio acceptance remains pending; see [full-mode handoff](playtests/2026-10-23-secret-hunt-full-mode-handoff.md).
 - 2026-10-23: Implemented the owner-approved mobile STEAL button refresh and persistent Carrier highlight and trail in source. The touch button now rechecks its actual visibility every 0.1 seconds, while the Carrier has a gold outline and movement trail with stronger timed reveals. Syntax, notes, diff whitespace, and Rojo build passed; fresh-build owner Studio acceptance remains pending; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
 - 2026-10-23: Phase 3 source review found and fixed an invalid-round scoring path: when a competitive Panyo round fell below two players, it awarded no match points but still added hold time and steals to final MVP totals. Only valid rounds now contribute to those totals. A fresh Rojo build and owner Studio matrix remain the acceptance steps; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
 - 2026-10-23: The project owner approved all Agawan ng Panyo phases. Repository source now includes the enabled mode vote, Kalsada-only Panyo round, server-observed pickup and steal, Carrier recovery, possession scoring, timed events, HUD, recaps, and original local cue files. Source checks and Rojo build pass. Owner Studio, mobile, and gamepad validation plus cue upload remain; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
@@ -75,6 +76,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Lihim na Target Phases 0-5: audited repository and connected Studio Edit model read-only; implemented and enabled the full source mode; added the owner test and audio handoff. No new asset was added.
 - Added a Panyo touch-button recovery check and persistent client-only Carrier highlight and trail. The server-owned steal rules and Classic tag path remain unchanged.
 - Implemented the approved Agawan ng Panyo gameplay, event, UI, scoring, and audio source phases. Panyo is enabled in the ballot and restricted to the playable Kalsada map. Classic Tag retains its existing match branch.
 - Agawan ng Panyo Phase 1 mode selection foundation: mapped the dormant multi-mode ballot and UI, published match mode to participants, and kept Classic as the only enabled mode. No asset was added.
@@ -162,6 +164,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner: run the [Lihim na Target full-mode checklist](playtests/2026-10-23-secret-hunt-full-mode-handoff.md) from the fresh Rojo place with 1, 2, 4, and 8 clients, then PC, mobile, gamepad, Classic Tag, and Panyo regressions. Report the first failure with client count, steps, server time, affected player, relevant `HRushHunt*` attributes, and expected versus observed behavior. Supply original or approved audio IDs for Hunt cues before audio acceptance.
 - Project owner: in the fresh Rojo place, use two mobile clients to repeat A to B to A steals. After A loses possession, confirm STEAL reappears, the 2-second return block still rejects early attempts, and a valid later tag transfers possession once. Check PC and R2, the Carrier highlight and trail in third person, own first-person HUD without world effects, VFX 0 and 100, cleanup on death/drop/round end, and one Classic match.
 - Project owner: run the [Agawan ng Panyo full-mode checklist](playtests/2026-10-23-panyo-full-mode-handoff.md) in a fresh build with 1, 2, 4, and 8 clients. Check Classic regression, pickup and steal timing, recovery, scoring, recaps, events, and device controls. Include the invalid-round MVP case from the Phase 3 source review. Send the first failing case with client count, steps, server time, affected player, and `HRushPanyo*` attributes. Upload the five original cue WAV files through the project account and enter approved IDs in `Config.Panyo.Sounds` before expecting Panyo-specific audio.
 - Project owner: run the [first-person FOV handoff checklist](playtests/2026-10-22-first-person-fov-handoff.md) with two Studio clients, including 50/72/95 degrees, live changes, reset, match access, switching views, and mobile/gamepad controls.
@@ -203,6 +206,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Blockers
 
+- Lihim na Target is source-complete but has no owner Studio gameplay, mobile, or gamepad results. Its four sound hooks have blank IDs until original or approved cues are supplied and logged. Kalsada is its only verified playable map.
 - The owner-reported mobile STEAL disappearance and new Carrier effects need a fresh-build Studio check. Source inspection cannot prove the ContextActionService button lifecycle or visual clarity on mobile.
 - Agawan ng Panyo is built from source but has no owner Studio, mobile, or gamepad validation yet. The five original WAV cues need owner upload and approved Roblox IDs; their runtime IDs are blank, so Panyo-specific cues are silent. Kalsada is the only playable Panyo map.
 - The replacement third-person tag animation has not been loaded or visually checked in Studio. Its arm-only blend, availability, and two-player replication remain pending owner validation; provenance confirmation remains pending before release.
@@ -269,9 +273,11 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 34. The owner-supplied `rbxassetid://74307357863566`, `rbxassetid://84863749801510`, `rbxassetid://88319270506819`, and `rbxassetid://104821646839230` replace the Batch A JumpStart, Fall, Land, and LandHard IDs in `Config.Animations`. The previous IDs `115591963738630`, `106234834891508`, `83446879560399`, and `93067099789487` are superseded. The new rows are logged Approved at owner direction; no Studio metadata probe was run.
 35. For the MS_RPS item, remove MS_02 from the live match loop. Keep the old draft UI and Config value dormant until a separate cleanup is approved. MS_RPS runs before MS_03 each round.
 36. Agawan ng Panyo planning scope and Phase 1 were approved. The later owner instruction approved implementation through all phases and enabled the Panyo ballot choice.
+37. The project owner approved all Lihim na Target phases. Full reshuffle follows each capture, target lock and Tsinelas are disabled, and a zero-capture round awards no points. Competitive play starts at four and continues a round with three, ending it at two.
 
 ## Validation
 
+- 2026-10-23 Lihim na Target full mode: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio execution or gameplay test was run by the agent. The owner-run 1, 2, 4, and 8-client matrix and Classic/Panyo regressions remain pending.
 - 2026-10-23 Panyo mobile STEAL and Carrier feedback: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio execution or gameplay test was run by the agent.
 - 2026-10-23 Agawan ng Panyo Phase 3 source review: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed after the invalid-round MVP total fix. The defect was reproduced by source path review, not by a Studio playtest. The owner-run 1, 2, 4, and 8-client matrix and Classic regression are pending.
 - 2026-10-23 Agawan ng Panyo full mode: Luau source syntax, notes, `git diff --check`, and Rojo build passed. No Studio execution, gameplay test, mobile test, or gamepad test was run by the agent. Original cue WAV files were generated locally but cannot play in Roblox until owner upload and ID entry.

@@ -6,6 +6,7 @@
 -- Task/spec: simple click-to-tag server commit, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo Phase 1 mode selection, approved 2026-10-23.
 -- Task/spec: Agawan ng Panyo full mode, approved 2026-10-23.
+-- Task/spec: Lihim na Target full mode, approved 2026-10-23.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
 -- CHANGED IN v1.2
@@ -48,6 +49,7 @@ CommitTag.Parent = ServerScriptService
 
 local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
 local PanyoMode = require(ServerScriptService:WaitForChild("PanyoMode"))
+local SecretHuntMode = require(ServerScriptService:WaitForChild("SecretHuntMode"))
 
 -- QueueEvent is created here if your Remotes setup script doesn't define it yet
 local QueueEvent: RemoteEvent
@@ -323,6 +325,10 @@ CommitTag.OnInvoke = function(tagger: Instance, target: Instance): boolean
 		return matchState == "MS_04" and tagger:IsA("Player") and target:IsA("Player")
 			and PanyoMode.TrySteal(tagger, target)
 	end
+	if currentMode == "SecretHunt" then
+		return matchState == "MS_04" and tagger:IsA("Player") and target:IsA("Player")
+			and SecretHuntMode.TryCapture(tagger, target)
+	end
 	if matchState ~= "MS_04" or currentTaya ~= tagger or playerRoles[tagger] ~= "Taya" then return false end
 	if tagger == target or not table.find(getParticipants(), target) or playerRoles[target] ~= "Runner" then return false end
 	if (immuneUntil[target] or 0) > os.clock() then return false end
@@ -435,6 +441,7 @@ end
 
 Players.PlayerRemoving:Connect(function(player)
 	if currentMode == "AgawanNgPanyo" then PanyoMode.RemovePlayer(player) end
+	if currentMode == "SecretHunt" then SecretHuntMode.RemovePlayer(player) end
 	tayaBag:RemovePlayer(player)
 	rpsChosen[player] = nil
 	rpsPool[player] = nil
@@ -684,6 +691,7 @@ end
 
 local function returnToLobby()
 	PanyoMode.EndRound()
+	SecretHuntMode.EndRound()
 	local returning: { Player } = {}
 	for p in pairs(inMatch) do
 		table.insert(returning, p)
@@ -712,6 +720,7 @@ local function returnToLobby()
 			p:SetAttribute("HRushQueue", "Idle")
 		end
 		p:SetAttribute("HRushSearchEndsAt", nil)
+		p:SetAttribute("HRushHuntPractice", nil)
 	end
 	broadcastState(nil)
 
@@ -1006,7 +1015,8 @@ local function runMatch()
 			currentMode = selectedMode
 			broadcastState(nil)
 		end
-		local selectedMap = if currentMode == "AgawanNgPanyo" then "Kalsada" else runMapVote()
+		local selectedMap = if currentMode == "AgawanNgPanyo" or currentMode == "SecretHunt"
+			then "Kalsada" else runMapVote()
 		ReplicatedStorage:SetAttribute("HRushSelectedMap", selectedMap)
 		print(string.format("[MatchService] Map vote completed. Selected map: %s", selectedMap))
 
@@ -1015,10 +1025,15 @@ local function runMatch()
 		task.wait(0.5)
 
 		local practiceSolo = currentMode == "AgawanNgPanyo" and participantCount() == 1
-		local totalRounds: number = if practiceSolo then 1 else MATCH.TotalRounds or 3
+		local huntPractice = currentMode == "SecretHunt"
+			and participantCount() < Config.SecretHunt.MinCompetitivePlayers
+		local totalRounds: number = if practiceSolo or huntPractice then 1 else MATCH.TotalRounds or 3
 		local panyoTotalTime: { [Player]: number } = {}
 		local panyoTotalSteals: { [Player]: number } = {}
 		local panyoValidRounds = 0
+		local huntTotalCaptures: { [Player]: number } = {}
+		local huntBestStreak: { [Player]: number } = {}
+		local huntValidRounds = 0
 		local abort = false
 
 		for roundNum = 1, totalRounds do
@@ -1050,7 +1065,8 @@ local function runMatch()
 				currentTaya = nil
 				for _, player in ipairs(participants :: { Player }) do
 					playerRoles[player] = "Runner"
-					player:SetAttribute("HRushPanyoPractice", practiceSolo)
+					player:SetAttribute("HRushPanyoPractice", if currentMode == "AgawanNgPanyo" then practiceSolo else nil)
+					player:SetAttribute("HRushHuntPractice", if currentMode == "SecretHunt" then huntPractice else nil)
 				end
 			end
 			-- MS_03 COUNTDOWN
@@ -1058,10 +1074,17 @@ local function runMatch()
 			teleportToSpawns(getParticipants())
 			if currentMode == "ClassicTag" then
 				setRoles(startingTaya :: Instance)
-			else
+			elseif currentMode == "AgawanNgPanyo" then
 				broadcastState(nil)
 				if not PanyoMode.PrepareRound(getParticipants() :: { Player }, selectedMap, currentRound) then
 					warn("[MatchService] Panyo spawn unavailable; ending match safely")
+					abort = true
+					break
+				end
+			else
+				broadcastState(nil)
+				if not SecretHuntMode.PrepareRound(getParticipants() :: { Player }, currentRound) then
+					warn("[MatchService] Secret Hunt roster unavailable; ending match safely")
 					abort = true
 					break
 				end
@@ -1072,16 +1095,35 @@ local function runMatch()
 			end
 			waitPhase(IS_STUDIO and 3 or cdDuration)
 			if participantCount() == 0 then abort = true break end
+			if currentMode == "SecretHunt" and not huntPractice
+				and participantCount() < Config.SecretHunt.MinCompetitivePlayers then
+				if roundNum > 1 then
+					SecretHuntMode.EndRound()
+					break
+				end
+				huntPractice = true
+				totalRounds = 1
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					player:SetAttribute("HRushHuntPractice", true)
+				end
+			end
 
 			-- MS_04 ROUND LIVE
 			matchState = "MS_04"
 			roundActive = true
 			broadcastState(nil)
-			local roundDuration: number = if currentMode == "AgawanNgPanyo" then Config.Panyo.RoundDuration else MATCH.RoundDuration or 150
+			local roundDuration: number = if currentMode == "AgawanNgPanyo" then Config.Panyo.RoundDuration
+				else if currentMode == "SecretHunt" then Config.SecretHunt.RoundDuration
+				else MATCH.RoundDuration or 150
 			print(string.format("[MatchService] Round %d: MS_04 Round Live (%d s)!", currentRound, roundDuration))
 			ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", workspace:GetServerTimeNow() + roundDuration)
 			if currentMode == "AgawanNgPanyo" and not PanyoMode.StartRound(roundDuration) then
 				warn("[MatchService] Panyo round could not start")
+				abort = true
+				break
+			end
+			if currentMode == "SecretHunt" and not SecretHuntMode.StartRound(roundDuration) then
+				warn("[MatchService] Secret Hunt round could not start")
 				abort = true
 				break
 			end
@@ -1107,9 +1149,12 @@ local function runMatch()
 				if currentMode == "AgawanNgPanyo" and not practiceSolo and participantCount() < 2 then
 					break
 				end
+				if currentMode == "SecretHunt" and not huntPractice
+					and participantCount() < Config.SecretHunt.MinContinuePlayers then break end
 			end
 			roundActive = false
 			local panyoResults = if currentMode == "AgawanNgPanyo" then PanyoMode.EndRound() else nil
+			local huntResults = if currentMode == "SecretHunt" then SecretHuntMode.EndRound() else nil
 			if abort then
 				break
 			end
@@ -1163,6 +1208,53 @@ local function runMatch()
 				if not practiceSolo and participantCount() < 2 then break end
 				continue
 			end
+			if currentMode == "SecretHunt" then
+				local results = huntResults :: { any }
+				local validRound = not huntPractice
+				if validRound then huntValidRounds += 1 end
+				table.sort(results, function(a, b)
+					if a.left ~= b.left then return not a.left end
+					if a.captures ~= b.captures then return a.captures > b.captures end
+					local aStreak = math.floor(a.bestStreak * 10 + 0.5)
+					local bStreak = math.floor(b.bestStreak * 10 + 0.5)
+					if aStreak ~= bStreak then return aStreak > bStreak end
+					return a.userId < b.userId
+				end)
+				local pointsTable: { number } = MATCH.RoundPoints or { 8, 6, 5, 4, 3, 2, 1, 0 }
+				local entries = {}
+				local rank = 0
+				for index, result in ipairs(results) do
+					local streak = math.floor(result.bestStreak * 10 + 0.5) / 10
+					local previous = results[index - 1]
+					if previous == nil or result.left ~= previous.left or result.captures ~= previous.captures
+						or streak ~= math.floor(previous.bestStreak * 10 + 0.5) / 10 then rank = index end
+					local points = if validRound and not result.left and result.captures > 0
+						then pointsTable[rank] or 0 else 0
+					if validRound and not result.left then
+						huntTotalCaptures[result.player] = (huntTotalCaptures[result.player] or 0) + result.captures
+						huntBestStreak[result.player] = math.max(huntBestStreak[result.player] or 0, streak)
+						matchPoints[result.player] = (matchPoints[result.player] or 0) + points
+					end
+					table.insert(entries, {
+						rank = rank, userId = result.userId, name = result.name, left = result.left,
+						captures = result.captures, bestStreak = streak, pointsAwarded = points,
+						totalPoints = matchPoints[result.player] or 0,
+					})
+				end
+				local recapWait = if IS_STUDIO then 3 else roundEndDuration
+				local matchEnding = huntPractice or participantCount() < Config.SecretHunt.MinCompetitivePlayers
+					or roundNum >= totalRounds
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					RoundRecapEvent:FireClient(player, {
+						mode = currentMode, entries = entries, round = currentRound, totalRounds = totalRounds,
+						nextIn = recapWait, practice = huntPractice, validRound = validRound,
+						matchEnding = matchEnding,
+					})
+				end
+				waitPhase(recapWait)
+				if matchEnding or participantCount() < Config.SecretHunt.MinCompetitivePlayers then break end
+				continue
+			end
 
 			local ranked: { { player: Instance, tayaTime: number } } = {}
 			for _, p in ipairs(getParticipants()) do
@@ -1204,12 +1296,45 @@ local function runMatch()
 		end
 
 		-- MS_06 MATCH END
-		if not abort and (currentMode == "ClassicTag" or (not practiceSolo and panyoValidRounds > 0)) then
+		if not abort and (currentMode == "ClassicTag"
+			or (currentMode == "AgawanNgPanyo" and not practiceSolo and panyoValidRounds > 0)
+			or (currentMode == "SecretHunt" and huntValidRounds > 0)) then
 			matchState = "MS_06"
 			broadcastState(nil)
 			local matchEndDuration: number = MATCH.MatchEndDuration or 15
 			print(string.format("[MatchService] MS_06 Match End (%d s). Determining Match MVP...", matchEndDuration))
-			if currentMode == "AgawanNgPanyo" then
+			if currentMode == "SecretHunt" then
+				local finalRankings = {}
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					table.insert(finalRankings, {
+						player = player, captures = huntTotalCaptures[player] or 0,
+						bestStreak = huntBestStreak[player] or 0, points = matchPoints[player] or 0,
+					})
+				end
+				table.sort(finalRankings, function(a, b)
+					if a.captures ~= b.captures then return a.captures > b.captures end
+					if a.bestStreak ~= b.bestStreak then return a.bestStreak > b.bestStreak end
+					if a.points ~= b.points then return a.points > b.points end
+					return a.player.UserId < b.player.UserId
+				end)
+				local entries = {}
+				local rank = 0
+				for index, entry in ipairs(finalRankings) do
+					local previous = finalRankings[index - 1]
+					if previous == nil or entry.captures ~= previous.captures
+						or entry.bestStreak ~= previous.bestStreak or entry.points ~= previous.points then rank = index end
+					table.insert(entries, {
+						rank = rank, isMVP = rank == 1 and entry.captures > 0,
+						name = entry.player.DisplayName, userId = entry.player.UserId,
+						captures = entry.captures, bestStreak = entry.bestStreak, points = entry.points,
+					})
+				end
+				local podiumWait = if IS_STUDIO then 5 else matchEndDuration
+				for _, player in ipairs(getParticipants() :: { Player }) do
+					MatchRecapEvent:FireClient(player, { mode = currentMode, entries = entries, nextIn = podiumWait })
+				end
+				waitPhase(podiumWait)
+			elseif currentMode == "AgawanNgPanyo" then
 				local finalRankings = {}
 				for _, player in ipairs(getParticipants() :: { Player }) do
 					table.insert(finalRankings, {

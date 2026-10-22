@@ -2,6 +2,7 @@
 -- StarterPlayerScripts/UIController.client.lua
 -- Owner: Project Owner
 -- Responsibility: HUD (role banner, countdown, scoreboard, stamina bar),
+-- Task/spec: Lihim na Target mode HUD and recaps, approved 2026-10-23.
 -- Task/spec: simple click-to-tag HUD cleanup, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo recaps and splash, approved 2026-10-23.
 --                 skill bar, Diskarte meter, clutch callouts, recap screens,
@@ -427,7 +428,8 @@ local function updateRoleBanner()
 	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
 	local st = LocalPlayer:GetAttribute("HRushState")
 	-- Do NOT show during MS_04: topBar already shows TAYA tracker + role context.
-	local show = inMatch and LocalPlayer:GetAttribute("HRushGameMode") ~= "AgawanNgPanyo" and (st == "MS_03" or st == "MS_05")
+	local show = inMatch and LocalPlayer:GetAttribute("HRushGameMode") == "ClassicTag"
+		and (st == "MS_03" or st == "MS_05")
 	if show then
 		roleBanner.Visible = true
 		local role = LocalPlayer:GetAttribute("HRushRole")
@@ -968,6 +970,12 @@ local function playRoleSplash()
 		splashSub.Text = "Grab it, then hold it for points!"
 		splash.BackgroundColor3 = HUD_RED_DARK
 		splashStroke.Color = HUD_GOLD
+	elseif LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt" then
+		splashTitle.Text = "LIHIM NA TARGET!"
+		splashTitle.TextColor3 = HUD_GOLD
+		splashSub.Text = "Find your target. Stay ahead of your Hunter."
+		splash.BackgroundColor3 = HUD_RED_DARK
+		splashStroke.Color = HUD_GOLD
 	elseif isTaya then
 		splashTitle.Text = "IKAW ANG TAYA!"
 		splashTitle.TextColor3 = Color3.fromRGB(255, 110, 80)
@@ -1303,13 +1311,18 @@ local function fmtTayaCell(sec: number): string
 	return string.format("%02d.%d", whole, tenth)
 end
 
-local function buildScoreboard(entries: { any }, round: number, totalRounds: number, nextIn: number, isPanyo: boolean, practice: boolean)
+local huntMatchEnding = false
+local function buildScoreboard(entries: { any }, round: number, totalRounds: number, nextIn: number, mode: string?, practice: boolean)
+	local isPanyo = mode == "AgawanNgPanyo"
+	local isHunt = mode == "SecretHunt"
 	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	panyoScoreboardScale.Scale = if isPanyo then math.clamp(viewport.X / 620, 0.55, 1) else 1
+	panyoScoreboardScale.Scale = if isPanyo or isHunt then math.clamp(viewport.X / 620, 0.55, 1) else 1
 	for _, child in ipairs(scoreboardRows:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
-	scoreboardTitle.Text = if isPanyo
+	scoreboardTitle.Text = if isHunt
+		then string.format("HUNT ROUND %d / %d%s", round, totalRounds, if practice then " - PRACTICE" else "")
+		else if isPanyo
 		then string.format("PANYO ROUND %d / %d%s", round, totalRounds, if practice then " - PRACTICE" else "")
 		else string.format("ROUND %d / %d RESULTS", round, totalRounds)
 	scoreboardNextIn = nextIn
@@ -1347,7 +1360,9 @@ local function buildScoreboard(entries: { any }, round: number, totalRounds: num
 		oLabel({
 			Position = UDim2.fromOffset(260, 0),
 			Size = UDim2.fromOffset(110, 34),
-			Text = if isPanyo
+			Text = if isHunt
+				then tostring(e.captures or 0) .. "C / " .. fmtTayaCell(e.bestStreak or 0) .. "s"
+				else if isPanyo
 				then fmtTayaCell(e.possessionTime or 0) .. "s/" .. tostring(e.steals or 0) .. "S"
 				else fmtTayaCell(e.tayaTime or 0) .. "s",
 			TextSize = 13,
@@ -1380,8 +1395,9 @@ end
 
 RoundRecapEvent.OnClientEvent:Connect(function(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.entries) ~= "table" then return end
+	huntMatchEnding = payload.mode == "SecretHunt" and payload.matchEnding == true
 	buildScoreboard(payload.entries, tonumber(payload.round) or 1, tonumber(payload.totalRounds) or 3, tonumber(payload.nextIn) or 8,
-		payload.mode == "AgawanNgPanyo", payload.practice == true)
+		payload.mode, payload.practice == true)
 end)
 
 -- ── G. MATCH MVP PODIUM (MS_06) ──────────────────────────────────────────────
@@ -1465,14 +1481,16 @@ local podiumFooter = oLabel({
 }, podium)
 local podiumNextIn = 0
 
-local function buildPodium(entries: { any }, nextIn: number, isPanyo: boolean)
+local function buildPodium(entries: { any }, nextIn: number, mode: string?)
+	local isPanyo = mode == "AgawanNgPanyo"
+	local isHunt = mode == "SecretHunt"
 	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	panyoMvpScale.Scale = if isPanyo then math.clamp(viewport.X / 450, 0.7, 1) else 1
-	panyoPodiumRowsScale.Scale = if isPanyo then math.clamp(viewport.X / 590, 0.55, 1) else 1
-	mvpName.Text = if isPanyo then "NO PANYO MVP" else ""
-	mvpStats.Text = if isPanyo then "No possession recorded" else ""
+	panyoMvpScale.Scale = if isPanyo or isHunt then math.clamp(viewport.X / 450, 0.7, 1) else 1
+	panyoPodiumRowsScale.Scale = if isPanyo or isHunt then math.clamp(viewport.X / 590, 0.55, 1) else 1
+	mvpName.Text = if isHunt then "NO HUNT MVP" else if isPanyo then "NO PANYO MVP" else ""
+	mvpStats.Text = if isHunt then "No captures recorded" else if isPanyo then "No possession recorded" else ""
 	local tiedPanyoMvp = false
-	if isPanyo then
+	if isPanyo or isHunt then
 		local winners = {}
 		for _, entry in ipairs(entries) do
 			if entry.isMVP then table.insert(winners, entry.name) end
@@ -1480,7 +1498,8 @@ local function buildPodium(entries: { any }, nextIn: number, isPanyo: boolean)
 		if #winners > 1 then
 			tiedPanyoMvp = true
 			mvpName.Text = "TIED MVP (" .. tostring(#winners) .. ")"
-			mvpStats.Text = "Equal hold time, steals, and match points"
+			mvpStats.Text = if isHunt then "Equal captures, streak, and match points"
+				else "Equal hold time, steals, and match points"
 		end
 	end
 	for _, child in ipairs(podiumRows:GetChildren()) do
@@ -1490,7 +1509,10 @@ local function buildPodium(entries: { any }, nextIn: number, isPanyo: boolean)
 	for _, e in ipairs(entries) do
 		if e.isMVP and not tiedPanyoMvp then
 			mvpName.Text = e.name
-			mvpStats.Text = if isPanyo then string.format("%.1fs hold | %d steals | %d match pts", e.possessionTime or 0, e.steals or 0, e.points or 0) else string.format("%d points | %.1fs total Taya time", e.points or 0, e.totalTayaTime or 0)
+			mvpStats.Text = if isHunt
+				then string.format("%d captures | %.1fs streak | %d match pts", e.captures or 0, e.bestStreak or 0, e.points or 0)
+				else if isPanyo then string.format("%.1fs hold | %d steals | %d match pts", e.possessionTime or 0, e.steals or 0, e.points or 0)
+				else string.format("%d points | %.1fs total Taya time", e.points or 0, e.totalTayaTime or 0)
 		end
 		local row = oFrame({
 			Size = UDim2.new(1, 0, 0, 26),
@@ -1532,7 +1554,9 @@ local function buildPodium(entries: { any }, nextIn: number, isPanyo: boolean)
 		oLabel({
 			Position = UDim2.fromOffset(430, 0),
 			Size = UDim2.fromOffset(120, 26),
-			Text = if isPanyo then fmtTayaCell(e.possessionTime or 0) .. "s hold" else fmtTayaCell(e.totalTayaTime or 0) .. "s taya",
+			Text = if isHunt then tostring(e.captures or 0) .. " captures"
+				else if isPanyo then fmtTayaCell(e.possessionTime or 0) .. "s hold"
+				else fmtTayaCell(e.totalTayaTime or 0) .. "s taya",
 			TextSize = 12,
 			TextColor3 = HUD_DIM,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1544,7 +1568,7 @@ end
 
 MatchRecapEvent.OnClientEvent:Connect(function(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.entries) ~= "table" then return end
-	buildPodium(payload.entries, tonumber(payload.nextIn) or 15, payload.mode == "AgawanNgPanyo")
+	buildPodium(payload.entries, tonumber(payload.nextIn) or 15, payload.mode)
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════════
@@ -1557,7 +1581,7 @@ local function applyOverlayGate()
 	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
 	local st = phaseState
 	overlayGui.Enabled = inMatch and st ~= nil and st ~= "MS_01"
-	topBar.Visible = (st == "MS_04") and LocalPlayer:GetAttribute("HRushGameMode") ~= "AgawanNgPanyo"
+	topBar.Visible = (st == "MS_04") and LocalPlayer:GetAttribute("HRushGameMode") == "ClassicTag"
 	draftModal.Visible = (st == "MS_02")
 	scoreboard.Visible = (st == "MS_05") and scoreboardHasData
 	podium.Visible = (st == "MS_06") and podiumHasData
@@ -1629,9 +1653,13 @@ game:GetService("RunService").Heartbeat:Connect(function()
 		draftSub.Text = "Pumili ng isa — " .. math.max(0, math.ceil(remaining)) .. "s left"
 	elseif phaseState == "MS_05" then
 		local seconds = math.max(0, math.ceil(remaining))
-		if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
-			and LocalPlayer:GetAttribute("HRushPanyoPractice") == true then
+		if (LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
+			and LocalPlayer:GetAttribute("HRushPanyoPractice") == true)
+			or (LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt"
+				and LocalPlayer:GetAttribute("HRushHuntPractice") == true) then
 			scoreboardSub.Text = string.format("Practice complete. Returning in %ds...", seconds)
+		elseif LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt" and huntMatchEnding then
+			scoreboardSub.Text = string.format("Match results in %ds...", seconds)
 		elseif LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
 			and (tonumber(LocalPlayer:GetAttribute("HRushRound")) or 1) >= (Config.Match.TotalRounds or 3) then
 			scoreboardSub.Text = string.format("Match results in %ds...", seconds)

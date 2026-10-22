@@ -5,6 +5,7 @@
 -- Task/spec: repair the character animation conflict in simple click tagging, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo steal input, approved 2026-10-23.
 -- Task/spec: Panyo mobile STEAL button recovery, approved 2026-10-23.
+-- Task/spec: Lihim na Target capture input, approved 2026-10-23.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -45,10 +46,13 @@ local lastTouchTitle = ""
 
 local function canTag(): boolean
 	local isPanyo = localPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
+	local isHunt = localPlayer:GetAttribute("HRushGameMode") == "SecretHunt"
 	local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
 	return localPlayer:GetAttribute("HRushInMatch") == true
 		and localPlayer:GetAttribute("HRushState") == "MS_04"
-		and (if isPanyo then typeof(carrierId) == "number" and carrierId ~= localPlayer.UserId else localPlayer:GetAttribute("HRushRole") == "Taya")
+		and (if isPanyo then typeof(carrierId) == "number" and carrierId ~= localPlayer.UserId
+			else if isHunt then localPlayer:GetAttribute("HRushHuntTargetReady") == true
+			else localPlayer:GetAttribute("HRushRole") == "Taya")
 		and localPlayer:GetAttribute("HRushStunned") ~= true
 		and localPlayer:GetAttribute("HRushAbilityBusy") ~= true
 end
@@ -214,7 +218,8 @@ local function updateTouchButton()
 	end
 	local visible = canTag()
 	if button.Visible ~= visible then button.Visible = visible end
-	local title = if localPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then "STEAL" else "TAG"
+	local mode = localPlayer:GetAttribute("HRushGameMode")
+	local title = if mode == "AgawanNgPanyo" then "STEAL" else if mode == "SecretHunt" then "CAPTURE" else "TAG"
 	if button ~= lastTouchButton or title ~= lastTouchTitle then
 		ContextActionService:SetTitle(ACTION, title)
 		lastTouchButton = button
@@ -276,7 +281,7 @@ function TagController.start()
 	ContextActionService:SetTitle(ACTION, "TAG")
 	ContextActionService:SetPosition(ACTION, UDim2.fromScale(0.84, 0.72))
 
-	for _, attribute in { "HRushInMatch", "HRushState", "HRushRole", "HRushGameMode", "HRushStunned", "HRushAbilityBusy" } do
+	for _, attribute in { "HRushInMatch", "HRushState", "HRushRole", "HRushGameMode", "HRushHuntTargetReady", "HRushStunned", "HRushAbilityBusy" } do
 		localPlayer:GetAttributeChangedSignal(attribute):Connect(updateTouchButton)
 	end
 	ReplicatedStorage:GetAttributeChangedSignal("HRushPanyoCarrierUserId"):Connect(updateTouchButton)

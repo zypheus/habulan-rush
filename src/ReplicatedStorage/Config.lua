@@ -10,6 +10,7 @@
 -- Task/spec: source-owned wind dash VFX, approved 2026-10-22.
 -- Task/spec: Agawan ng Panyo Phase 1 mode selection, approved 2026-10-23.
 -- Task/spec: Panyo Carrier visual feedback, approved 2026-10-23.
+-- Task/spec: Lihim na Target full mode, approved 2026-10-23.
 -- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
 
 local Config = {}
@@ -701,10 +702,11 @@ Config.ModeVote = {
 	RevealTime = 1.5, -- [SD] selected mode reveal before the map vote
 	RequestInterval = 0.1, -- [SD] minimum interval between a player's mode vote requests
 	TieFallback = "ClassicTag", -- [SD] preserve Classic Tag on a split or empty ballot
-	Order = { "ClassicTag", "AgawanNgPanyo" }, -- [SD] display and tie-independent mode order
+	Order = { "ClassicTag", "AgawanNgPanyo", "SecretHunt" }, -- [SD] display and tie-independent mode order
 	Modes = {
 		ClassicTag = { name = "Classic Tag", description = "Lowest Taya time wins", enabled = true }, -- [SD]
 		AgawanNgPanyo = { name = "Agawan ng Panyo", description = "Grab, steal, and hold the panyo", enabled = true }, -- [SD] available in the server-owned mode ballot
+		SecretHunt = { name = "Lihim na Target", description = "Find your secret target and capture them", enabled = true }, -- [SD] enabled after the full mode is wired
 	},
 }
 
@@ -742,6 +744,31 @@ Config.Panyo = {
 		FinalCues = { 30, 15, 10, 5 },
 	},
 	Sounds = { pickup = "", steal = "", drop = "", reveal = "", final = "" }, -- [SD] silent until competition-safe audio is supplied
+}
+
+Config.SecretHunt = {
+	RoundDuration = 120, -- [SD] competitive and practice round length
+	MinCompetitivePlayers = 4, -- [SD] three-or-fewer-player lobbies are practice only
+	MinContinuePlayers = 3, -- [SD] a competitive round ends when only two remain
+	CaptureSafe = 2, -- [SD] tagged target protection
+	RespawnSafe = 2, -- [SD] protection after a respawn or arena recovery
+	HunterCaptureCooldown = 1, -- [SD] delay between one Hunter's successful captures
+	PairCaptureCooldown = 4, -- [SD] blocks rapid reciprocal capture farming
+	AssignmentAttempts = 128, -- [SD] bounded randomized cycle search
+	SyncRequestInterval = 1, -- [SD] client snapshot request guard
+	WatchInterval = 0.25, -- [SD] server arena and hint cadence
+	ArenaXzLimit = 70, -- [SD] Kalsada bounds inside the walls
+	ArenaMinY = -10, -- [SD] recovery below arena
+	ArenaMaxY = 35, -- [SD] recovery above arena
+	DistanceBucket = 10, -- [SD] approximate target distance in studs
+	DangerDistance = 22, -- [SD] private nearby-Hunter warning distance
+	HintPulseDuration = 1.25, -- [SD] brief directional hint lifetime
+	Events = { -- [SD] seconds remaining in a 120-second round
+		BarangayRush = 80,
+		HulingHabol = 40,
+		HintIntervals = { Simula = 5, BarangayRush = 3, HulingHabol = 2 },
+	},
+	Sounds = { capture = "", assignment = "", danger = "", final = "" }, -- [SD] silent until competition-safe cues are approved
 }
 
 Config.MapVote = {

@@ -184,12 +184,15 @@
   },
   "active": "e733822277f7bdaa",
   "lastOpenFiles": [
+    "HabulanRush.rbxlx.lock",
+    "dev-notes/playtests/2026-10-23-secret-hunt-full-mode-handoff.md",
+    "src/StarterPlayerScripts/SecretHuntHUD.client.lua",
+    "src/ServerScriptService/SecretHuntMode.lua",
     "dev-notes/playtests/2026-10-16-pounce-tag.md",
     "tools/PounceDev/README.md",
     "tools/PounceDev/ServerFixture.server.lua",
     "tools/PounceDev/ClientFixture.client.lua",
     "tools/PounceDev",
-    "HabulanRush.rbxlx.lock",
     "agent/skills/caveman/SKILL.md",
     "dev-notes/playtests/2026-10-15-animation-batch-a.md",
     "agent/skills/caveman/README.md",
@@ -199,8 +202,6 @@
     "dev-notes/playtests/2026-10-15-animation-batch0.md",
     "tools/AnimationDev/README.md",
     "tools/AnimationDev/HRush_AnimPreview.lua",
-    "tools/AnimationDev/HRush_AnimDev.lua",
-    "src/ServerScriptService/MovementAuthority.server.lua",
     "docs/MOVEMENT_AUDIT.md",
     "dev-notes/current-task.md",
     "docs/UPGRADE_REPORT.md",
@@ -218,8 +219,6 @@
     "dev-notes/rs-03-tsinelas-throw.md",
     "dev-notes/templates/playtest-template.md",
     "dev-notes/templates/handoff-template.md",
-    "dev-notes/templates/decision-template.md",
-    "dev-notes/templates/bug-template.md",
-    "dev-notes/templates/agent-task-prompt-template.md"
+    "dev-notes/templates/decision-template.md"
   ]
 }

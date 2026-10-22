@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: Present the server-owned match mode ballot on PC, touch, and gamepad.
 -- Task/spec: Agawan ng Panyo Phase 1 mode selection, approved 2026-10-23.
+-- Task/spec: Lihim na Target three-mode ballot, approved 2026-10-23.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -133,7 +134,8 @@ local function start(payload: { [string]: any })
 			local modeId = mode.id
 			local button = Instance.new("TextButton")
 			button.Name = modeId
-			button.Size = UDim2.new(1, 0, 0, 112)
+			button.Size = UDim2.new(1, 0, 0, if #payload.modes >= 3
+				then math.floor((cards.Size.Y.Offset - 24) / #payload.modes) else 112)
 			button.LayoutOrder = index
 			button.BorderSizePixel = 0
 			button.Font = Enum.Font.GothamBold

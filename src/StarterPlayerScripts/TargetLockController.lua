@@ -4,6 +4,7 @@
 -- lock breaks the moment a tag transfer turns the local Taya into a Runner.
 -- Integration attributes, set by the server on Players:
 -- HRushRole: "Taya" for Taya; "Runner" for Runner.
+-- Task/spec: Lihim na Target disables target lock without a role toast, approved 2026-10-23.
 -- IsTaya: true for Taya; false or absent for a Runner (legacy / fallback).
 -- LockDelayUntil: server timestamp; T12 blocks acquisition until it expires.
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
@@ -544,6 +545,7 @@ local function refreshCandidates()
 end
 
 local function acquire()
+	if LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt" then return end
 	local camera = Workspace.CurrentCamera
 	local root = livingRoot(LocalPlayer.Character)
 	if not camera or not root or not roundLive or Workspace:GetServerTimeNow() < cooldownUntil then
@@ -624,6 +626,12 @@ function TargetLockController:Init()
 			end
 		end
 	end))
+	table.insert(connections, LocalPlayer:GetAttributeChangedSignal("HRushGameMode"):Connect(function()
+		if LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt" then
+			acquireRequested = false
+			if target then TargetLockController:BreakLock("SecretHunt") end
+		end
+	end))
 	-- Track when the player steers the camera so the assist can step aside.
 	table.insert(connections, UserInputService.InputChanged:Connect(function(input: InputObject)
 		local ut = input.UserInputType
@@ -643,6 +651,9 @@ function TargetLockController:Init()
 		end
 	end))
 	ContextActionService:BindAction(TOGGLE_ACTION, function(_name, state, _input)
+		if LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt" then
+			return Enum.ContextActionResult.Sink
+		end
 		if state == Enum.UserInputState.Begin then
 			toggleFireCount += 1
 			if Config.Debug.ShowLockDebug then
@@ -667,6 +678,9 @@ function TargetLockController:Init()
 		return Enum.ContextActionResult.Sink
 	end, false, Settings.Keybinds.Toggle, Settings.Keybinds.GamepadToggle)
 	ContextActionService:BindAction(CYCLE_ACTION, function(_name, state, _input)
+		if LocalPlayer:GetAttribute("HRushGameMode") == "SecretHunt" then
+			return Enum.ContextActionResult.Sink
+		end
 		if state == Enum.UserInputState.Begin and target and isLocalTaya() then
 			cycleTarget()
 		end

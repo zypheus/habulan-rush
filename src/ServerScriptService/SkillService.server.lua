@@ -14,6 +14,7 @@
 -- See System Specification section 5 and Config.Skills.
 --
 -- IN THIS SLICE: RS_01 + RS_03. Server role authority arrives with TagService
+-- Task/spec: Lihim na Target Luksong Baka-only skills, approved 2026-10-23.
 -- (T11); until then the role gate and the Taya lookup use the debug flag.
 -- TODO (T17): PickSkill draft + slot validation + timeout auto-pick.
 -- TODO (T18/T19): effect execution for RS_02 and TS_01-03, Diskarte counter (T21).
@@ -406,6 +407,11 @@ RequestSkill.OnServerEvent:Connect(function(player: Player, skillId: unknown, di
 			deny(player, skillId, "unavailable in Panyo")
 			return
 		end
+	end
+	if player:GetAttribute("HRushGameMode") == "SecretHunt"
+		and (player:GetAttribute("HRushInMatch") ~= true or skillId ~= "RS_01") then
+		deny(player, skillId, "unavailable in Secret Hunt")
+		return
 	end
 
 	-- Role gate: only enforced while the debug flag is off. The server cannot

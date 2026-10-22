@@ -51,6 +51,7 @@
         "MapVoteEvent":    { "$className": "RemoteEvent" },
         "ModeVoteEvent":   { "$className": "RemoteEvent" },
         "PanyoEvent":      { "$className": "RemoteEvent" },
+        "SecretHuntEvent": { "$className": "RemoteEvent" },
         "RpsStageStart":   { "$className": "RemoteEvent" },
         "RpsReveal":       { "$className": "RemoteEvent" },
         "RpsResult":       { "$className": "RemoteEvent" },
@@ -78,6 +79,9 @@
       },
       "PanyoEvents": {
         "$path": "src/ServerScriptService/PanyoEvents.lua"
+      },
+      "SecretHuntMode": {
+        "$path": "src/ServerScriptService/SecretHuntMode.lua"
       },
       "MovementAuthority": {
         "$path": "src/ServerScriptService/MovementAuthority.lua"
@@ -153,6 +157,9 @@
         },
         "PanyoHUD": {
           "$path": "src/StarterPlayerScripts/PanyoHUD.client.lua"
+        },
+        "SecretHuntHUD": {
+          "$path": "src/StarterPlayerScripts/SecretHuntHUD.client.lua"
         },
         "RpsUI": {
           "$path": "src/StarterPlayerScripts/RpsUI.client.lua"

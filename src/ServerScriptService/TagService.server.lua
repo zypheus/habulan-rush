@@ -4,6 +4,7 @@
 -- Responsibility: validate click tag requests, select a target, and replicate third-person tag animation.
 -- Task/spec: simple click tagging with perspective-specific animations, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo server-validated steals, approved 2026-10-23.
+-- Task/spec: Lihim na Target assigned-target captures, approved 2026-10-23.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local PanyoMode = require(ServerScriptService:WaitForChild("PanyoMode"))
+local SecretHuntMode = require(ServerScriptService:WaitForChild("SecretHuntMode"))
 local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
 local RequestTag = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RequestTag") :: RemoteEvent
 local commitInstance = ServerScriptService:WaitForChild("HRUSH_CommitTag", 10)
@@ -90,9 +92,12 @@ end
 
 local function canAttempt(player: Player): (boolean, Model?, Humanoid?, BasePart?)
 	local isPanyo = player:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
+	local isHunt = player:GetAttribute("HRushGameMode") == "SecretHunt"
 	if player:GetAttribute("HRushInMatch") ~= true
 		or player:GetAttribute("HRushState") ~= "MS_04"
-		or (if isPanyo then not PanyoMode.CanAttemptSteal(player) else player:GetAttribute("HRushRole") ~= "Taya")
+		or (if isPanyo then not PanyoMode.CanAttemptSteal(player)
+			else if isHunt then not SecretHuntMode.CanAttemptCapture(player)
+			else player:GetAttribute("HRushRole") ~= "Taya")
 		or player:GetAttribute("HRushStunned") == true
 		or player:GetAttribute("HRushAbilityBusy") == true
 	then
@@ -112,6 +117,7 @@ end
 
 local function validTarget(
 	target: Player,
+	tagger: Player,
 	taggerCharacter: Model,
 	taggerRoot: BasePart,
 	box: CFrame
@@ -126,6 +132,10 @@ local function validTarget(
 	local now = Workspace:GetServerTimeNow()
 	if target:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then
 		if target ~= PanyoMode.GetCarrier() or not PanyoMode.CanBeStolen(target) then
+			return false, math.huge
+		end
+	elseif target:GetAttribute("HRushGameMode") == "SecretHunt" then
+		if not SecretHuntMode.CanCaptureTarget(tagger, target) then
 			return false, math.huge
 		end
 	else
@@ -195,7 +205,7 @@ local function findTarget(tagger: Player, taggerCharacter: Model, taggerRoot: Ba
 	local closest: Player? = nil
 	local closestDistance = math.huge
 	for player in candidates do
-		local valid, distance = validTarget(player, taggerCharacter, taggerRoot, box)
+		local valid, distance = validTarget(player, tagger, taggerCharacter, taggerRoot, box)
 		if valid and distance < closestDistance then
 			closest = player
 			closestDistance = distance

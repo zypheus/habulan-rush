@@ -23,6 +23,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | RPS remotes | `default.project.json`, `ReplicatedStorage.Remotes` | StageStart, Reveal, Result server presentation and validated SubmitSign request | Project Owner |
 | ModeVoteEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Validated mode ballot requests and server vote presentation | Project Owner |
 | PanyoEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-only Panyo pickup, steal, drop, phase, reveal, and final cue presentation | Project Owner |
+| SecretHuntEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Private assignment, hint, capture, phase, and leaderboard presentation; rate-limited snapshot request | Project Owner |
 
 ## Server
 
@@ -32,6 +33,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, roles, timer, scoring, and server-only tag commit | Project Owner |
 | PanyoMode | `src/ServerScriptService/PanyoMode.lua` | One panyo instance, server-observed pickup, Carrier ownership, steal protection, recovery, and possession clock | Project Owner |
 | PanyoEvents | `src/ServerScriptService/PanyoEvents.lua` | Panyo phase transitions, periodic reveals, and final-second cues | Project Owner |
+| SecretHuntMode | `src/ServerScriptService/SecretHuntMode.lua` | Private target cycle, capture ledger, protection, streaks, recovery, and timed Hunt cues | Project Owner |
 | MovementAuthority | `src/ServerScriptService/MovementAuthority.lua` | Server movement state, request validation, cooldowns, and passive speed/displacement observation | Project Owner |
 | MovementAuthority bootstrap | `src/ServerScriptService/MovementAuthority.server.lua` | Starts the MovementAuthority lifecycle | Project Owner |
 | TagService | `src/ServerScriptService/TagService.server.lua` | Click tag rate guard, target selection, spatial/arc/LOS validation, and replicated third-person tag animation | Project Owner |
@@ -61,6 +63,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | MapVoteUI | `src/StarterPlayerScripts/MapVoteUI.client.lua` | Map-vote presentation and input | Project Owner |
 | ModeVoteUI | `src/StarterPlayerScripts/ModeVoteUI.client.lua` | Match mode ballot presentation and input | Project Owner |
 | PanyoHUD | `src/StarterPlayerScripts/PanyoHUD.client.lua` | Possession timer, ranking, Carrier marker, reveal highlight, and local cues | Project Owner |
+| SecretHuntHUD | `src/StarterPlayerScripts/SecretHuntHUD.client.lua` | Private target card, timed hints, danger, capture feedback, and final-phase leaderboard | Project Owner |
 | ClientSettings | `src/StarterPlayerScripts/ClientSettings.lua` | In-session presentation settings | Project Owner |
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |
 | MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client match-state music playback and fades | Project Owner |

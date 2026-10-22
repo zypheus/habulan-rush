@@ -397,6 +397,7 @@ end
 -- but is skipped while Config.Debug.AllowAnyRoleForSkills is on, so any role
 -- can test skills; flip the flag off to restore the Runner-only rule.
 local function grantedSkillId(): string
+	local mode = LocalPlayer:GetAttribute("HRushGameMode")
 	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then
 		local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
 		if carrierId == LocalPlayer.UserId then return "" end
@@ -407,7 +408,7 @@ local function grantedSkillId(): string
 	for _, id in Config.Skills.testGrant do
 		local sk = Config.Skills[id]
 		if sk and (Config.Debug.AllowAnyRoleForSkills or sk.role == role)
-			and (LocalPlayer:GetAttribute("HRushGameMode") ~= "AgawanNgPanyo" or id == "RS_01") then
+			and ((mode ~= "AgawanNgPanyo" and mode ~= "SecretHunt") or id == "RS_01") then
 			return id
 		end
 	end
@@ -417,7 +418,8 @@ end
 -- RS_03 grant for the UI slot: same TEMP list and role gate as above, but
 -- for Tsinelas Throw specifically (grantedSkillId returns the first grant).
 local function grantedTsinelas(): string
-	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then return "" end
+	local mode = LocalPlayer:GetAttribute("HRushGameMode")
+	if mode == "AgawanNgPanyo" or mode == "SecretHunt" then return "" end
 	if role ~= "Runner" and not Config.Debug.AllowAnyRoleForSkills then
 		return ""
 	end
@@ -1986,7 +1988,8 @@ end
 -- Same gates as the cast: aiming is only entered and only fires while a
 -- throw right now would be valid.
 local function tsinelasCanCast(): boolean
-	if LocalPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo" then return false end
+	local mode = LocalPlayer:GetAttribute("HRushGameMode")
+	if mode == "AgawanNgPanyo" or mode == "SecretHunt" then return false end
 	if not roundLive or inputLocked then
 		return false
 	end
