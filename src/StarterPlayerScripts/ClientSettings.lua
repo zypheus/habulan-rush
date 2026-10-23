@@ -8,13 +8,14 @@
 -- camera overhaul Phase 4 (view mode key).
 -- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
 -- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
+-- Task/spec: approved UI/UX redesign accessibility controls, 2026-10-23.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local S = Config.Settings
 
-export type SettingKey = "master" | "music" | "sfx" | "vfx" | "reducedCamera" | "showPopups" | "momentumBar" | "momentumSounds" | "cameraSensitivity" | "firstPersonFov" | "invertCameraY" | "cameraEffectsIntensity" | "lookBackEnabled" | "chaserIndicatorEnabled" | "cameraViewMode"
+export type SettingKey = "master" | "music" | "sfx" | "vfx" | "reducedCamera" | "showPopups" | "momentumBar" | "momentumSounds" | "cameraSensitivity" | "firstPersonFov" | "invertCameraY" | "cameraEffectsIntensity" | "lookBackEnabled" | "chaserIndicatorEnabled" | "cameraViewMode" | "textScale" | "highContrast"
 
 type NumberSpec = {
 	kind: string,
@@ -37,6 +38,8 @@ type SettingSpec = NumberSpec | BoolSpec | StringSpec
 -- Registry: add future options (UI text scale, colorblind palette) as new
 -- entries here without touching the screen code.
 local SPECS: { [SettingKey]: SettingSpec } = {
+	textScale = { kind = "number", min = 80, max = 130, step = 10, default = S.TextScaleDefault },
+	highContrast = { kind = "boolean", default = S.HighContrastDefault },
 	master = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.MasterDefault },
 	music = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.MusicDefault },
 	sfx = { kind = "number", min = 0, max = 100, step = S.SliderStep, default = S.SfxDefault },

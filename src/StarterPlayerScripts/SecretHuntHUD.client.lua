@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: Private Secret Hunt target card, timed hints, danger, and capture feedback.
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +14,8 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+local Theme = require(script.Parent:WaitForChild("UITheme"))
+local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local huntEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SecretHuntEvent") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -24,7 +27,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "SecretHuntHUD"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = false
-gui.DisplayOrder = 35
+Theme.screen(gui, Theme.Layers.HUD)
 gui.Enabled = false
 gui.Parent = playerGui
 
@@ -56,13 +59,13 @@ local function label(name: string, parent: Instance, size: UDim2, position: UDim
 	return item
 end
 
-local navy = Color3.fromRGB(22, 39, 54)
-local gold = Color3.fromRGB(255, 221, 116)
-local white = Color3.fromRGB(247, 249, 250)
-local muted = Color3.fromRGB(181, 199, 208)
-local red = Color3.fromRGB(255, 110, 94)
+local navy = Theme.Colors.Navy
+local gold = Theme.Colors.Gold
+local white = Theme.Colors.Cream
+local muted = Theme.Colors.Muted
+local red = Theme.Colors.TayaText
 
-local targetCard = frame("TargetCard", gui, UDim2.fromOffset(350, 170), UDim2.fromScale(0.02, 0.16), navy)
+local targetCard = frame("TargetCard", gui, UDim2.fromOffset(350, 170), UDim2.fromOffset(24, 92), navy)
 Instance.new("UICorner", targetCard).CornerRadius = UDim.new(0, 14)
 local cardStroke = Instance.new("UIStroke")
 cardStroke.Color = gold
@@ -90,6 +93,9 @@ local directionLabel = label("Direction", targetCard, UDim2.fromOffset(320, 24),
 	"Direction pulse: waiting", 14, gold)
 local capturesLabel = label("Captures", targetCard, UDim2.fromOffset(170, 22), UDim2.fromOffset(14, 145),
 	"CAPTURES  0", 15, white)
+local function setCaptureText(value: number)
+	capturesLabel.Text = if Layout.compact() then "CAP " .. tostring(value) else "CAPTURES  " .. tostring(value)
+end
 local phaseLabel = label("Phase", targetCard, UDim2.fromOffset(163, 22), UDim2.fromOffset(178, 145),
 	"SIMULA", 14, muted)
 phaseLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -98,6 +104,7 @@ local timer = label("Timer", gui, UDim2.fromOffset(180, 52), UDim2.fromScale(0.5
 	"2:00", 34, white)
 timer.AnchorPoint = Vector2.new(0.5, 0)
 timer.TextXAlignment = Enum.TextXAlignment.Center
+timer.Visible = false -- Shared timer is owned by UIController.
 
 local danger = label("Danger", gui, UDim2.fromOffset(350, 34), UDim2.fromScale(0.5, 0.19),
 	"A HUNTER IS NEAR", 20, red)
@@ -115,7 +122,7 @@ local flash = frame("CaptureFlash", gui, UDim2.fromScale(1, 1), UDim2.fromScale(
 flash.BackgroundTransparency = 1
 flash.ZIndex = 1
 
-local leaderboard = frame("Leaderboard", gui, UDim2.fromOffset(220, 260), UDim2.fromScale(0.98, 0.18), navy)
+local leaderboard = frame("Leaderboard", gui, UDim2.fromOffset(220, 260), UDim2.new(1, -24, 0, 92), navy)
 leaderboard.AnchorPoint = Vector2.new(1, 0)
 leaderboard.Visible = false
 Instance.new("UICorner", leaderboard).CornerRadius = UDim.new(0, 10)
@@ -141,11 +148,48 @@ local lastSyncAt = 0
 local directions = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
 
 local function resize()
-	local camera = Workspace.CurrentCamera
-	local viewport = if camera then camera.ViewportSize else Vector2.new(1280, 720)
-	local scale = math.clamp(math.min(viewport.X / 1050, viewport.Y / 700), 0.58, 1)
-	cardScale.Scale = scale
-	boardScale.Scale = scale
+	local compact = Layout.compact()
+	targetCard.Position = if compact then UDim2.fromOffset(12, 56) else UDim2.fromOffset(24, 92)
+	targetCard.Size = UDim2.fromOffset(if compact then 210 else 350, if compact then 100 else 170)
+	local heading = targetCard:FindFirstChild("Heading") :: TextLabel
+	heading.Size = UDim2.new(1, -20, 0, 24)
+	heading.Position = UDim2.fromOffset(10, 6)
+	heading.TextSize = if compact then 13 else 18
+	portrait.Size = UDim2.fromOffset(if compact then 40 else 76, if compact then 40 else 76)
+	portrait.Position = UDim2.fromOffset(if compact then 10 else 14, if compact then 28 else 42)
+	targetName.Position = UDim2.fromOffset(if compact then 56 else 102, if compact then 26 else 44)
+	targetName.Size = UDim2.fromOffset(if compact then 145 else 235, if compact then 24 else 32)
+	targetName.TextSize = if compact then 14 else 18
+	distanceLabel.Position = UDim2.fromOffset(if compact then 56 else 102, if compact then 48 else 79)
+	distanceLabel.Size = UDim2.fromOffset(if compact then 145 else 235, if compact then 18 else 25)
+	distanceLabel.TextSize = if compact then 12 else 15
+	directionLabel.Position = UDim2.fromOffset(if compact then 10 else 14, if compact then 74 else 121)
+	directionLabel.Size = UDim2.fromOffset(if compact then 126 else 320, if compact then 18 else 24)
+	directionLabel.TextSize = if compact then 11 else 14
+	capturesLabel.Position = UDim2.fromOffset(if compact then 142 else 14, if compact then 74 else 145)
+	capturesLabel.Size = UDim2.fromOffset(if compact then 58 else 170, if compact then 18 else 22)
+	capturesLabel.TextSize = if compact then 11 else 15
+	setCaptureText(localPlayer:GetAttribute("HRushHuntCaptures") or 0)
+	phaseLabel.Visible = not compact
+	leaderboard.Position = if compact then UDim2.new(0.5, 80, 0, 80) else UDim2.new(1, -24, 0, 92)
+	leaderboard.Size = UDim2.fromOffset(if compact then 160 else 220, if compact then 112 else 260)
+	local leaderboardTitle = leaderboard:FindFirstChild("Title") :: TextLabel
+	leaderboardTitle.TextSize = if compact then 13 else 16
+	leaderboardTitle.Size = UDim2.new(1, -20, 0, 24)
+	boardRows.Size = UDim2.new(1, -20, 1, -38)
+	for _, row in boardRows:GetChildren() do
+		if row:IsA("TextLabel") then
+			row.Size = UDim2.new(1, 0, 0, 24)
+			row.TextSize = if compact then 11 else 13
+			row.Visible = not compact or row.LayoutOrder <= 3
+		end
+	end
+	danger.Position = UDim2.new(0.5, 0, 0, if compact then 200 else 88)
+	danger.Size = UDim2.fromOffset(if compact then 200 else 350, if compact then 36 else 40)
+	notice.Position = UDim2.new(0.5, 0, 0, if compact then 200 else 136)
+	notice.Size = UDim2.fromOffset(if compact then 200 else 420, if compact then 36 else 44)
+	cardScale.Scale = 1
+	boardScale.Scale = 1
 end
 
 local cameraSizeConnection: RBXScriptConnection? = nil
@@ -185,12 +229,13 @@ local function setNotice(content: string, color: Color3, seconds: number)
 	notice.Text = content
 	notice.TextColor3 = color
 	notice.TextTransparency = 0
-	notice.Visible = gui.Enabled
+	notice.Visible = gui.Enabled and (not Layout.compact() or not danger.Visible)
 	noticeUntil = Workspace:GetServerTimeNow() + seconds
-	if VfxScale.cosmetic() > 0 then
-		notice.Position = UDim2.fromScale(0.5, 0.32)
+	if VfxScale.cosmetic() > 0 and not Theme.reducedMotion() then
+		local finishY = if Layout.compact() then 200 else 136
+		notice.Position = UDim2.new(0.5, 0, 0, finishY + 12)
 		TweenService:Create(notice, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-			{ Position = UDim2.fromScale(0.5, 0.29) }):Play()
+			{ Position = UDim2.new(0.5, 0, 0, finishY) }):Play()
 	end
 	task.delay(seconds, function()
 		if token ~= noticeToken then return end
@@ -206,7 +251,7 @@ local function updateTarget()
 	local token = thumbnailToken
 	portrait.Image = ""
 	distanceLabel.Text = "Distance: --"
-	directionLabel.Text = "Direction pulse: waiting"
+	directionLabel.Text = if Layout.compact() then "DIRECTION: WAITING" else "Direction pulse: waiting"
 	if targetId == nil then
 		targetName.Text = "NO TARGET (PRACTICE)"
 		return
@@ -227,12 +272,12 @@ local function updateBoard(entries: { any })
 		if child:IsA("TextLabel") then child:Destroy() end
 	end
 	for index, entry in ipairs(entries) do
-		if index > 8 then break end
+		if index > (if Layout.compact() then 3 else 8) then break end
 		if typeof(entry) == "table" and typeof(entry.name) == "string"
 			and typeof(entry.captures) == "number" then
-			local row = label("Rank" .. tostring(index), boardRows, UDim2.fromOffset(198, 24),
+			local row = label("Rank" .. tostring(index), boardRows, UDim2.new(1, 0, 0, 24),
 				UDim2.fromOffset(0, 0), string.format("%d. %s   %d", index, entry.name, entry.captures),
-				13, if entry.userId == localPlayer.UserId then gold else white)
+				if Layout.compact() then 11 else 13, if entry.userId == localPlayer.UserId then gold else white)
 			row.LayoutOrder = index
 		end
 	end
@@ -264,7 +309,7 @@ huntEvent.OnClientEvent:Connect(function(payload: any)
 			AudioRouter.playSfxId(Config.SecretHunt.Sounds.assignment, 0.7)
 		end
 	elseif payload.type == "Capture" then
-		capturesLabel.Text = "CAPTURES  " .. tostring(payload.captures or 0)
+		setCaptureText(payload.captures or 0)
 		setNotice("CAPTURE +1", gold, 2)
 		AudioRouter.playSfxId(Config.SecretHunt.Sounds.capture, 1)
 		if VfxScale.cosmetic() > 0 then
@@ -275,17 +320,20 @@ huntEvent.OnClientEvent:Connect(function(payload: any)
 		setNotice("CAUGHT - PROTECTED", red, 2)
 	elseif payload.type == "Hint" then
 		if typeof(payload.distance) == "number" then
-			distanceLabel.Text = "Distance: about " .. tostring(payload.distance) .. " studs"
+			distanceLabel.Text = if Layout.compact() then "~" .. tostring(payload.distance) .. " studs"
+				else "Distance: about " .. tostring(payload.distance) .. " studs"
 		else
-			distanceLabel.Text = "Distance: unavailable"
+			distanceLabel.Text = if Layout.compact() then "Distance: --" else "Distance: unavailable"
 		end
 		if typeof(payload.sector) == "number" and directions[payload.sector] then
-			directionLabel.Text = "Direction pulse: " .. directions[payload.sector]
+			directionLabel.Text = if Layout.compact() then "DIRECTION: " .. directions[payload.sector]
+				else "Direction pulse: " .. directions[payload.sector]
 			pulseUntil = Workspace:GetServerTimeNow() + Config.SecretHunt.HintPulseDuration
 		end
 		local wasDanger = danger.Visible
 		dangerUntil = if payload.danger == true then Workspace:GetServerTimeNow() + 2.5 else 0
 		danger.Visible = gui.Enabled and dangerUntil > 0
+		if Layout.compact() and danger.Visible then notice.Visible = false end
 		if danger.Visible and not wasDanger then AudioRouter.playSfxId(Config.SecretHunt.Sounds.danger, 0.7) end
 	elseif payload.type == "Phase" then
 		if typeof(payload.phase) == "string" then
@@ -320,7 +368,7 @@ for _, attribute in { "HRushInMatch", "HRushState", "HRushGameMode" } do
 	end)
 end
 localPlayer:GetAttributeChangedSignal("HRushHuntCaptures"):Connect(function()
-	capturesLabel.Text = "CAPTURES  " .. tostring(localPlayer:GetAttribute("HRushHuntCaptures") or 0)
+	setCaptureText(localPlayer:GetAttribute("HRushHuntCaptures") or 0)
 end)
 
 RunService.Heartbeat:Connect(function()
@@ -338,12 +386,13 @@ RunService.Heartbeat:Connect(function()
 	end
 	if pulseUntil > 0 and now >= pulseUntil then
 		pulseUntil = 0
-		directionLabel.Text = "Direction pulse: waiting"
+		directionLabel.Text = if Layout.compact() then "DIRECTION: WAITING" else "Direction pulse: waiting"
 	end
 	if dangerUntil > 0 and now >= dangerUntil then
 		dangerUntil = 0
 		danger.Visible = false
 	end
+	if Layout.compact() and not danger.Visible and noticeUntil > now then notice.Visible = true end
 	if noticeUntil > 0 and now >= noticeUntil + 0.3 then notice.Visible = false end
 end)
 

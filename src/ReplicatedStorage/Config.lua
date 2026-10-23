@@ -12,6 +12,7 @@
 -- Task/spec: Panyo Carrier visual feedback, approved 2026-10-23.
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
 -- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 
 local Config = {}
 
@@ -216,7 +217,7 @@ Config.Momentum = {
 		MaxPopups = 3, -- [SD] Maximum simultaneous action popups
 		BarWidth = 208, -- [SD] Bottom-center bar width in pixels
 		BarHeight = 8, -- [SD] Bottom-center bar height in pixels
-		BarBottom = 88, -- [SD] Distance above the viewport bottom in pixels, above the Taya badge on touch screens
+		BarBottom = 88, -- [SD] Desktop distance above the viewport bottom; compact layout uses UI.Theme.PhoneMomentumBottom
 		TierFlashTime = 0.18, -- [SD] One tier-change flash duration
 		CrackTime = 0.3, -- [SD] Hard-zero split-frame fall duration
 		PopupRisePx = 40, -- [SD] Action popup travel in pixels
@@ -969,6 +970,8 @@ Config.Camera = {
 -- Defaults, ranges, and steps live in Config. Player choices live in
 -- ClientSettings (StarterPlayerScripts) and never write back here.
 Config.Settings = {
+	TextScaleDefault = 100, -- [SD] UI text size preference, percent
+	HighContrastDefault = false, -- [SD] stronger card and focus borders
 	MasterDefault = 100, -- [SD] master volume 0-100
 	MusicDefault = 60, -- [SD] music volume 0-100
 	SfxDefault = 100, -- [SD] SFX volume 0-100
@@ -1037,6 +1040,38 @@ Config.Sfx = {
 -- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
 -- ============================================================
 Config.UI = {
+	Theme = { -- [SD] shared Filipino street arcade presentation
+		Navy = Color3.fromRGB(18, 43, 58), -- [SD]
+		Raised = Color3.fromRGB(32, 63, 81), -- [SD]
+		Cream = Color3.fromRGB(255, 248, 236), -- [SD]
+		Muted = Color3.fromRGB(175, 196, 205), -- [SD]
+		Gold = Color3.fromRGB(247, 181, 0), -- [SD]
+		Orange = Color3.fromRGB(239, 139, 82), -- [SD]
+		Teal = Color3.fromRGB(20, 184, 166), -- [SD]
+		Taya = Color3.fromRGB(214, 40, 40), -- [SD]
+		TayaText = Color3.fromRGB(255, 138, 130), -- [SD]
+		Runner = Color3.fromRGB(29, 111, 224), -- [SD]
+		RunnerText = Color3.fromRGB(139, 184, 255), -- [SD]
+		Disabled = Color3.fromRGB(96, 119, 133), -- [SD]
+		PhoneWidth = 900, -- [SD]
+		PhoneHeight = 500, -- [SD]
+		TouchTarget = 64, -- [SD]
+		CardRadius = 12, -- [SD]
+		ModalRadius = 16, -- [SD]
+		NametagNear = 50, -- [SD]
+		NametagFar = 70, -- [SD]
+		PhoneMomentumBottom = 18, -- [SD] distance above the phone safe-area bottom
+		PhoneMomentumWidth = 150, -- [SD] compact momentum meter width
+		Layers = { -- [SD] one shared display-order contract
+			Lobby = 5, -- [SD]
+			HUD = 10, -- [SD]
+			Feedback = 20, -- [SD]
+			Transition = 30, -- [SD]
+			Settings = 60, -- [SD]
+			Modal = 80, -- [SD]
+			Loading = 100, -- [SD]
+		},
+	},
 	Tsinelas = {
 		SlotSize = 44,
 		SlotOffsetX = 356,

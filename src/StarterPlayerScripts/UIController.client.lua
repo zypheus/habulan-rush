@@ -5,6 +5,7 @@
 -- Task/spec: Lihim na Target mode HUD and recaps, approved 2026-10-23.
 -- Task/spec: simple click-to-tag HUD cleanup, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo recaps and splash, approved 2026-10-23.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 --                 skill bar, Diskarte meter, clutch callouts, recap screens,
 --                 and spectator camera UI.
 -- See UI/UX Specification and Config.Match / Config.Events.
@@ -37,6 +38,8 @@ local UserInputService  = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
+local Theme = require(script.Parent:WaitForChild("UITheme"))
+local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local Mv     = Config.Movement
 local TS     = Config.UI.Tsinelas -- RS_03 slot sizes, labels, and timings
 
@@ -50,16 +53,16 @@ local MatchRecapEvent = Remotes:WaitForChild("MatchRecap") :: RemoteEvent
 local PickSkill   = Remotes:WaitForChild("PickSkill") :: RemoteEvent
 
 -- GM_01 HUD palette
-local HUD_LIME     = Color3.fromRGB(221, 247, 100)
-local HUD_NAVY     = Color3.fromRGB(20, 32, 40)
-local HUD_SLATE    = Color3.fromRGB(44, 66, 76)
-local HUD_SLATE_D  = Color3.fromRGB(30, 48, 56)
-local HUD_RED      = Color3.fromRGB(235, 64, 64)
+local HUD_LIME     = Theme.Colors.Gold
+local HUD_NAVY     = Theme.Colors.Navy
+local HUD_SLATE    = Theme.Colors.Raised
+local HUD_SLATE_D  = Theme.Colors.Raised
+local HUD_RED      = Theme.Colors.TayaText
 local HUD_RED_DARK = Color3.fromRGB(50, 16, 16)
-local HUD_CYAN     = Color3.fromRGB(110, 225, 240)
-local HUD_GOLD     = Color3.fromRGB(246, 190, 50)
-local HUD_WHITE    = Color3.fromRGB(255, 255, 255)
-local HUD_DIM      = Color3.fromRGB(176, 194, 200)
+local HUD_CYAN     = Theme.Colors.Teal
+local HUD_GOLD     = Theme.Colors.Gold
+local HUD_WHITE    = Theme.Colors.Cream
+local HUD_DIM      = Theme.Colors.Muted
 
 local function fmtClock(sec: number): string
 	sec = math.max(0, math.floor(sec + 0.5))
@@ -101,8 +104,7 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "HRushHUD"
 gui.ResetOnSpawn = false -- survives respawn (attributes re-push on spawn)
-gui.IgnoreGuiInset = true
-gui.DisplayOrder = 10
+Theme.screen(gui, Theme.Layers.HUD)
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = PlayerGui
 
@@ -425,40 +427,11 @@ roleSubLabel.TextStrokeTransparency = 0.5
 roleSubLabel.Parent = roleBanner
 
 local function updateRoleBanner()
-	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
-	local st = LocalPlayer:GetAttribute("HRushState")
-	-- Do NOT show during MS_04: topBar already shows TAYA tracker + role context.
-	local show = inMatch and LocalPlayer:GetAttribute("HRushGameMode") == "ClassicTag"
-		and (st == "MS_03" or st == "MS_05")
-	if show then
-		roleBanner.Visible = true
-		local role = LocalPlayer:GetAttribute("HRushRole")
-	if role == "Taya" then
-			roleLabel.Text = "TAYA"
-			roleLabel.TextColor3 = Color3.fromRGB(255, 90, 90)
-			roleSubLabel.Text = "TAG THEM ALL!"
-			roleSubLabel.TextColor3 = Color3.fromRGB(255, 130, 130)
-			roleStroke.Color = Color3.fromRGB(255, 80, 80)
-			roleStroke.Thickness = 3
-			roleBanner.BackgroundColor3 = Color3.fromRGB(50, 16, 16)
-		else
-			roleLabel.Text = "RUNNER"
-			roleLabel.TextColor3 = Color3.fromRGB(100, 230, 110)
-			roleSubLabel.Text = "DON'T GET TAGGED!"
-			roleSubLabel.TextColor3 = Color3.fromRGB(130, 240, 140)
-			roleStroke.Color = Color3.fromRGB(80, 214, 90)
-			roleStroke.Thickness = 3
-			roleBanner.BackgroundColor3 = Color3.fromRGB(16, 36, 20)
-		end
-	else
-		roleBanner.Visible = false
-	end
+	-- The countdown splash and live objective are the single role owners.
+	roleBanner.Visible = false
 end
 
--- ── HUD settings gear (top-right, in-round settings access) ───────────────
--- Child of the HUD gui, so the match gate shows and hides it with the rest.
--- Fires the LobbyUI-owned toggle event (looked up on click: LobbyUI may load
--- after this controller). 64x64 meets the touch minimum.
+-- Settings stays available during live play.
 local settingsGear = Instance.new("TextButton")
 settingsGear.Name = "SettingsGear"
 settingsGear.AnchorPoint = Vector2.new(1, 0)
@@ -698,6 +671,7 @@ end
 
 local function updateTsinelasCD()
 	local granted = attrStr("HRushSkillId_RS03", "") == "RS_03"
+		and LocalPlayer:GetAttribute("HRushGameMode") ~= "SecretHunt"
 	tsinelasChip.Visible = granted
 	tsinelasCaption.Visible = granted
 	local showTouch = granted and tsinelasTouch ~= nil
@@ -759,8 +733,7 @@ end
 local overlayGui = Instance.new("ScreenGui")
 overlayGui.Name = "HRushOverlays"
 overlayGui.ResetOnSpawn = false
-overlayGui.IgnoreGuiInset = true
-overlayGui.DisplayOrder = 12
+Theme.screen(overlayGui, Theme.Layers.Transition)
 overlayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 overlayGui.Enabled = false
 overlayGui.Parent = PlayerGui
@@ -809,21 +782,35 @@ end
 
 -- shared phase state (set from attribute listeners at the bottom)
 local phaseState: string? = nil
+local respawnLabel = oLabel({
+	Name = "RespawningNotice",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(280, 52),
+	Text = "RESPAWNING...",
+	TextSize = 24,
+	TextColor3 = HUD_WHITE,
+	BackgroundColor3 = HUD_NAVY,
+	BackgroundTransparency = 0.12,
+	Visible = false,
+}, overlayGui)
+oCorner(respawnLabel, 12)
 
 -- ── A. TOP MATCH BAR (MS_04) ─────────────────────────────────────────────────
 local topBar = oFrame({
 	Name = "TopMatchBar",
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.fromScale(0.5, 0.015),
-	Size = UDim2.new(0.62, 0, 0, 84),
+	Position = UDim2.new(0.5, 0, 0, 12),
+	Size = UDim2.fromOffset(240, 64),
 	BackgroundTransparency = 1,
 	Visible = false,
-}, overlayGui)
+}, gui)
 
 local roundPill = oFrame({
 	Name = "RoundPill",
-	Position = UDim2.new(0, 0, 0, 0),
-	Size = UDim2.fromOffset(118, 30),
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.fromScale(0.5, 0),
+	Size = UDim2.fromOffset(118, 24),
 	BackgroundColor3 = HUD_SLATE_D,
 	BackgroundTransparency = 0.15,
 }, topBar)
@@ -838,23 +825,22 @@ local roundLabel = oLabel({
 
 local timerLabel = oLabel({
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.fromScale(0.5, 0),
-	Size = UDim2.fromOffset(220, 46),
+	Position = UDim2.new(0.5, 0, 0, 23),
+	Size = UDim2.fromOffset(220, 40),
 	Text = "2:30",
-	Font = Enum.Font.Arcade,
-	TextSize = 44,
+	Font = Enum.Font.GothamBold,
+	TextSize = 36,
 	TextColor3 = HUD_WHITE,
 }, topBar)
 local timerStroke = oStroke(timerLabel, HUD_NAVY, 0, 1) -- placeholder; stroke on text needs TextStroke
 
 local tayaTracker = oFrame({
 	Name = "TayaTracker",
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.fromScale(0.5, 0.56),
-	Size = UDim2.fromOffset(190, 28),
+	Position = UDim2.fromOffset(12, 46),
+	Size = UDim2.fromOffset(276, 32),
 	BackgroundColor3 = HUD_RED_DARK,
 	BackgroundTransparency = 0.1,
-}, topBar)
+}, gui)
 oCorner(tayaTracker, 14)
 oStroke(tayaTracker, HUD_RED, 1.5, 0.15)
 local tayaTrackerLabel = oLabel({
@@ -863,6 +849,43 @@ local tayaTrackerLabel = oLabel({
 	TextSize = 13,
 	TextColor3 = Color3.fromRGB(255, 120, 120),
 }, tayaTracker)
+tayaTrackerLabel.TextTruncate = Enum.TextTruncate.AtEnd
+local classicObjective = oFrame({
+	Name = "ClassicObjective",
+	Position = UDim2.fromOffset(24, 92),
+	Size = UDim2.fromOffset(300, 96),
+	BackgroundColor3 = HUD_NAVY,
+	BackgroundTransparency = 0.12,
+	Visible = false,
+}, gui)
+oCorner(classicObjective, 12)
+oStroke(classicObjective, HUD_RED, 2, 0)
+tayaTracker.Parent = classicObjective
+local classicRole = oLabel({
+	Position = UDim2.fromOffset(12, 8),
+	Size = UDim2.fromOffset(276, 32),
+	Text = "RUNNER · AVOID TAYA",
+	TextSize = 17,
+	TextColor3 = HUD_WHITE,
+}, classicObjective)
+local classicStandings = oFrame({
+	Name = "ClassicStandings",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -24, 0, 92),
+	Size = UDim2.fromOffset(260, 112),
+	BackgroundColor3 = HUD_NAVY,
+	BackgroundTransparency = 0.12,
+	Visible = false,
+}, gui)
+oCorner(classicStandings, 12)
+local classicBoardText = oLabel({
+	Position = UDim2.fromOffset(10, 8),
+	Size = UDim2.new(1, -20, 1, -16),
+	Text = "TAYA TIME",
+	TextSize = 13,
+	TextColor3 = HUD_WHITE,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, classicStandings)
 
 -- ── D. LIVE TAG FEED (below the round pill) ──────────────────────────────────
 local tagFeed = oFrame({
@@ -909,12 +932,12 @@ local function pushTagFeed(taggerName: string, targetName: string, iAmTagger: bo
 			end)
 		end
 	end)
-	-- keep at most 4 pills
+	-- Phone screens keep two short feed items below the objective card.
 	local kids = {}
 	for _, c in ipairs(tagFeed:GetChildren()) do
 		if c:IsA("Frame") then table.insert(kids, c) end
 	end
-	if #kids > 4 then
+	if #kids > (if Layout.compact() then 2 else 4) then
 		kids[1]:Destroy()
 	end
 end
@@ -931,9 +954,9 @@ end)
 -- ── B. ROLE SPLASH + COUNTDOWN (MS_03) ───────────────────────────────────────
 local splash = oFrame({
 	Name = "RoleSplash",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.38),
-	Size = UDim2.new(0.7, 0, 0, 110),
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 72),
+	Size = UDim2.fromOffset(420, 76),
 	BackgroundColor3 = HUD_NAVY,
 	BackgroundTransparency = 0.08,
 	Visible = false,
@@ -942,16 +965,16 @@ local splash = oFrame({
 oCorner(splash, 16)
 local splashStroke = oStroke(splash, HUD_RED, 3)
 local splashTitle = oLabel({
-	Position = UDim2.fromOffset(0, 12),
-	Size = UDim2.new(1, 0, 0, 52),
+	Position = UDim2.fromOffset(0, 4),
+	Size = UDim2.new(1, 0, 0, 42),
 	Text = "RUNNER!",
-	Font = Enum.Font.Bangers,
-	TextSize = 52,
+	Font = Enum.Font.Oswald,
+	TextSize = 34,
 	TextColor3 = HUD_CYAN,
 	ZIndex = 21,
 }, splash)
 local splashSub = oLabel({
-	Position = UDim2.fromOffset(0, 68),
+	Position = UDim2.fromOffset(0, 45),
 	Size = UDim2.new(1, 0, 0, 24),
 	Text = "Outrun the Taya and survive!",
 	TextSize = 16,
@@ -990,9 +1013,19 @@ local function playRoleSplash()
 		splashStroke.Color = HUD_CYAN
 	end
 	splash.Visible = true
-	splash.Position = UDim2.fromScale(0.5, 0.30)
+	splash.BackgroundTransparency = 0.08
+	splashTitle.TextTransparency = 0
+	splashSub.TextTransparency = 0
+	local compact = Layout.compact()
+	splash.Size = UDim2.fromOffset(if compact then 260 else 420, if compact then 60 else 76)
+	splashTitle.TextSize = if compact then 23 else 34
+	splashSub.TextSize = if compact then 12 else 16
+	splashSub.Position = UDim2.fromOffset(0, if compact then 34 else 45)
+	local finishY = if compact then 46 else 72
+	splash.Position = UDim2.new(0.5, 0, 0, finishY - 12)
 	local ts = game:GetService("TweenService")
-	ts:Create(splash, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.38) }):Play()
+	if Theme.reducedMotion() then splash.Position = UDim2.new(0.5, 0, 0, finishY)
+	else ts:Create(splash, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 0, finishY) }):Play() end
 	task.delay(3, function()
 		if splashToken == token then
 			local fade = ts:Create(splash, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 })
@@ -1013,10 +1046,10 @@ end
 
 local countdownLabel = oLabel({
 	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.65),
-	Size = UDim2.fromOffset(450, 90),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(160, 120),
 	Text = "",
-	Font = Enum.Font.Bangers,
+	Font = Enum.Font.Oswald,
 	TextSize = 72,
 	TextColor3 = HUD_LIME,
 	Visible = false,
@@ -1040,9 +1073,8 @@ local function updateCountdown()
 			lastCountNum = remaining
 			countdownLabel.Text = tostring(remaining)
 			countdownLabel.TextColor3 = HUD_LIME
-			countdownLabel.Size = UDim2.fromOffset(560, 120)
-			local ts = game:GetService("TweenService")
-			ts:Create(countdownLabel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(500, 110) }):Play()
+			countdownLabel.Size = UDim2.fromOffset(if Layout.compact() then 120 else 160, if Layout.compact() then 90 else 120)
+			countdownLabel.TextSize = if Layout.compact() then 56 else 72
 			AudioRouter.playSfxId(Config.Sfx.Countdown.tick, Config.Sfx.Countdown.volume)
 		end
 	else
@@ -1050,8 +1082,8 @@ local function updateCountdown()
 		countdownLabel.Visible = true
 		if lastCountNum ~= 0 then
 			lastCountNum = 0
-			countdownLabel.Text = "HABULAN NA!"
-			countdownLabel.TextSize = 72
+			countdownLabel.Text = "GO!"
+			countdownLabel.TextSize = if Layout.compact() then 40 else 56
 			countdownLabel.TextColor3 = HUD_RED
 			AudioRouter.playSfxId(Config.Sfx.Countdown.go, Config.Sfx.Countdown.volume)
 		end
@@ -1088,12 +1120,8 @@ local badgeLabel = oLabel({
 }, tayaBadge)
 
 local function updateTayaBadge()
-	local isTaya = LocalPlayer:GetAttribute("HRushRole") == "Taya"
-	tayaBadge.Visible = isTaya and phaseState == "MS_04"
-	if tayaBadge.Visible then
-		local t = tonumber(LocalPlayer:GetAttribute("HRushTayaTime")) or 0
-	badgeLabel.Text = "ORAS MO BILANG TAYA: " .. fmtTaya(t) .. "s"
-	end
+	-- Live role and time now use the shared top-left objective card.
+	tayaBadge.Visible = false
 end
 
 -- ── E. SKILL DRAFT MODAL (MS_02, 12 s) ───────────────────────────────────────
@@ -1113,7 +1141,7 @@ oLabel({
 	Position = UDim2.fromOffset(0, 16),
 	Size = UDim2.new(1, 0, 0, 40),
 	Text = "SKILL DRAFT",
-	Font = Enum.Font.Bangers,
+	Font = Enum.Font.Oswald,
 	TextSize = 38,
 	TextColor3 = HUD_LIME,
 	ZIndex = 21,
@@ -1259,6 +1287,12 @@ local function buildDraft()
 end
 
 -- ── F. ROUND SCOREBOARD MODAL (MS_05) ────────────────────────────────────────
+local resultsGui = Instance.new("ScreenGui")
+resultsGui.Name = "HRUSH_Results"
+resultsGui.ResetOnSpawn = false
+resultsGui.Enabled = false
+Theme.screen(resultsGui, Theme.Layers.Modal)
+resultsGui.Parent = PlayerGui
 local scoreboard = oFrame({
 	Name = "RoundScoreboard",
 	AnchorPoint = Vector2.new(0.5, 0.5),
@@ -1268,7 +1302,7 @@ local scoreboard = oFrame({
 	BackgroundTransparency = 0.06,
 	Visible = false,
 	ZIndex = 20,
-}, overlayGui)
+}, resultsGui)
 oCorner(scoreboard, 18)
 oStroke(scoreboard, HUD_LIME, 2, 0.35)
 local panyoScoreboardScale = Instance.new("UIScale")
@@ -1277,26 +1311,39 @@ local scoreboardTitle = oLabel({
 	Position = UDim2.fromOffset(0, 14),
 	Size = UDim2.new(1, 0, 0, 34),
 	Text = "ROUND 1 RESULTS",
-	Font = Enum.Font.Bangers,
+	Font = Enum.Font.Oswald,
 	TextSize = 30,
 	TextColor3 = HUD_LIME,
 	ZIndex = 21,
 }, scoreboard)
 local scoreboardSub = oLabel({
-	Position = UDim2.fromOffset(0, 50),
+	Position = UDim2.new(0, 0, 1, -42),
 	Size = UDim2.new(1, 0, 0, 18),
 	Text = "Next round starting soon...",
 	TextSize = 13,
 	TextColor3 = HUD_DIM,
 	ZIndex = 21,
 }, scoreboard)
-local scoreboardRows = oFrame({
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.fromScale(0.5, 0.16),
-	Size = UDim2.fromOffset(540, 330),
-	BackgroundTransparency = 1,
+local practiceLabel = oLabel({
+	Position = UDim2.fromOffset(0, 52),
+	Size = UDim2.new(1, 0, 0, 22),
+	Text = "PRACTICE: NO MATCH POINTS",
+	TextSize = 15,
+	TextColor3 = HUD_GOLD,
+	Visible = false,
 	ZIndex = 21,
 }, scoreboard)
+local scoreboardRows = Instance.new("ScrollingFrame")
+scoreboardRows.Name = "Rows"
+scoreboardRows.AnchorPoint = Vector2.new(0.5, 0)
+scoreboardRows.Position = UDim2.new(0.5, 0, 0, 82)
+scoreboardRows.Size = UDim2.new(1, -32, 1, -136)
+scoreboardRows.BackgroundTransparency = 1
+scoreboardRows.BorderSizePixel = 0
+scoreboardRows.ScrollBarThickness = 5
+scoreboardRows.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scoreboardRows.ZIndex = 21
+scoreboardRows.Parent = scoreboard
 local sbLayout = Instance.new("UIListLayout")
 sbLayout.Padding = UDim.new(0, 5)
 sbLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1315,8 +1362,12 @@ local huntMatchEnding = false
 local function buildScoreboard(entries: { any }, round: number, totalRounds: number, nextIn: number, mode: string?, practice: boolean)
 	local isPanyo = mode == "AgawanNgPanyo"
 	local isHunt = mode == "SecretHunt"
-	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	panyoScoreboardScale.Scale = if isPanyo or isHunt then math.clamp(viewport.X / 620, 0.55, 1) else 1
+	local compact = Layout.compact()
+	scoreboard.Position = UDim2.fromScale(0.5, 0.5)
+	scoreboard.Size = if compact then UDim2.new(1, -24, 1, -24) else UDim2.fromOffset(680, 480)
+	panyoScoreboardScale.Scale = 1
+	practiceLabel.Visible = practice
+	scoreboardTitle.TextSize = if compact then 24 else 30
 	for _, child in ipairs(scoreboardRows:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
@@ -1328,7 +1379,7 @@ local function buildScoreboard(entries: { any }, round: number, totalRounds: num
 	scoreboardNextIn = nextIn
 	for _, e in ipairs(entries) do
 		local row = oFrame({
-			Size = UDim2.new(1, 0, 0, 34),
+			Size = UDim2.new(1, 0, 0, if compact then 54 else 42),
 			BackgroundColor3 = (e.rank == 1) and Color3.fromRGB(56, 48, 18) or HUD_SLATE_D,
 			BackgroundTransparency = (e.rank == 1) and 0 or 0.25,
 			LayoutOrder = e.rank,
@@ -1388,6 +1439,21 @@ local function buildScoreboard(entries: { any }, round: number, totalRounds: num
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 22,
 		}, row)
+		if e.userId == LocalPlayer.UserId then oStroke(row, HUD_CYAN, 2) end
+		if compact then
+			for _, item in row:GetChildren() do
+				if item:IsA("TextLabel") then item.Visible = false end
+			end
+			local stat = if isHunt then tostring(e.captures or 0) .. " captures / " .. fmtTayaCell(e.bestStreak or 0) .. "s streak"
+				else if isPanyo then fmtTayaCell(e.possessionTime or 0) .. "s hold / " .. tostring(e.steals or 0) .. " steals"
+				else fmtTayaCell(e.tayaTime or 0) .. "s Taya"
+			oLabel({
+				Position = UDim2.fromOffset(10, 2), Size = UDim2.new(1, -20, 1, -4),
+				Text = string.format("#%s  %s\n%s  |  +%s pts  |  %s total", tostring(e.rank), e.name, stat, tostring(e.pointsAwarded or 0), tostring(e.totalPoints or 0)),
+				TextSize = 13, TextWrapped = true, TextColor3 = HUD_WHITE,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22,
+			}, row)
+		end
 	end
 	scoreboardHasData = true
 	scoreboard.Visible = (phaseState == "MS_05")
@@ -1409,12 +1475,12 @@ local podium = oFrame({
 	BackgroundTransparency = 0.04,
 	Visible = false,
 	ZIndex = 20,
-}, overlayGui)
+}, resultsGui)
 local podiumTitle = oLabel({
 	Position = UDim2.fromOffset(0, 24),
 	Size = UDim2.new(1, 0, 0, 46),
 	Text = "MATCH MVP",
-	Font = Enum.Font.Bangers,
+	Font = Enum.Font.Oswald,
 	TextSize = 44,
 	TextColor3 = HUD_GOLD,
 	ZIndex = 21,
@@ -1434,7 +1500,7 @@ oLabel({
 	Position = UDim2.fromOffset(0, 8),
 	Size = UDim2.new(1, 0, 0, 30),
 	Text = "★ ★ ★  MVP  ★ ★ ★",
-	Font = Enum.Font.Bangers,
+	Font = Enum.Font.Oswald,
 	TextSize = 24,
 	TextColor3 = HUD_GOLD,
 	ZIndex = 22,
@@ -1443,7 +1509,7 @@ local mvpName = oLabel({
 	Position = UDim2.fromOffset(0, 40),
 	Size = UDim2.new(1, 0, 0, 44),
 	Text = "—",
-	Font = Enum.Font.Bangers,
+	Font = Enum.Font.Oswald,
 	TextSize = 40,
 	TextColor3 = HUD_WHITE,
 	ZIndex = 22,
@@ -1457,13 +1523,17 @@ local mvpStats = oLabel({
 	TextWrapped = true,
 	ZIndex = 22,
 }, mvpCard)
-local podiumRows = oFrame({
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.fromScale(0.5, 0.42),
-	Size = UDim2.fromOffset(560, 240),
-	BackgroundTransparency = 1,
-	ZIndex = 21,
-}, podium)
+local podiumRows = Instance.new("ScrollingFrame")
+podiumRows.Name = "Standings"
+podiumRows.AnchorPoint = Vector2.new(0.5, 0)
+podiumRows.Position = UDim2.fromScale(0.5, 0.42)
+podiumRows.Size = UDim2.new(1, -32, 0.44, 0)
+podiumRows.BackgroundTransparency = 1
+podiumRows.BorderSizePixel = 0
+podiumRows.ScrollBarThickness = 5
+podiumRows.AutomaticCanvasSize = Enum.AutomaticSize.Y
+podiumRows.ZIndex = 21
+podiumRows.Parent = podium
 local podLayout = Instance.new("UIListLayout")
 podLayout.Padding = UDim.new(0, 4)
 podLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1480,13 +1550,21 @@ local podiumFooter = oLabel({
 	ZIndex = 21,
 }, podium)
 local podiumNextIn = 0
+local podiumHasData = false
 
 local function buildPodium(entries: { any }, nextIn: number, mode: string?)
 	local isPanyo = mode == "AgawanNgPanyo"
 	local isHunt = mode == "SecretHunt"
-	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	panyoMvpScale.Scale = if isPanyo or isHunt then math.clamp(viewport.X / 450, 0.7, 1) else 1
-	panyoPodiumRowsScale.Scale = if isPanyo or isHunt then math.clamp(viewport.X / 590, 0.55, 1) else 1
+	local compact = Layout.compact()
+	panyoMvpScale.Scale = 1
+	panyoPodiumRowsScale.Scale = 1
+	mvpCard.Size = if compact then UDim2.new(1, -32, 0, 108) else UDim2.fromOffset(420, 150)
+	mvpCard.Position = if compact then UDim2.new(0.5, 0, 0, 64) else UDim2.fromScale(0.5, 0.14)
+	mvpName.TextSize = if compact then 25 else 40
+	mvpName.Position = if compact then UDim2.fromOffset(0, 28) else UDim2.fromOffset(0, 40)
+	mvpStats.Position = if compact then UDim2.fromOffset(0, 62) else UDim2.fromOffset(0, 92)
+	podiumRows.Position = if compact then UDim2.new(0.5, 0, 0, 180) else UDim2.fromScale(0.5, 0.42)
+	podiumRows.Size = if compact then UDim2.new(1, -32, 1, -230) else UDim2.new(1, -32, 0.44, 0)
 	mvpName.Text = if isHunt then "NO HUNT MVP" else if isPanyo then "NO PANYO MVP" else ""
 	mvpStats.Text = if isHunt then "No captures recorded" else if isPanyo then "No possession recorded" else ""
 	local tiedPanyoMvp = false
@@ -1502,6 +1580,10 @@ local function buildPodium(entries: { any }, nextIn: number, mode: string?)
 				else "Equal hold time, steals, and match points"
 		end
 	end
+	local hasWinner = false
+	for _, entry in entries do if entry.isMVP then hasWinner = true break end end
+	podiumTitle.Text = if not hasWinner then "NO MVP" else if tiedPanyoMvp then "TIED MVP" else "MATCH MVP"
+	podiumTitle.TextSize = if compact then 28 else 44
 	for _, child in ipairs(podiumRows:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
@@ -1515,7 +1597,7 @@ local function buildPodium(entries: { any }, nextIn: number, mode: string?)
 				else string.format("%d points | %.1fs total Taya time", e.points or 0, e.totalTayaTime or 0)
 		end
 		local row = oFrame({
-			Size = UDim2.new(1, 0, 0, 26),
+			Size = UDim2.new(1, 0, 0, if compact then 44 else 30),
 			BackgroundColor3 = e.isMVP and Color3.fromRGB(56, 48, 18) or HUD_SLATE_D,
 			BackgroundTransparency = e.isMVP and 0 or 0.3,
 			LayoutOrder = e.rank,
@@ -1562,8 +1644,18 @@ local function buildPodium(entries: { any }, nextIn: number, mode: string?)
 			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 22,
 		}, row)
+		if compact then
+			for _, item in row:GetChildren() do if item:IsA("TextLabel") then item.Visible = false end end
+			oLabel({
+				Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0),
+				Text = string.format("#%s  %s  |  %s pts", tostring(e.rank), e.name, tostring(e.points or 0)),
+				TextSize = 14, TextColor3 = if e.isMVP then HUD_GOLD else HUD_WHITE,
+				TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 22,
+			}, row)
+		end
 	end
 	podium.Visible = (phaseState == "MS_06")
+	podiumHasData = true
 end
 
 MatchRecapEvent.OnClientEvent:Connect(function(payload: any)
@@ -1580,9 +1672,14 @@ local lastTimerSecond = -1
 local function applyOverlayGate()
 	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
 	local st = phaseState
+	local mode = LocalPlayer:GetAttribute("HRushGameMode")
 	overlayGui.Enabled = inMatch and st ~= nil and st ~= "MS_01"
-	topBar.Visible = (st == "MS_04") and LocalPlayer:GetAttribute("HRushGameMode") == "ClassicTag"
-	draftModal.Visible = (st == "MS_02")
+	resultsGui.Enabled = inMatch and (st == "MS_05" or st == "MS_06")
+	topBar.Visible = inMatch and st == "MS_04"
+	classicObjective.Visible = topBar.Visible and mode == "ClassicTag"
+	classicStandings.Visible = classicObjective.Visible and not Layout.compact()
+	tagFeed.Visible = classicObjective.Visible
+	draftModal.Visible = false -- The skill draft state is retired.
 	scoreboard.Visible = (st == "MS_05") and scoreboardHasData
 	podium.Visible = (st == "MS_06") and podiumHasData
 	if st ~= "MS_05" then scoreboardHasData = false end
@@ -1590,14 +1687,39 @@ local function applyOverlayGate()
 	if st ~= "MS_04" then
 		tayaBadge.Visible = false
 		countdownLabel.Visible = false
+		respawnLabel.Visible = false
 		lastCountNum = -1
 	end
 	roundLabel.Text = string.format("ROUND %d / %d", tonumber(LocalPlayer:GetAttribute("HRushRound")) or 1, totalRounds)
+	local compact = Layout.compact()
+	settingsGear.Position = UDim2.new(1, if UserInputService.TouchEnabled then -92 else -12, 0, 8)
+	topBar.Position = UDim2.new(0.5, 0, 0, if compact then 8 else 12)
+	topBar.Size = UDim2.fromOffset(if compact then 154 else 240, if compact then 48 else 64)
+	classicObjective.Position = UDim2.fromOffset(if compact then 12 else 24, if compact then 56 else 92)
+	classicObjective.Size = UDim2.fromOffset(if compact then 180 else 300, if compact then 80 else 96)
+	classicRole.Size = UDim2.new(1, -24, 0, 30)
+	classicRole.TextSize = if compact then 14 else 17
+	tayaTracker.Position = UDim2.fromOffset(12, if compact then 38 else 46)
+	tayaTracker.Size = UDim2.new(1, -24, 0, 28)
+	classicStandings.Position = UDim2.new(1, if compact then -12 else -24, 0, if compact then 80 else 92)
+	classicStandings.Size = UDim2.fromOffset(if compact then 160 else 260, if compact then 112 else 112)
+	tagFeed.Position = UDim2.fromOffset(if compact then 12 else 24, if compact then 148 else 202)
+	tagFeed.Size = UDim2.fromOffset(if compact then 190 else 320, if compact then 74 else 160)
+	cluster.Position = if compact then UDim2.fromOffset(12, 160) else UDim2.fromScale(0.015, 0.97)
+	cluster.AnchorPoint = if compact then Vector2.new(0, 0) else Vector2.new(0, 1)
+	cluster.Size = UDim2.fromOffset(if compact then 180 else 364, if compact then 36 else 56)
+	cluster.ClipsDescendants = compact
+	barBg.Size = UDim2.fromOffset(if compact then 178 else 220, 16)
 end
 
 local function setPhase(st: string?)
 	local prev = phaseState
 	phaseState = st
+	if prev == "MS_03" and st ~= "MS_03" then
+		splashToken += 1
+		splash.Visible = false
+		countdownLabel.Visible = false
+	end
 	applyOverlayGate()
 	if st == "MS_02" and prev ~= "MS_02" then
 		buildDraft()
@@ -1626,6 +1748,15 @@ ReplicatedStorage:GetAttributeChangedSignal("HRushCurrentTayaName"):Connect(func
 	tayaTrackerLabel.Text = "TAYA: " .. (typeof(name) == "string" and name or "—")
 end)
 setPhase(LocalPlayer:GetAttribute("HRushState"))
+local layoutCameraConnection: RBXScriptConnection? = nil
+local function watchLayoutCamera()
+	if layoutCameraConnection then layoutCameraConnection:Disconnect() layoutCameraConnection = nil end
+	local camera = Workspace.CurrentCamera
+	if camera then layoutCameraConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyOverlayGate) end
+	applyOverlayGate()
+end
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(watchLayoutCamera)
+watchLayoutCamera()
 
 game:GetService("RunService").Heartbeat:Connect(function()
 	if not overlayGui.Enabled then return end
@@ -1634,14 +1765,41 @@ game:GetService("RunService").Heartbeat:Connect(function()
 	local remaining = (typeof(endsAt) == "number") and (endsAt - now) or 0
 
 	if phaseState == "MS_04" then
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		respawnLabel.Visible = humanoid == nil or humanoid.Health <= 0 or character:FindFirstChild("HumanoidRootPart") == nil
 		timerLabel.Text = fmtClock(remaining)
+		local mode = LocalPlayer:GetAttribute("HRushGameMode")
+		if mode == "ClassicTag" then
+			local role = LocalPlayer:GetAttribute("HRushRole")
+			classicRole.Text = if role == "Taya" then "⬡ TAYA · TAG A RUNNER" else "○ RUNNER · AVOID TAYA"
+			classicRole.TextColor3 = if role == "Taya" then Theme.Colors.TayaText else Theme.Colors.RunnerText
+			local currentTaya = ReplicatedStorage:GetAttribute("HRushCurrentTayaName")
+			tayaTrackerLabel.Text = if role == "Taya" then string.format("YOUR TAYA TIME: %.1fs", LocalPlayer:GetAttribute("HRushTayaTime") or 0)
+				else "TAYA: " .. (if typeof(currentTaya) == "string" then currentTaya else "--")
+			local ranked = {}
+			for _, player in Players:GetPlayers() do
+				if player:GetAttribute("HRushInMatch") == true then table.insert(ranked, player) end
+			end
+			table.sort(ranked, function(a, b)
+				return (a:GetAttribute("HRushTayaTime") or 0) < (b:GetAttribute("HRushTayaTime") or 0)
+			end)
+			local lines = { "LOWEST TAYA TIME" }
+			for index = 1, math.min(3, #ranked) do
+				local player = ranked[index]
+				table.insert(lines, string.format("%d  %s  %.1fs", index, player.DisplayName, player:GetAttribute("HRushTayaTime") or 0))
+			end
+			classicBoardText.Text = table.concat(lines, "\n")
+		end
 		local sec = math.ceil(remaining)
 		if sec ~= lastTimerSecond then
 			lastTimerSecond = sec
 			if sec < 30 and sec > 0 then
 				timerLabel.TextColor3 = HUD_RED
-				timerLabel.Size = UDim2.fromOffset(240, 50)
-				game:GetService("TweenService"):Create(timerLabel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(220, 46) }):Play()
+				if not Theme.reducedMotion() then
+					timerLabel.Size = UDim2.fromOffset(240, 50)
+					game:GetService("TweenService"):Create(timerLabel, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(220, 46) }):Play()
+				end
 			else
 				timerLabel.TextColor3 = HUD_WHITE
 			end
@@ -1686,6 +1844,7 @@ hookAttr("HRushSkillCD", updateSkillCD)
 hookAttr("HRushSkillId", updateSkillCD)
 hookAttr("HRushSkillCD_RS03", updateTsinelasCD)
 hookAttr("HRushSkillId_RS03", updateTsinelasCD)
+hookAttr("HRushGameMode", updateTsinelasCD)
 hookAttr("HRushAiming", updateTsinelasCD)
 hookAttr("HRushStunned", updateTsinelasCD)
 hookAttr("HRushRole", function()
@@ -1704,8 +1863,6 @@ updateStamina()
 updateDashCD()
 updateSkillCD()
 updateTsinelasCD()
-
-print("[UIController] Loaded — HUD v1.1 (stamina bar + dash CD + RS_01 skill chip + RS_03 tsinelas chip). T14 partial; T17, T27 TODO.")
 
 -- ============================================================
 -- MATCH GATE: HUD only exists during a match (MS_03..MS_05)

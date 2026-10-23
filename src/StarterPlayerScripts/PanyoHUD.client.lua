@@ -4,6 +4,7 @@
 -- Responsibility: Local Panyo timer, leaderboard, carrier marker, and event feedback.
 -- Task/spec: Agawan ng Panyo presentation, approved 2026-10-23.
 -- Task/spec: persistent Carrier highlight and trail, approved 2026-10-23.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,15 +16,17 @@ local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local CameraDirector = require(script.Parent:WaitForChild("CameraDirector"))
 local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+local Theme = require(script.Parent:WaitForChild("UITheme"))
+local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PanyoEvent") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
 
 local visuals = Config.Panyo.Visuals
 local gold = visuals.Color
-local cyan = Color3.fromRGB(135, 238, 243)
-local white = Color3.fromRGB(250, 248, 239)
-local navy = Color3.fromRGB(19, 30, 43)
+local cyan = Theme.Colors.Teal
+local white = Theme.Colors.Cream
+local navy = Theme.Colors.Navy
 
 for _, name in { "HRUSH_PanyoHUD", "HRUSH_PanyoCarrierMarker" } do
 	local old = playerGui:FindFirstChild(name)
@@ -51,14 +54,14 @@ gui.Name = "HRUSH_PanyoHUD"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = false
 gui.Enabled = false
-gui.DisplayOrder = 8
+Theme.screen(gui, Theme.Layers.HUD)
 gui.Parent = playerGui
 
 local panel = Instance.new("Frame")
 panel.Name = "PanyoStatus"
-panel.AnchorPoint = Vector2.new(0.5, 0)
-panel.Position = UDim2.fromScale(0.5, 0.045)
-panel.Size = UDim2.fromOffset(400, 94)
+panel.AnchorPoint = Vector2.new(0, 0)
+panel.Position = UDim2.fromOffset(24, 92)
+panel.Size = UDim2.fromOffset(300, 96)
 panel.BackgroundColor3 = navy
 panel.BackgroundTransparency = 0.12
 panel.Parent = gui
@@ -75,16 +78,19 @@ scale.Parent = panel
 local title = label(panel, "Phase", UDim2.new(0.65, -12, 0, 25), UDim2.fromOffset(12, 5), 16)
 title.TextColor3 = gold
 local timer = label(panel, "Timer", UDim2.new(0.3, -6, 0, 30), UDim2.new(0.7, 0, 0, 3), 24)
+timer.Visible = false -- Shared timer is owned by UIController.
 timer.TextXAlignment = Enum.TextXAlignment.Right
 timer.TextColor3 = gold
 local carrierLabel = label(panel, "Carrier", UDim2.new(1, -24, 0, 24), UDim2.fromOffset(12, 34), 15)
+carrierLabel.TextTruncate = Enum.TextTruncate.AtEnd
 local personal = label(panel, "PersonalScore", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 62), 13)
 personal.TextColor3 = cyan
+personal.TextTruncate = Enum.TextTruncate.AtEnd
 
 local board = Instance.new("Frame")
 board.Name = "PossessionBoard"
 board.AnchorPoint = Vector2.new(1, 0)
-board.Position = UDim2.new(1, -18, 0, 118)
+board.Position = UDim2.new(1, -24, 0, 92)
 board.Size = UDim2.fromOffset(224, 239)
 board.BackgroundColor3 = navy
 board.BackgroundTransparency = 0.18
@@ -105,7 +111,7 @@ for index = 1, 8 do
 	boardRows[index] = row
 end
 
-local notice = label(gui, "Notice", UDim2.new(0.9, 0, 0, 50), UDim2.fromScale(0.5, 0.2), 23)
+local notice = label(gui, "Notice", UDim2.fromOffset(420, 48), UDim2.new(0.5, 0, 0, 88), 23)
 notice.AnchorPoint = Vector2.new(0.5, 0.5)
 notice.TextXAlignment = Enum.TextXAlignment.Center
 notice.TextColor3 = gold
@@ -117,7 +123,6 @@ noticeSize.MinTextSize = 14
 noticeSize.MaxTextSize = 23
 noticeSize.Parent = notice
 local noticeSerial = 0
-local marker: BillboardGui? = nil
 local carrierCharacter: Model? = nil
 local carrierRoot: BasePart? = nil
 local carrierHighlight: Highlight? = nil
@@ -139,7 +144,6 @@ local function clearCarrierFx()
 end
 
 local function clearWorldFeedback()
-	if marker then marker:Destroy() marker = nil end
 	clearCarrierFx()
 	revealUntil = 0
 	revealCarrierId = nil
@@ -158,32 +162,12 @@ local function showNotice(message: string, duration: number)
 	notice.Text = message
 	notice.TextTransparency = 0
 	notice.Visible = isVisible()
-	if ClientSettings.get("vfx") ~= 0 then
+	if ClientSettings.get("vfx") ~= 0 and not Theme.reducedMotion() then
 		TweenService:Create(notice, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
 	end
 	task.delay(duration, function()
 		if noticeSerial == serial then notice.Visible = false end
 	end)
-end
-
-local function syncMarker(carrier: Player?)
-	if marker then marker:Destroy() marker = nil end
-	if carrier == nil or carrier == localPlayer or not isVisible() then return end
-	local head = carrier.Character and carrier.Character:FindFirstChild("Head")
-	if head == nil or not head:IsA("BasePart") then return end
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "HRUSH_PanyoCarrierMarker"
-	billboard.Adornee = head
-	billboard.Size = UDim2.fromOffset(140, 40)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 120
-	billboard.Parent = playerGui
-	local text = label(billboard, "CarrierText", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 16)
-	text.TextXAlignment = Enum.TextXAlignment.Center
-	text.TextColor3 = gold
-	text.Text = "PANYO CARRIER"
-	marker = billboard
 end
 
 local function syncCarrierFx(carrier: Player?)
@@ -265,7 +249,7 @@ local function updateBoard()
 	local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
 	for index, row in boardRows do
 		local player = ranked[index]
-		row.Visible = player ~= nil
+		row.Visible = player ~= nil and (not Layout.compact() or index <= 3)
 		if player then
 			local time = player:GetAttribute("HRushPanyoTime") or 0
 			row.Text = string.format("%d  %s  %.1fs", index, player.DisplayName, time)
@@ -280,9 +264,23 @@ local function refresh()
 		clearWorldFeedback()
 		return
 	end
-	local viewport = Workspace.CurrentCamera and Workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	scale.Scale = math.clamp(viewport.X / 900, 0.7, 1)
-	boardScale.Scale = math.clamp(viewport.X / 720, 0.65, 1)
+	local compact = Layout.compact()
+	notice.Position = UDim2.new(0.5, 0, 0, if compact then 216 else 88)
+	notice.Size = UDim2.fromOffset(if compact then 200 else 420, if compact then 36 else 48)
+	panel.Position = if compact then UDim2.fromOffset(12, 56) else UDim2.fromOffset(24, 92)
+	panel.Size = UDim2.fromOffset(if compact then 200 else 300, if compact then 84 else 96)
+	scale.Scale = 1
+	board.Position = if compact then UDim2.new(0.5, 80, 0, 80) else UDim2.new(1, -24, 0, 92)
+	board.Size = UDim2.fromOffset(if compact then 160 else 224, if compact then 112 else 239)
+	boardScale.Scale = 1
+	title.TextSize = if compact then 13 else 16
+	carrierLabel.TextSize = if compact then 12 else 15
+	personal.TextSize = if compact then 11 else 13
+	boardTitle.TextSize = if compact then 12 else 13
+	for index, row in boardRows do
+		row.TextSize = if compact then 11 else 12
+		row.Position = UDim2.fromOffset(8, if compact then 28 + (index - 1) * 24 else 28 + (index - 1) * 25)
+	end
 	local state = localPlayer:GetAttribute("HRushState")
 	local phase = ReplicatedStorage:GetAttribute("HRushPanyoPhase")
 	title.Text = if state == "MS_03" then "AGAWAN NG PANYO"
@@ -297,13 +295,9 @@ local function refresh()
 	carrierLabel.Text = if carrier then "CARRIER: " .. carrier.DisplayName else "PANYO ON THE GROUND"
 	local time = localPlayer:GetAttribute("HRushPanyoTime") or 0
 	local points = localPlayer:GetAttribute("HRushPanyoPoints") or 0
-	personal.Text = string.format("YOU: %.1fs hold | %d points | %d steals", time, points, localPlayer:GetAttribute("HRushPanyoSteals") or 0)
+	personal.Text = if compact then string.format("YOU: %.1fs | %d pts | %d steals", time, points, localPlayer:GetAttribute("HRushPanyoSteals") or 0)
+		else string.format("YOU: %.1fs hold | %d points | %d steals", time, points, localPlayer:GetAttribute("HRushPanyoSteals") or 0)
 	updateBoard()
-	local adornee = marker and marker.Adornee
-	local desired = carrier and carrier.Character and carrier.Character:FindFirstChild("Head")
-	if (marker ~= nil and adornee ~= desired) or (marker == nil and carrier ~= nil and carrier ~= localPlayer) then
-		syncMarker(carrier)
-	end
 	syncCarrierFx(carrier)
 end
 

@@ -9,6 +9,7 @@
 -- own ScreenGui. Advisory visuals only: no remotes, no game state, no tag
 -- validation (the server still decides every tag).
 -- Task/spec: camera overhaul Phase 4, approved 2026-10-18.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -332,6 +333,7 @@ function onRender(dt: number)
 	end
 	local role = localPlayer:GetAttribute("HRushRole")
 	local showLook = UserInputService.TouchEnabled
+		and localPlayer:GetAttribute("HRushGameMode") == "ClassicTag"
 		and Cfg.LookBack.Enabled == true
 		and ClientSettings.get("lookBackEnabled") == true
 		and actionPhase()
@@ -412,8 +414,9 @@ local function build()
 
 	local screen = Instance.new("ScreenGui")
 	screen.Name = "HRushChaseHUD"
-	screen.DisplayOrder = 9
-	screen.IgnoreGuiInset = true
+	screen.DisplayOrder = Config.UI.Theme.Layers.HUD
+	screen.IgnoreGuiInset = false
+	screen.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	screen.ResetOnSpawn = false
 	screen.Enabled = false
 

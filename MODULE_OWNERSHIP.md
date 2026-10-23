@@ -41,6 +41,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | EventService | `src/ServerScriptService/EventService.server.lua` | Planned round event authority | Project Owner |
 | RunStyleService | `src/ServerScriptService/RunStyleService.server.lua` | Server-whitelisted cosmetic animation selection | Project Owner |
 | Bootstrap | `src/ServerScriptService/Bootstrap.server.lua` | Kalsada greybox, lighting, and character defaults | Project Owner |
+| NametagDefaults | `src/ServerScriptService/NametagDefaults.server.lua` | Suppresses built-in overhead names and health displays so local nametags render once | Project Owner |
 
 ## Client
 
@@ -58,6 +59,11 @@ Primary coding agent: **Codex**, only for the currently approved item
 | TargetLockController | `src/StarterPlayerScripts/TargetLockController.lua` | Local target selection, reticle, and camera assist | Project Owner |
 | TargetLock bootstrap | `src/StarterPlayerScripts/TargetLockController.client.lua` | Starts the target-lock module | Project Owner |
 | UIController | `src/StarterPlayerScripts/UIController.client.lua` | Match HUD, cooldowns, draft presentation, and recaps | Project Owner |
+| UITheme | `src/StarterPlayerScripts/UITheme.lua` | Read-only Config UI tokens, shared surface, safe-area screen, and focus style constructors | Project Owner |
+| UILayoutCoordinator | `src/StarterPlayerScripts/UILayoutCoordinator.lua` | Shared breakpoints, modal focus, and measured touch-control reservation | Project Owner |
+| UIAccessibility | `src/StarterPlayerScripts/UIAccessibility.client.lua` | Applies local text size and high contrast preferences to runtime screens | Project Owner |
+| TouchLayoutController | `src/StarterPlayerScripts/TouchLayoutController.client.lua` | Positions existing touch actions above the Roblox jump control without changing their input gates | Project Owner |
+| NametagController | `src/StarterPlayerScripts/NametagController.client.lua` | One visible local overhead identity and role badge per other match player, including private Hunt target decoration | Project Owner |
 | LobbyUI | `src/StarterPlayerScripts/LobbyUI.client.lua` | Lobby, party, queue, settings presentation, and lobby camera | Project Owner |
 | RpsUI | `src/StarterPlayerScripts/RpsUI.client.lua` | MS_RPS cards, sign input, local timer, and reveal presentation | Project Owner |
 | MapVoteUI | `src/StarterPlayerScripts/MapVoteUI.client.lua` | Map-vote presentation and input | Project Owner |

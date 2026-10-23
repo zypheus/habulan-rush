@@ -4,6 +4,7 @@
 -- Responsibility: local momentum meter, action feedback, and sound cues.
 -- Task/spec: momentum step 3, 2026-10-19.
 -- Task/spec: slide chaining diagnosis, 2026-10-19.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,13 +17,23 @@ local Rules = require(ReplicatedStorage:WaitForChild("MomentumRules"))
 local Momentum = require(script.Parent:WaitForChild("MomentumController"))
 local Settings = require(script.Parent:WaitForChild("ClientSettings"))
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
+local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local fx = Config.Momentum.Fx
 local player = Players.LocalPlayer
 
+local function meterBottom(): number
+	return if Layout.compact() then Config.UI.Theme.PhoneMomentumBottom else fx.BarBottom
+end
+
+local function meterWidth(): number
+	return if Layout.compact() then Config.UI.Theme.PhoneMomentumWidth else fx.BarWidth
+end
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "HRushMomentumHUD"
-gui.DisplayOrder = 11
-gui.IgnoreGuiInset = true
+gui.DisplayOrder = Config.UI.Theme.Layers.HUD
+gui.IgnoreGuiInset = false
+gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -53,8 +64,8 @@ local function label(name: string, parent: Instance, size: UDim2, position: UDim
 	return item
 end
 
-local bar = frame("Bar", gui, UDim2.fromOffset(fx.BarWidth, fx.BarHeight),
-	UDim2.new(0.5, -fx.BarWidth / 2, 1, -fx.BarBottom), Color3.fromRGB(22, 24, 34))
+local bar = frame("Bar", gui, UDim2.fromOffset(meterWidth(), fx.BarHeight),
+	UDim2.new(0.5, -meterWidth() / 2, 1, -meterBottom()), Color3.fromRGB(22, 24, 34))
 bar.ClipsDescendants = false
 local barCorner = Instance.new("UICorner")
 barCorner.CornerRadius = UDim.new(1, 0)
@@ -85,22 +96,37 @@ flash.BackgroundTransparency = 1
 flash.ZIndex = 3
 
 local chain = label("Chain", gui, UDim2.fromOffset(180, 28),
-	UDim2.new(0.5, -90, 1, -fx.BarBottom - 37), 17)
+	UDim2.new(0.5, -90, 1, -meterBottom() - 37), 17)
 local chainScale = Instance.new("UIScale")
 chainScale.Parent = chain
 local lost = label("Lost", gui, UDim2.fromOffset(240, 30),
-	UDim2.new(0.5, -120, 1, -fx.BarBottom - 68), 18)
+	UDim2.new(0.5, -120, 1, -meterBottom() - 68), 18)
 lost.Text = "MOMENTUM LOST"
 lost.TextColor3 = Color3.fromRGB(255, 75, 75)
 
 local cracks: { Frame } = {}
 for index = 1, 4 do
 	local piece = frame("Crack" .. index, gui, UDim2.fromOffset(0, fx.BarHeight),
-		UDim2.new(0.5, 0, 1, -fx.BarBottom), Color3.fromRGB(255, 60, 60))
+		UDim2.new(0.5, 0, 1, -meterBottom()), Color3.fromRGB(255, 60, 60))
 	piece.Visible = false
 	piece.ZIndex = 13
 	table.insert(cracks, piece)
 end
+
+local lastCompact: boolean? = nil
+local function layoutMeter()
+	local compact = Layout.compact()
+	if lastCompact == compact then return end
+	lastCompact = compact
+	local width = meterWidth()
+	local bottom = meterBottom()
+	bar.Size = UDim2.fromOffset(width, fx.BarHeight)
+	bar.Position = UDim2.new(0.5, -width / 2, 1, -bottom)
+	chain.Position = UDim2.new(0.5, -90, 1, -bottom - 37)
+	lost.Position = UDim2.new(0.5, -120, 1, -bottom - 68)
+	for _, piece in cracks do piece.Position = UDim2.new(0.5, 0, 1, -bottom) end
+end
+layoutMeter()
 
 local popups: { TextLabel } = {}
 local popupTweens: { [TextLabel]: Tween } = {}
@@ -207,9 +233,9 @@ local function crackBar()
 	flash.BackgroundTransparency = 0
 	TweenService:Create(flash, TweenInfo.new(fx.CrackTime), { BackgroundTransparency = 1 }):Play()
 	for index, piece in cracks do
-		local width = fx.BarWidth * shownFraction / #cracks
+		local width = meterWidth() * shownFraction / #cracks
 		piece.Size = UDim2.fromOffset(width, fx.BarHeight)
-		piece.Position = UDim2.new(0.5, -fx.BarWidth / 2 + (index - 1) * width, 1, -fx.BarBottom)
+		piece.Position = UDim2.new(0.5, -meterWidth() / 2 + (index - 1) * width, 1, -meterBottom())
 		piece.Rotation = 0
 		piece.BackgroundTransparency = 0
 		piece.Visible = width > 0
@@ -277,6 +303,7 @@ Momentum.Changed:Connect(function(value: number, reason: string, action: string?
 end)
 
 RunService.RenderStepped:Connect(function()
+	layoutMeter()
 	local live = player:GetAttribute("HRushState") == "MS_04"
 	bar.Visible = live and Settings.get("momentumBar") == true
 	chain.Visible = chain.Visible and bar.Visible and Workspace:GetServerTimeNow() - lastActionAt <= Config.Momentum.ChainWindow

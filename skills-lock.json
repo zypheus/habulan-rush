@@ -43,6 +43,12 @@
       "skillPath": "skills/core/roblox-architecture/SKILL.md",
       "computedHash": "7fe3226e76ffff94bc89833d6f5161e31259e606da84fce59da75390320ef40e"
     },
+    "roblox-gui": {
+      "source": "tabooharmony/roblox-brain",
+      "sourceType": "github",
+      "skillPath": "skills/gameplay/roblox-gui/SKILL.md",
+      "computedHash": "70d57cc0b934dacb8be19bf23da8342c5b638d383ffc433369b62ccaa3e8ae7d"
+    },
     "roblox-luau": {
       "source": "gamedev-skills/awesome-gamedev-agent-skills",
       "sourceType": "github",

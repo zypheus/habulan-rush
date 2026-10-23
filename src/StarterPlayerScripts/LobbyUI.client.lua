@@ -5,6 +5,7 @@
 -- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
 -- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
 -- Task/spec: owner-approved first-person FOV setting and in-match settings, 2026-10-22.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 --[[
 	HABULAN RUSH - Lobby UI
 	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
@@ -23,6 +24,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -45,6 +47,8 @@ local INTRO = SharedConfig.UI.MatchIntro or {
 
 -- Sibling module (same Rojo sync): the settings model this screen edits.
 local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
+local Theme = require(script.Parent:WaitForChild("UITheme"))
+local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 -- Sibling module (same Rojo sync): shared UI one-shots through the SFX group.
 local UIAudio = require(script.Parent:WaitForChild("AudioRouter"))
 
@@ -71,10 +75,6 @@ local function promptGameInvite()
 end
 
 local CONFIG = {
-	-- Display-only placeholder values (no real currency system is implemented)
-	CoinsText = "2,450",
-	GemsText = "120",
-	PlayerLevel = 12,
 	Region = "PHILIPPINES",
 	Version = "v. 0.9.2",
 	LocationText = "BARANGAY MALIGAYA",
@@ -93,24 +93,24 @@ local CONFIG = {
 }
 
 local COLORS = {
-	Lime = Color3.fromRGB(221, 247, 100),
-	LimeLight = Color3.fromRGB(236, 255, 130),
-	LimeEdge = Color3.fromRGB(122, 150, 36),
-	Navy = Color3.fromRGB(29, 43, 52),
-	Slate = Color3.fromRGB(53, 79, 89),
+	Lime = Theme.Colors.Gold,
+	LimeLight = Theme.Colors.Cream,
+	LimeEdge = Color3.fromRGB(158, 108, 0),
+	Navy = Theme.Colors.Navy,
+	Slate = Theme.Colors.Raised,
 	SlateEdge = Color3.fromRGB(34, 52, 60),
 	SlateLight = Color3.fromRGB(78, 106, 117),
 	Pill = Color3.fromRGB(46, 70, 82),
 	PlusBox = Color3.fromRGB(86, 104, 114),
-	Cream = Color3.fromRGB(245, 243, 226),
+	Cream = Theme.Colors.Cream,
 	CreamEdge = Color3.fromRGB(190, 186, 160),
-	Orange = Color3.fromRGB(238, 152, 88),
-	White = Color3.fromRGB(255, 255, 255),
-	TextDim = Color3.fromRGB(176, 194, 200),
+	Orange = Theme.Colors.Orange,
+	White = Theme.Colors.Cream,
+	TextDim = Theme.Colors.Muted,
 	Shadow = Color3.fromRGB(20, 34, 44),
-	Gold = Color3.fromRGB(246, 190, 50),
+	Gold = Theme.Colors.Gold,
 	GoldDark = Color3.fromRGB(190, 128, 16),
-	Cyan = Color3.fromRGB(110, 225, 240),
+	Cyan = Theme.Colors.Teal,
 	PanelBg = Color3.fromRGB(40, 62, 72),
 	GearGray = Color3.fromRGB(78, 90, 96),
 }
@@ -143,6 +143,7 @@ local ASSETS = {
 local INFO_FAST = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local function tween(obj, info, goal)
+	if Theme.reducedMotion() then info = TweenInfo.new(0.08) end
 	local t = TweenService:Create(obj, info, goal)
 	t:Play()
 	return t
@@ -370,9 +371,10 @@ local gui = create("ScreenGui", {
 	Name = "LobbyUI",
 	Enabled = false,
 	ResetOnSpawn = false,
-	IgnoreGuiInset = true,
+	IgnoreGuiInset = false,
+	ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	DisplayOrder = 5,
+	DisplayOrder = Theme.Layers.Lobby,
 }, playerGui)
 
 local panels = {}
@@ -402,18 +404,17 @@ local displayName = CONFIG.PlayerNameOverride or player.DisplayName
 
 -- Handles filled in below, wired up in BUTTON EVENTS
 local playHolderScale, settingsHolderScale, chevronLabel
-local playButton, settingsButton, playIcon, playText, cancelHint
+local playButton, settingsButton, playIcon, playText, cancelHint, cancelButton
 local onInvitePressed -- assigned with the party picker below
 local gmButton, gmScale
 local playModeChipLabel
 
--- Game modes: GM_01 is playable now; GM_03 / GM_04 are locked stretch goals.
+-- These cards describe the live server ballot. The lobby never picks a mode.
 local GAME_MODES = {
-	{ id = "GM_01", shortName = "CLASSIC HABULAN", locked = false },
-	{ id = "GM_03", shortName = "TEAM HABULAN", locked = true },
-	{ id = "GM_04", shortName = "LAST RUNNER", locked = true },
+	{ id = "ClassicTag", shortName = "CLASSIC TAG", locked = SharedConfig.ModeVote.Modes.ClassicTag.enabled ~= true },
+	{ id = "AgawanNgPanyo", shortName = "AGAWAN NG PANYO", locked = SharedConfig.ModeVote.Modes.AgawanNgPanyo.enabled ~= true },
+	{ id = "SecretHunt", shortName = "LIHIM NA TARGET", locked = SharedConfig.ModeVote.Modes.SecretHunt.enabled ~= true },
 }
-local selectedGameMode = "GM_01"
 
 --------------------------------------------------------------------------
 -- TOP BAR (logo + location top-left, currency + avatar top-right)
@@ -544,8 +545,7 @@ local function createCurrencyPill(x, w, kind, text)
 	bindButton(plus, create("UIScale", {}, plus), nil, 1.1, 0.9)
 end
 
-createCurrencyPill(0, 148, "Coin", CONFIG.CoinsText)
-createCurrencyPill(162, 142, "Gem", CONFIG.GemsText)
+-- Currency is not part of this competition build.
 
 do
 	local avatar = createFrame({
@@ -563,19 +563,6 @@ do
 		TextSize = 26,
 		TextColor3 = COLORS.Navy,
 	}, avatar)
-	local badge = createFrame({
-		Position = UDim2.fromOffset(27, 34),
-		Size = UDim2.fromOffset(28, 21),
-		BackgroundColor3 = COLORS.Slate,
-	}, avatar)
-	corner(badge, 6)
-	stroke(badge, COLORS.Cream, 1.5)
-	createLabel({
-		Size = UDim2.fromScale(1, 1),
-		Text = tostring(CONFIG.PlayerLevel),
-		FontFace = FONTS.Heavy,
-		TextSize = 13,
-	}, badge)
 end
 
 --------------------------------------------------------------------------
@@ -632,6 +619,7 @@ do
 		Size = UDim2.fromOffset(281, 89),
 		BackgroundColor3 = COLORS.Lime,
 	}, holder)
+	Theme.focus(playButton)
 	corner(playButton, 17)
 	stroke(playButton, COLORS.LimeLight, 2, 0.2)
 	create("UIGradient", {
@@ -649,10 +637,10 @@ do
 	}, playButton)
 	playText = createLabel({
 		Position = UDim2.fromOffset(88, 0),
-		Size = UDim2.fromOffset(110, 89),
-		Text = "PLAY",
+		Size = UDim2.fromOffset(186, 89),
+		Text = "FIND MATCH",
 		FontFace = FONTS.Display,
-		TextSize = 58,
+		TextSize = 32,
 		TextColor3 = COLORS.Navy,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, playButton)
@@ -666,6 +654,19 @@ do
 		TextTransparency = 1,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, playButton)
+	cancelHint.Visible = false
+	cancelButton = createButton({
+		Name = "CancelQueue",
+		Position = UDim2.fromOffset(0, 136),
+		Size = UDim2.fromOffset(281, 34),
+		BackgroundColor3 = COLORS.Slate,
+		Text = "CANCEL SEARCH",
+		FontFace = FONTS.Heavy,
+		TextSize = 16,
+		TextColor3 = COLORS.Cream,
+		Visible = false,
+	}, playGroup)
+	corner(cancelButton, 10)
 
 	-- selected game mode chip (top edge of the PLAY button)
 	local modeChip = createFrame({
@@ -679,7 +680,7 @@ do
 	stroke(modeChip, COLORS.LimeEdge, 1)
 	playModeChipLabel = createLabel({
 		Size = UDim2.fromScale(1, 1),
-		Text = "GM_01 · CLASSIC HABULAN",
+		Text = "VOTE AFTER MATCHMAKING",
 		FontFace = FONTS.Heavy,
 		TextSize = 10,
 		TextColor3 = COLORS.Navy,
@@ -720,6 +721,7 @@ do
 		Size = UDim2.fromOffset(68, 69),
 		BackgroundColor3 = COLORS.Slate,
 	}, gmHolder)
+	Theme.focus(gmButton)
 	corner(gmButton, 15)
 	stroke(gmButton, COLORS.SlateLight, 1, 0.6)
 	makeIcon("GameModes", gmButton, 30, COLORS.Lime, COLORS.Slate)
@@ -737,81 +739,13 @@ do
 		Size = UDim2.fromOffset(50, 50),
 		BackgroundColor3 = COLORS.Cream,
 	}, sHolder)
+	Theme.focus(settingsButton)
 	corner(settingsButton, 10)
 	stroke(settingsButton, COLORS.CreamEdge, 1.5, 0.2)
 	makeIcon("Settings", settingsButton, 26, COLORS.GearGray, COLORS.Cream)
 
-	-- subtitle
-	createShadowLabel({
-		Name = "Subtitle",
-		Position = UDim2.fromOffset(2, 148),
-		Size = UDim2.fromOffset(300, 18),
-		Text = "One neighborhood. Endless chases.",
-		FontFace = FONTS.SemiBold,
-		TextSize = 13,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	}, playGroup, Vector2.new(1, 1))
 end
 
-local nameplateGroup = createGroup(
-	"NameplateGroup",
-	Vector2.new(217, 61),
-	Vector2.new(0.5, 0), UDim2.fromScale(0.412, 0.7558),
-	Vector2.new(0.5, 0), UDim2.fromScale(0.5, 0.56)
-)
-
-do
-	local card = createFrame({
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = COLORS.Slate,
-	}, nameplateGroup)
-	corner(card, 9)
-	stroke(card, COLORS.SlateLight, 1, 0.5)
-
-	local num = createFrame({
-		Position = UDim2.fromOffset(12, 13),
-		Size = UDim2.fromOffset(34, 34),
-		BackgroundColor3 = COLORS.SlateEdge,
-	}, card)
-	corner(num, 7)
-	stroke(num, COLORS.Lime, 1.5)
-	createLabel({
-		Size = UDim2.fromScale(1, 1),
-		Text = tostring(CONFIG.PlayerLevel),
-		FontFace = FONTS.Heavy,
-		TextSize = 18,
-		TextColor3 = COLORS.Lime,
-	}, num)
-
-	createLabel({
-		Position = UDim2.fromOffset(57, 11),
-		Size = UDim2.fromOffset(120, 20),
-		Text = displayName,
-		FontFace = FONTS.Bold,
-		TextSize = 16,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-	}, card)
-	createLabel({
-		Position = UDim2.fromOffset(57, 33),
-		Size = UDim2.fromOffset(120, 14),
-		Text = "READY TO RUN",
-		FontFace = FONTS.Heavy,
-		TextSize = 10,
-		TextColor3 = COLORS.TextDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	}, card)
-	createLabel({
-		Position = UDim2.fromOffset(181, 0),
-		Size = UDim2.fromOffset(26, 61),
-		Text = "✓",
-		FontFace = FONTS.Bold,
-		TextSize = 18,
-		TextColor3 = COLORS.Lime,
-	}, card)
-end
-
---------------------------------------------------------------------------
 -- PARTY SLOTS (you + party members + "+" invite buttons)
 -- Membership comes from the PartyService attributes:
 --   HRushPartyLeader (UserId) / HRushPartySlot (1..4) / HRushPartySize.
@@ -1132,6 +1066,7 @@ local function createNavButton(name, text, iconKind, x, w, showDot)
 		Size = UDim2.fromOffset(w, 52),
 		BackgroundColor3 = COLORS.Slate,
 	}, holder)
+	Theme.focus(btn)
 	corner(btn, 11)
 	stroke(btn, COLORS.SlateLight, 1, 0.6)
 
@@ -1156,8 +1091,8 @@ local function createNavButton(name, text, iconKind, x, w, showDot)
 end
 
 createNavButton("Profile", "PROFILE", "Profile", 0, 144, false)
-createNavButton("Collection", "COLLECTION", "Collection", 156, 175, false)
-createNavButton("Shop", "SHOP", "Shop", 343, 124, true)
+createNavButton("Help", "HELP / CONTROLS", "Collection", 156, 220, false)
+-- No shop or currency affordance is shown without an approved system.
 
 local infoGroup = createGroup(
 	"InfoGroup",
@@ -1213,6 +1148,7 @@ local overlay = createButton({
 
 local currentPanel = nil
 local overlayToken = 0
+local priorPanelFocus: GuiObject? = nil
 
 local function createPanel(name, title, width, height)
 	local holder = createFrame({
@@ -1253,7 +1189,7 @@ local function createPanel(name, title, width, height)
 	}, canvas), 3)
 	createLabel({
 		Position = UDim2.fromOffset(46, 18),
-		Size = UDim2.fromOffset(width - 140, 42),
+		Size = UDim2.new(1, -140, 0, 42),
 		Text = title,
 		FontFace = FONTS.Display,
 		TextSize = 34,
@@ -1261,14 +1197,14 @@ local function createPanel(name, title, width, height)
 	}, canvas)
 	createFrame({
 		Position = UDim2.fromOffset(28, 70),
-		Size = UDim2.fromOffset(width - 56, 2),
+		Size = UDim2.new(1, -56, 0, 2),
 		BackgroundColor3 = COLORS.SlateLight,
 		BackgroundTransparency = 0.6,
 	}, canvas)
 
 	local closeBtn = createButton({
-		Position = UDim2.fromOffset(width - 66, 18),
-		Size = UDim2.fromOffset(40, 40),
+		Position = UDim2.new(1, -72, 0, 8),
+		Size = UDim2.fromOffset(64, 64),
 		BackgroundColor3 = COLORS.Slate,
 		Text = "X",
 		FontFace = FONTS.Heavy,
@@ -1276,6 +1212,7 @@ local function createPanel(name, title, width, height)
 	}, canvas)
 	corner(closeBtn, 10)
 	stroke(closeBtn, COLORS.SlateLight, 1, 0.5)
+	Theme.focus(closeBtn)
 
 	local content = createFrame({
 		Name = "Content",
@@ -1405,6 +1342,11 @@ local function closePanel()
 		tweenClose(currentPanel)
 		currentPanel = nil
 		hideOverlay()
+		if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(gui) then
+			GuiService.SelectedObject = if player:GetAttribute("HRushInMatch") == true then nil
+				else if Layout.focusAvailable(priorPanelFocus) then priorPanelFocus else nil
+		end
+		priorPanelFocus = nil
 	end
 end
 
@@ -1415,10 +1357,12 @@ local function openPanel(p)
 	if currentPanel then
 		tweenClose(currentPanel)
 	else
+		priorPanelFocus = GuiService.SelectedObject
 		showOverlay()
 	end
 	currentPanel = p
 	tweenOpen(p)
+	GuiService.SelectedObject = p.Close
 end
 
 -- (PLAY panel removed: the PLAY button starts matchmaking directly)
@@ -1429,7 +1373,28 @@ end
 -- the model live, so changes apply with no rejoin. Replaces the old
 -- visual-only Music/SFX toggles, which never did anything.
 local settingsPanel = createPanel("Settings", "SETTINGS", 520, 812)
+local settingsLiveStatus = createLabel({
+	Position = UDim2.new(1, -248, 0, 48),
+	Size = UDim2.fromOffset(220, 22),
+	Text = "",
+	FontFace = FONTS.Heavy,
+	TextSize = 13,
+	TextColor3 = COLORS.Lime,
+	TextXAlignment = Enum.TextXAlignment.Right,
+}, settingsPanel.Canvas)
 local settingsStep = SharedConfig.Settings.SliderStep
+task.spawn(function()
+	while gui.Parent do
+		if currentPanel == settingsPanel and player:GetAttribute("HRushInMatch") == true then
+			local endsAt = game:GetService("ReplicatedStorage"):GetAttribute("HRushPhaseEndsAt")
+			local remaining = if typeof(endsAt) == "number" then math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) else 0
+			settingsLiveStatus.Text = string.format("ROUND CONTINUES  %d:%02d", math.floor(remaining / 60), remaining % 60)
+		else
+			settingsLiveStatus.Text = ""
+		end
+		task.wait(0.25)
+	end
+end)
 do
 	local c = create("ScrollingFrame", {
 		Name = "SettingsScroll",
@@ -1442,7 +1407,7 @@ do
 
 	local settingsRows: { [string]: any } = {}
 	local rowCards: { [string]: Instance } = {}
-	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "firstPersonFov", "reducedCamera", "invertCameraY", "showPopups", "momentumBar", "momentumSounds" }
+	local rowOrder = { "master", "music", "sfx", "vfx", "cameraSensitivity", "firstPersonFov", "reducedCamera", "invertCameraY", "showPopups", "momentumBar", "momentumSounds", "textScale", "highContrast" }
 	c.CanvasSize = UDim2.fromOffset(0, #rowOrder * 84 + 112)
 	local rowTitles: { [string]: string } = {
 		master = "Master Volume",
@@ -1456,6 +1421,8 @@ do
 		showPopups = "Show Popups",
 		momentumBar = "Momentum Bar",
 		momentumSounds = "Momentum Sounds",
+		textScale = "Text Size",
+		highContrast = "High Contrast",
 	}
 	local toggleKeys: { [string]: boolean } = {
 		reducedCamera = true,
@@ -1463,12 +1430,14 @@ do
 		showPopups = true,
 		momentumBar = true,
 		momentumSounds = true,
+		highContrast = true,
 	}
 
 	local function sliderBounds(key: string): (number, number)
 		if key == "firstPersonFov" then
 			return SharedConfig.Settings.FirstPersonFovMin, SharedConfig.Settings.FirstPersonFovMax
 		end
+		if key == "textScale" then return 80, 130 end
 		return 0, 100
 	end
 
@@ -1529,18 +1498,19 @@ do
 
 	local function createSliderRow(index: number, key: string)
 		local row = createCard(c, 0, (index - 1) * 84, 464, 76)
+		row.Size = UDim2.new(1, 0, 0, 76)
 		rowCards[key] = row
 		stroke(row, COLORS.Lime, 2, 1) -- focus ring, shown for the selected row
 		createLabel({
 			Position = UDim2.fromOffset(20, 6),
-			Size = UDim2.fromOffset(320, 24),
+			Size = UDim2.new(1, -140, 0, 24),
 			Text = rowTitles[key],
 			FontFace = FONTS.Bold,
 			TextSize = 18,
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, row)
 		local valueLabel = createLabel({
-			Position = UDim2.fromOffset(344, 6),
+			Position = UDim2.new(1, -120, 0, 6),
 			Size = UDim2.fromOffset(100, 24),
 			Text = "100",
 			FontFace = FONTS.Heavy,
@@ -1588,11 +1558,12 @@ do
 
 	local function createToggleRow(index: number, key: string, subtitle: string)
 		local row = createCard(c, 0, (index - 1) * 84, 464, 76)
+		row.Size = UDim2.new(1, 0, 0, 76)
 		rowCards[key] = row
 		stroke(row, COLORS.Lime, 2, 1) -- focus ring, shown for the selected row
 		createLabel({
 			Position = UDim2.fromOffset(20, 6),
-			Size = UDim2.fromOffset(360, 24),
+			Size = UDim2.new(1, -120, 0, 24),
 			Text = rowTitles[key],
 			FontFace = FONTS.Bold,
 			TextSize = 18,
@@ -1600,7 +1571,7 @@ do
 		}, row)
 		createLabel({
 			Position = UDim2.fromOffset(20, 32),
-			Size = UDim2.fromOffset(360, 20),
+			Size = UDim2.new(1, -120, 0, 20),
 			Text = subtitle,
 			FontFace = FONTS.SemiBold,
 			TextSize = 13,
@@ -1608,7 +1579,7 @@ do
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, row)
 		local track = createButton({
-			Position = UDim2.fromOffset(464 - 20 - 64, 22),
+			Position = UDim2.new(1, -84, 0, 22),
 			Size = UDim2.fromOffset(64, 32),
 			BackgroundColor3 = COLORS.SlateEdge,
 			Text = "",
@@ -1641,6 +1612,7 @@ do
 	createToggleRow(9, "showPopups", "Show momentum action text near your character.")
 	createToggleRow(10, "momentumBar", "Show the bottom-center momentum meter.")
 	createToggleRow(11, "momentumSounds", "Play momentum cues at your SFX volume.")
+	createToggleRow(13, "highContrast", "Stronger borders and focus outlines.")
 
 	createActionButton(c, "RESET TO DEFAULTS", "cream", 0, #rowOrder * 84 + 8, 464, 56, function()
 		UIAudio.playUi("click")
@@ -1781,18 +1753,14 @@ end
 
 -- GAME MODES PANEL -----------------------------------------------------------
 local function updatePlayModeChip()
-	if not playModeChipLabel then
-		return
-	end
-	for _, m in ipairs(GAME_MODES) do
-		if m.id == selectedGameMode then
-			playModeChipLabel.Text = m.id .. " · " .. m.shortName
-			return
-		end
+	if playModeChipLabel then
+		playModeChipLabel.Text = "VOTE AFTER MATCHMAKING"
 	end
 end
 
 gameModesPanel = createPanel("GameModes", "GAME MODES", 720, 478)
+local desktopModeCards: { Frame } = {}
+local mobileModesScroll: ScrollingFrame? = nil
 
 	-- drawn preview art (palette-consistent), one per mode card
 	local function artCourt(frame)
@@ -1908,44 +1876,30 @@ do
 	local c = gameModesPanel.Content -- 664 x 352
 
 	local MODE_INFO = {
-		GM_01 = {
-			title = "CLASSIC HABULAN",
-			tag = "MVP · CORE MODE",
-			art = artCourt,
-			desc = "FFA hot-potato tag · 4-8 players · 3 rounds x 150s · bato bato pick for first Taya · safe windows + post-tag boosts",
-			win = "WIN: Lowest total Taya Time takes 1st + MVP.",
+		ClassicTag = {
+			title = "CLASSIC TAG", tag = "PLAYABLE", art = artCourt,
+			desc = "Tag changes the Taya. Three rounds with a Bato Bato Pick start.",
+			win = "WIN: Lowest total Taya time.",
 		},
-		GM_03 = {
-			title = "TEAM HABULAN",
-			tag = "COMING SOON · P2",
-			art = artFreeze,
-			desc = "FREEZE TAG · 4v4 street Ice-Water: tagged Runners freeze in place; teammates rescue them by touch.",
-			win = "WIN: Freeze them all — or survive to the end.",
+		AgawanNgPanyo = {
+			title = "AGAWAN NG PANYO", tag = "PLAYABLE", art = artCourt,
+			desc = "Pick up the panyo, hold it, and steal it from the carrier.",
+			win = "WIN: Most possession time, then steals.",
 		},
-		GM_04 = {
-			title = "LAST RUNNER STANDING",
-			tag = "COMING SOON · P2",
-			art = artElimination,
-			desc = "ELIMINATION FFA: when the buzzer expires, whoever holds the Taya is out of the match.",
-			win = "WIN: Be the last Runner standing.",
+		SecretHunt = {
+			title = "LIHIM NA TARGET", tag = "PLAYABLE", art = artCourt,
+			desc = "Find your private target and capture them to get new assignments.",
+			win = "WIN: Most captures, then best streak.",
 		},
 	}
 
-	local rows = {}
-	local function refreshModeRows()
-		for _, row in ipairs(rows) do
-			local selected = (row.id == selectedGameMode)
-			row.SelectBtn.Text = selected and "✓ SELECTED" or "SELECT"
-			row.SelectBtn.BackgroundColor3 = selected and COLORS.Lime or COLORS.Cream
-			row.CardStroke.Color = selected and COLORS.Lime or COLORS.SlateLight
-			row.CardStroke.Transparency = selected and 0 or 0.6
-		end
-	end
+	-- Mode choice happens only on the server ballot after matchmaking.
 
 	local CARD_W, CARD_H = 208, 344
 	for idx, m in ipairs(GAME_MODES) do
 		local info = MODE_INFO[m.id]
 		local card = createCard(c, (idx - 1) * (CARD_W + 20), 0, CARD_W, CARD_H)
+		table.insert(desktopModeCards, card)
 		local cardStroke = stroke(card, COLORS.SlateLight, 1, 0.6)
 
 		-- preview banner across the top of the card (map-vote style)
@@ -1969,7 +1923,7 @@ do
 		corner(chip, 8)
 		createLabel({
 			Size = UDim2.fromScale(1, 1),
-			Text = info.tag,
+			Text = if m.locked then "UNAVAILABLE" else info.tag,
 			FontFace = FONTS.Heavy,
 			TextSize = 8,
 			TextColor3 = m.locked and COLORS.TextDim or COLORS.Navy,
@@ -2048,29 +2002,62 @@ do
 				TextColor3 = COLORS.TextDim,
 			}, lockedChip)
 		else
-			local selectBtn = createActionButton(card, "SELECT", "lime", 11, CARD_H - 46, CARD_W - 22, 32, function()
-				selectedGameMode = m.id
-				refreshModeRows()
-				updatePlayModeChip()
-				closePanel() -- back to the lobby; PLAY now shows the chosen mode
-			end, 14)
-			table.insert(rows, { id = m.id, SelectBtn = selectBtn, CardStroke = cardStroke })
+			createLabel({
+				Position = UDim2.fromOffset(11, CARD_H - 46),
+				Size = UDim2.fromOffset(CARD_W - 22, 36),
+				Text = "VOTE AFTER MATCHMAKING",
+				FontFace = FONTS.Heavy,
+				TextSize = 12,
+				TextColor3 = COLORS.Lime,
+			}, card)
 		end
 	end
+	local scroll = create("ScrollingFrame", {
+		Name = "PhoneModeList",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 5,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	}, c) :: ScrollingFrame
+	create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
+	for index, mode in ipairs(GAME_MODES) do
+		local info = MODE_INFO[mode.id]
+		local row = createCard(scroll, 0, 0, 1, 112)
+		row.LayoutOrder = index
+		row.Size = UDim2.new(1, -8, 0, 112)
+		createLabel({ Position = UDim2.fromOffset(12, 8), Size = UDim2.new(1, -24, 0, 24), Text = info.title,
+			FontFace = FONTS.Display, TextSize = 18, TextColor3 = COLORS.Cream, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		createLabel({ Position = UDim2.fromOffset(12, 36), Size = UDim2.new(1, -24, 0, 40), Text = info.desc,
+			FontFace = FONTS.SemiBold, TextSize = 13, TextColor3 = COLORS.TextDim, TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left }, row)
+		createLabel({ Position = UDim2.fromOffset(12, 79), Size = UDim2.new(1, -24, 0, 26), Text = info.win,
+			FontFace = FONTS.Heavy, TextSize = 13, TextColor3 = COLORS.Lime, TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left }, row)
+	end
+	mobileModesScroll = scroll
 
-	refreshModeRows()
 end
 
 -- PROFILE PANEL -------------------------------------------------------------
 local profilePanel = createPanel("Profile", "PROFILE", 600, 400)
+local profileCard: Frame? = nil
+local profileAvatar: Frame? = nil
+local profileName: TextLabel? = nil
+local profileUsername: TextLabel? = nil
+local profileDescription: TextLabel? = nil
 do
 	local c = profilePanel.Content -- 544 x 282
 	local left = createCard(c, 0, 0, 190, 282)
+	profileCard = left
 	local avatarBox = createFrame({
 		Position = UDim2.fromOffset(25, 24),
 		Size = UDim2.fromOffset(140, 140),
 		BackgroundColor3 = COLORS.Orange,
 	}, left)
+	profileAvatar = avatarBox
 	corner(avatarBox, 16)
 	local img = create("ImageLabel", {
 		BackgroundTransparency = 1,
@@ -2086,7 +2073,7 @@ do
 			img.Image = content
 		end
 	end)
-	createLabel({
+	profileName = createLabel({
 		Position = UDim2.fromOffset(10, 180),
 		Size = UDim2.fromOffset(170, 26),
 		Text = displayName,
@@ -2094,27 +2081,25 @@ do
 		TextSize = 18,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, left)
-	createLabel({
+	profileUsername = createLabel({
 		Position = UDim2.fromOffset(10, 208),
 		Size = UDim2.fromOffset(170, 18),
-		Text = "LEVEL " .. CONFIG.PlayerLevel,
+		Text = "@" .. player.Name,
 		FontFace = FONTS.Heavy,
 		TextSize = 12,
 		TextColor3 = COLORS.Lime,
 	}, left)
 
-	local stats = { "STAT 1", "STAT 2", "STAT 3" }
-	for i, s in ipairs(stats) do
-		local card = createCard(c, 206, (i - 1) * 96, 338, 86, s .. "  (PLACEHOLDER)")
-		createLabel({
-			Position = UDim2.fromOffset(16, 34),
-			Size = UDim2.fromOffset(300, 40),
-			Text = "—",
-			FontFace = FONTS.Display,
-			TextSize = 32,
-			TextXAlignment = Enum.TextXAlignment.Left,
-		}, card)
-	end
+	profileDescription = createLabel({
+		Position = UDim2.fromOffset(210, 26),
+		Size = UDim2.fromOffset(320, 64),
+		Text = "Your Roblox identity is used in matches. Match stats are shown in round and match results.",
+		FontFace = FONTS.SemiBold,
+		TextSize = 16,
+		TextColor3 = COLORS.TextDim,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, c)
 end
 
 -- COLLECTION PANEL ----------------------------------------------------------
@@ -2214,13 +2199,45 @@ end
 --------------------------------------------------------------------------
 -- BUTTON EVENTS
 --------------------------------------------------------------------------
--- PLAY starts matchmaking directly; tapping it again while searching cancels.
+local helpPanel = createPanel("Help", "HELP / CONTROLS", 640, 520)
+do
+	local scroll = create("ScrollingFrame", {
+		Name = "HelpScroll", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0,
+		ScrollBarThickness = 5, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, helpPanel.Content)
+	create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
+	local help = {
+		"FIND MATCH opens the real mode ballot. The lobby cards describe the modes.",
+		"Classic Tag: click, R2, or TAG to tag. Lowest total Taya time wins.",
+		"Agawan ng Panyo: hold near the cloth to pick it up; STEAL the carrier. Longest hold wins.",
+		"Lihim na Target: CAPTURE only your private target. Most captures wins.",
+		"Move with your device controls. Sprint, dash, slide, and granted skills appear during play.",
+	}
+	for index, line in help do
+		local card = createCard(scroll, 0, 0, 584, 66)
+		card.LayoutOrder = index
+		card.Size = UDim2.new(1, -8, 0, 66)
+		createLabel({
+			Position = UDim2.fromOffset(12, 8),
+			Size = UDim2.new(1, -24, 1, -16),
+			Text = line,
+			FontFace = FONTS.SemiBold,
+			TextSize = 15,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, card)
+	end
+end
+-- The main action starts matchmaking; cancellation has its own target.
 bindButton(playButton, playHolderScale, function()
 	UIAudio.playUi("click")
 	local q = player:GetAttribute("HRushQueue") or "Idle"
-	if QueueEvent then
-		QueueEvent:FireServer(q == "Searching" and "Cancel" or "Play")
+	if QueueEvent and q == "Idle" then
+		QueueEvent:FireServer("Play")
 	end
+end, 1.04, 0.96)
+bindButton(cancelButton, create("UIScale", {}, cancelButton), function()
+	if QueueEvent then QueueEvent:FireServer("Cancel") end
 end, 1.04, 0.96)
 
 bindButton(settingsButton, settingsHolderScale, function()
@@ -2235,11 +2252,8 @@ end, 1.08, 0.92)
 bindButton(navButtons.Profile.Button, navButtons.Profile.Scale, function()
 	openPanel(profilePanel)
 end, 1.06, 0.94)
-bindButton(navButtons.Collection.Button, navButtons.Collection.Scale, function()
-	openPanel(collectionPanel)
-end, 1.06, 0.94)
-bindButton(navButtons.Shop.Button, navButtons.Shop.Scale, function()
-	openPanel(shopPanel)
+bindButton(navButtons.Help.Button, navButtons.Help.Scale, function()
+	openPanel(helpPanel)
 end, 1.06, 0.94)
 
 overlay.Activated:Connect(closePanel)
@@ -2272,6 +2286,8 @@ local function refreshPlayButton()
 		prevQueue = q
 	end
 	if q == "Searching" then
+		cancelButton.Visible = true
+		playButton.Active = false
 		playText.Position = UDim2.fromOffset(84, 10)
 		playText.Size = UDim2.fromOffset(190, 44)
 		playText.TextSize = 36
@@ -2286,6 +2302,7 @@ local function refreshPlayButton()
 			end
 		end)
 	elseif q == "InMatch" then
+		cancelButton.Visible = false
 		playText.Position = UDim2.fromOffset(84, 0)
 		playText.Size = UDim2.fromOffset(190, 89)
 		playText.TextSize = 40
@@ -2293,6 +2310,7 @@ local function refreshPlayButton()
 		cancelHint.TextTransparency = 1
 		chevronLabel.TextTransparency = 1
 	elseif q == "Busy" then
+		cancelButton.Visible = false
 		playText.Position = UDim2.fromOffset(66, 0)
 		playText.Size = UDim2.fromOffset(220, 89)
 		playText.TextSize = 30
@@ -2300,10 +2318,12 @@ local function refreshPlayButton()
 		cancelHint.TextTransparency = 1
 		chevronLabel.TextTransparency = 1
 	else
+		cancelButton.Visible = false
+		playButton.Active = true
 		playText.Position = UDim2.fromOffset(88, 0)
-		playText.Size = UDim2.fromOffset(110, 89)
-		playText.TextSize = 58
-		playText.Text = "PLAY"
+		playText.Size = UDim2.fromOffset(186, 89)
+		playText.TextSize = 32
+		playText.Text = "FIND MATCH"
 		cancelHint.TextTransparency = 1
 		chevronLabel.TextTransparency = 0
 	end
@@ -2311,6 +2331,99 @@ end
 player:GetAttributeChangedSignal("HRushQueue"):Connect(refreshPlayButton)
 player:GetAttributeChangedSignal("HRushSearchEndsAt"):Connect(refreshPlayButton)
 refreshPlayButton()
+
+-- Compact lobby uses full-size touch targets while leaving the world visible.
+local phoneLobby = createFrame({
+	Name = "PhoneLobby",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1,
+	Visible = false,
+}, gui)
+local function phoneButton(name: string, caption: string, position: UDim2, size: UDim2, accent: boolean): TextButton
+	local button = createButton({
+		Name = name, Position = position, Size = size, BackgroundColor3 = if accent then COLORS.Lime else COLORS.Slate,
+		Text = caption, FontFace = FONTS.Heavy, TextSize = 16,
+		TextColor3 = if accent then COLORS.Navy else COLORS.Cream,
+	}, phoneLobby) :: TextButton
+	corner(button, 12)
+	stroke(button, accent and COLORS.Cream or COLORS.TextDim, 2, 0.15)
+	Theme.focus(button)
+	return button
+end
+createLabel({
+	Position = UDim2.fromOffset(12, 8), Size = UDim2.fromOffset(220, 44), Text = "HABULAN RUSH",
+	FontFace = FONTS.Display, TextSize = 27, TextColor3 = COLORS.Lime,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, phoneLobby)
+local phoneSettings = phoneButton("Settings", "SET", UDim2.new(1, -12, 0, 8), UDim2.fromOffset(64, 64), false)
+phoneSettings.AnchorPoint = Vector2.new(1, 0)
+local phoneProfile = phoneButton("Profile", "ME", UDim2.new(1, -84, 0, 8), UDim2.fromOffset(64, 64), false)
+phoneProfile.AnchorPoint = Vector2.new(1, 0)
+local phoneHelp = phoneButton("Help", "?", UDim2.new(1, -156, 0, 8), UDim2.fromOffset(64, 64), false)
+phoneHelp.AnchorPoint = Vector2.new(1, 0)
+local phoneModeInfo = phoneButton("ModeInfo", "VOTE AFTER MATCHMAKING\nCLASSIC  /  PANYO  /  HUNT",
+	UDim2.new(0.5, 0, 0, 78), UDim2.fromOffset(280, 64), false)
+phoneModeInfo.AnchorPoint = Vector2.new(0.5, 0)
+phoneModeInfo.TextSize = 14
+phoneModeInfo.TextWrapped = true
+local phonePlay = phoneButton("FindMatch", "FIND MATCH", UDim2.fromScale(0.5, 0.56), UDim2.fromOffset(250, 64), true)
+phonePlay.AnchorPoint = Vector2.new(0.5, 0.5)
+phonePlay.FontFace = FONTS.Display
+phonePlay.TextSize = 28
+local phoneCancel = phoneButton("CancelSearch", "CANCEL SEARCH", UDim2.fromScale(0.5, 0.76), UDim2.fromOffset(250, 64), false)
+phoneCancel.AnchorPoint = Vector2.new(0.5, 0.5)
+phoneCancel.Visible = false
+local phoneParty = createLabel({
+	AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -82), Size = UDim2.fromOffset(190, 24),
+	Text = "PARTY", FontFace = FONTS.Heavy, TextSize = 14, TextColor3 = COLORS.Cream,
+	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+}, phoneLobby)
+local phoneInvite = phoneButton("Invite", "INV", UDim2.new(0, 12, 1, -12), UDim2.fromOffset(64, 64), false)
+phoneInvite.AnchorPoint = Vector2.new(0, 1)
+local phoneLeave = phoneButton("Leave", "EXIT", UDim2.new(0, 84, 1, -12), UDim2.fromOffset(64, 64), false)
+phoneLeave.AnchorPoint = Vector2.new(0, 1)
+phonePlay.Activated:Connect(function()
+	if QueueEvent and player:GetAttribute("HRushQueue") == "Idle" then QueueEvent:FireServer("Play") end
+end)
+phoneCancel.Activated:Connect(function()
+	if QueueEvent then QueueEvent:FireServer("Cancel") end
+end)
+phoneSettings.Activated:Connect(function() openPanel(settingsPanel) end)
+phoneProfile.Activated:Connect(function() openPanel(profilePanel) end)
+phoneHelp.Activated:Connect(function() openPanel(helpPanel) end)
+phoneModeInfo.Activated:Connect(function() openPanel(gameModesPanel) end)
+phoneInvite.Activated:Connect(function() onInvitePressed() end)
+phoneLeave.Activated:Connect(function()
+	if PartyEvent then PartyEvent:FireServer("Leave") end
+end)
+phoneModeInfo.NextSelectionDown = phonePlay
+phonePlay.NextSelectionUp = phoneModeInfo
+phonePlay.NextSelectionDown = phoneCancel
+phoneCancel.NextSelectionUp = phonePlay
+task.spawn(function()
+	while phoneLobby.Parent do
+		local queue = player:GetAttribute("HRushQueue") or "Idle"
+		phoneCancel.Visible = queue == "Searching"
+		phonePlay.NextSelectionDown = if phoneCancel.Visible then phoneCancel else phoneInvite
+		phonePlay.Active = queue == "Idle"
+		phonePlay.TextSize = if queue == "Busy" then 20 else 28
+		if queue == "Searching" then
+			local endsAt = player:GetAttribute("HRushSearchEndsAt")
+			local seconds = if typeof(endsAt) == "number" then math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) else 0
+			phonePlay.Text = "SEARCHING " .. tostring(seconds) .. "s"
+		elseif queue == "Idle" then phonePlay.Text = "FIND MATCH"
+		elseif queue == "Busy" then phonePlay.Text = "MATCH IN PROGRESS"
+		else phonePlay.Text = "MATCH STARTING" end
+		local leader = player:GetAttribute("HRushPartyLeader") or player.UserId
+		local names = {}
+		for _, member in Players:GetPlayers() do
+			if (member:GetAttribute("HRushPartyLeader") or member.UserId) == leader then table.insert(names, member.DisplayName) end
+		end
+		phoneParty.Text = "PARTY: " .. table.concat(names, ", ")
+		phoneLeave.Visible = #names > 1
+		task.wait(0.25)
+	end
+end)
 
 --------------------------------------------------------------------------
 -- CAMERA
@@ -2386,20 +2499,47 @@ local function setupResponsiveUI()
 	s = math.clamp(s, 0.4, 2)
 
 	for _, g in ipairs(groups) do
-		g.Scale.Scale = s
+		g.Scale.Scale = if touch and g.Frame == playGroup then math.max(s, 0.73) else s
 		g.Frame.AnchorPoint = isPortrait and g.PAnchor or g.LAnchor
 		g.Frame.Position = isPortrait and g.PPos or g.LPos
+		g.Frame.Visible = player:GetAttribute("HRushInMatch") ~= true and not Layout.compact()
 	end
+	phoneLobby.Visible = player:GetAttribute("HRushInMatch") ~= true and Layout.compact()
+	cancelButton.Size = UDim2.fromOffset(281, if touch then 88 else 34)
 
 	for _, p in pairs(panels) do
-		p.Fit.Scale = math.clamp(math.min(vp.X * 0.94 / p.Width, vp.Y * 0.9 / p.Height), 0.35, 1.4)
+		if (p == settingsPanel or p == gameModesPanel or p == helpPanel or p == profilePanel) and Layout.compact() then
+			p.Fit.Scale = 1
+			p.Holder.Size = UDim2.new(1, -24, 1, -24)
+			p.Content.Size = UDim2.new(1, -56, 1, -118)
+		else
+			p.Holder.Size = UDim2.fromOffset(p.Width, p.Height)
+			p.Content.Size = UDim2.fromOffset(p.Width - 56, p.Height - 118)
+			p.Fit.Scale = math.clamp(math.min(vp.X * 0.94 / p.Width, vp.Y * 0.9 / p.Height), 0.35, 1.4)
+		end
+	end
+	local compact = Layout.compact()
+	for _, card in desktopModeCards do card.Visible = not compact end
+	if mobileModesScroll then mobileModesScroll.Visible = compact end
+	if profileCard and profileAvatar and profileName and profileUsername and profileDescription then
+		profileCard.Size = if compact then UDim2.new(1, 0, 0, 128) else UDim2.fromOffset(190, 282)
+		profileAvatar.Position = if compact then UDim2.fromOffset(12, 12) else UDim2.fromOffset(25, 24)
+		profileAvatar.Size = UDim2.fromOffset(if compact then 80 else 140, if compact then 80 else 140)
+		profileName.Position = if compact then UDim2.fromOffset(104, 22) else UDim2.fromOffset(10, 180)
+		profileName.Size = if compact then UDim2.new(1, -116, 0, 30) else UDim2.fromOffset(170, 26)
+		profileUsername.Position = if compact then UDim2.fromOffset(104, 55) else UDim2.fromOffset(10, 208)
+		profileUsername.Size = if compact then UDim2.new(1, -116, 0, 24) else UDim2.fromOffset(170, 18)
+		profileDescription.Position = if compact then UDim2.fromOffset(0, 145) else UDim2.fromOffset(210, 26)
+		profileDescription.Size = if compact then UDim2.new(1, 0, 0, 64) else UDim2.fromOffset(320, 64)
 	end
 end
 
+local lobbyViewportConnection: RBXScriptConnection? = nil
 local function watchViewport()
+	if lobbyViewportConnection then lobbyViewportConnection:Disconnect() lobbyViewportConnection = nil end
 	local cam = workspace.CurrentCamera
 	if cam then
-		cam:GetPropertyChangedSignal("ViewportSize"):Connect(setupResponsiveUI)
+		lobbyViewportConnection = cam:GetPropertyChangedSignal("ViewportSize"):Connect(setupResponsiveUI)
 	end
 end
 
@@ -2437,7 +2577,11 @@ local function applyMatchGate()
 	local inMatch = player:GetAttribute("HRushInMatch") == true
 
 	for _, group in groups do
-		group.Frame.Visible = not inMatch
+		group.Frame.Visible = not inMatch and not Layout.compact()
+	end
+	phoneLobby.Visible = not inMatch and Layout.compact()
+	if not inMatch and UserInputService.GamepadEnabled and GuiService.SelectedObject == nil then
+		GuiService.SelectedObject = if Layout.compact() then phonePlay else playButton
 	end
 	pickerHolder.Visible = false
 	for _, panel in pairs(panels) do
@@ -2445,9 +2589,13 @@ local function applyMatchGate()
 		panel.Holder.Visible = false
 	end
 	currentPanel = nil
+	priorPanelFocus = nil
+	if inMatch and GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(gui) then
+		GuiService.SelectedObject = nil
+	end
 	overlayToken += 1
 	overlay.Visible = false
-	gui.DisplayOrder = if inMatch then 60 else 5
+	gui.DisplayOrder = if inMatch then Theme.Layers.Settings else Theme.Layers.Lobby
 	gui.Enabled = true
 
 	pcall(function()
@@ -2486,18 +2634,28 @@ applyMatchGate()
 local LOADING_WAIT_STATES = { MS_01 = true }
 local LOADING_MIN_SECONDS = 1.5
 local LOADING_TIPS = {
-	"Hold Shift to sprint. Watch your stamina.",
-	"Press Q to dash. 6 second cooldown.",
-	"Press C to slide under low gaps.",
-	"Taya time counts against you. Lowest wins.",
+	"Sprint uses stamina. Watch the bar during a chase.",
+	"Dash and slide are shown in the ability dock when ready.",
 }
+local MODE_TIPS = {
+	ClassicTag = "Classic Tag: avoid holding the Taya role.",
+	AgawanNgPanyo = "Panyo: hold near the cloth to pick it up, then protect your hold.",
+	SecretHunt = "Lihim na Target: only your private target awards a capture.",
+}
+local function activeLoadingTips(): { string }
+	local mode = player:GetAttribute("HRushGameMode")
+	local modeTip = if typeof(mode) == "string" then MODE_TIPS[mode] else nil
+	if modeTip then return { LOADING_TIPS[1], LOADING_TIPS[2], modeTip } end
+	return LOADING_TIPS
+end
 
 local loadingGui = create("ScreenGui", {
 	Name = "LobbyLoading",
 	ResetOnSpawn = false,
 	IgnoreGuiInset = true,
+	ScreenInsets = Enum.ScreenInsets.None,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	DisplayOrder = 100,
+	DisplayOrder = Theme.Layers.Loading,
 	Enabled = false,
 }, playerGui)
 
@@ -2634,8 +2792,9 @@ local function runLoadingAnimation(token)
 
 		if os.clock() - lastTipChange >= 3 then
 			lastTipChange = os.clock()
-			tipIndex = (tipIndex % #LOADING_TIPS) + 1
-			loadingTip.Text = LOADING_TIPS[tipIndex]
+			local tips = activeLoadingTips()
+			tipIndex = (tipIndex % #tips) + 1
+			loadingTip.Text = tips[tipIndex]
 		end
 		task.wait(0.2)
 	end
@@ -2653,7 +2812,8 @@ local function setLoadingVisible(visible)
 		loadingShownAt = os.clock()
 		loadingGui.Enabled = true
 		loadingVeil.BackgroundTransparency = 0
-		loadingTip.Text = LOADING_TIPS[math.random(1, #LOADING_TIPS)]
+		local tips = activeLoadingTips()
+		loadingTip.Text = tips[math.random(1, #tips)]
 		tween(loadingVeil, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
 		task.spawn(runLoadingAnimation, token)
 	else

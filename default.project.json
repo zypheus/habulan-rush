@@ -68,6 +68,7 @@
 
     "ServerScriptService": {
       "$className": "ServerScriptService",
+        "NametagDefaults": { "$path": "src/ServerScriptService/NametagDefaults.server.lua" },
       "PartyService": {
         "$path": "src/ServerScriptService/PartyService.lua"
       },
@@ -110,6 +111,11 @@
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
+        "UITheme": { "$path": "src/StarterPlayerScripts/UITheme.lua" },
+        "UILayoutCoordinator": { "$path": "src/StarterPlayerScripts/UILayoutCoordinator.lua" },
+        "NametagController": { "$path": "src/StarterPlayerScripts/NametagController.client.lua" },
+        "TouchLayoutController": { "$path": "src/StarterPlayerScripts/TouchLayoutController.client.lua" },
+        "UIAccessibility": { "$path": "src/StarterPlayerScripts/UIAccessibility.client.lua" },
         "MovementController": {
           "$path": "src/StarterPlayerScripts/MovementController.client.lua"
         },

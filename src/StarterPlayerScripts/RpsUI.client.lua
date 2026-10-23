@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: Local MS_RPS cards, sign input, timer, and reveal presentation.
 -- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +11,9 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ContextActionService = game:GetService("ContextActionService")
 local Debris = game:GetService("Debris")
+local GuiService = game:GetService("GuiService")
+local Theme = require(script.Parent:WaitForChild("UITheme"))
+local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -32,11 +36,11 @@ local function duration(key: string): number
 	return timing[key]
 end
 
-local navy = Color3.fromRGB(20, 33, 44)
-local slate = Color3.fromRGB(49, 72, 86)
-local white = Color3.fromRGB(245, 250, 252)
-local lime = Color3.fromRGB(176, 239, 105)
-local red = Color3.fromRGB(246, 95, 91)
+local navy = Theme.Colors.Navy
+local slate = Theme.Colors.Raised
+local white = Theme.Colors.Cream
+local lime = Theme.Colors.Gold
+local red = Theme.Colors.TayaText
 
 local function frame(name: string, parent: Instance, size: UDim2, position: UDim2, color: Color3): Frame
 	local obj = Instance.new("Frame")
@@ -70,8 +74,7 @@ if old then old:Destroy() end
 local gui = Instance.new("ScreenGui")
 gui.Name = "RpsUI"
 gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = false
-gui.DisplayOrder = 130
+Theme.screen(gui, Theme.Layers.Modal)
 gui.Enabled = false
 gui.Parent = playerGui
 local background = frame("Background", gui, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), navy)
@@ -83,7 +86,17 @@ scale.Parent = board
 local function resize()
 	local camera = workspace.CurrentCamera
 	local viewport = if camera then camera.ViewportSize else Vector2.new(960, 560)
-	scale.Scale = math.clamp(math.min(viewport.X / 980, viewport.Y / 600), 0.25, 1.25)
+	if Layout.compact() then
+		board.AnchorPoint = Vector2.new(0.5, 0.5)
+		board.Position = UDim2.fromScale(0.5, 0.48)
+		board.Size = UDim2.new(1, -24, 1, -120)
+		scale.Scale = 1
+	else
+		board.AnchorPoint = Vector2.new(0.5, 0)
+		board.Position = UDim2.fromScale(0.5, 0.05)
+		board.Size = UDim2.fromOffset(960, 560)
+		scale.Scale = math.clamp(math.min(viewport.X / 980, viewport.Y / 600), 0.85, 1.25)
+	end
 end
 resize()
 local viewportConnection: RBXScriptConnection? = nil
@@ -138,6 +151,7 @@ for index, sign in ipairs(signs) do
 	button.TextWrapped = true
 	button.Font = Enum.Font.GothamBold
 	button.Parent = controls
+	Theme.focus(button)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 12)
 	corner.Parent = button
@@ -153,7 +167,7 @@ timerLimit.MaxSize = Vector2.new(900, 10)
 timerLimit.Parent = timerBack
 local timerFill = frame("TimerFill", timerBack, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), lime)
 
-type Card = { root: Frame, sign: TextLabel, tag: TextLabel, flip: UIScale, stroke: UIStroke }
+type Card = { root: Frame, sign: TextLabel, tag: TextLabel, flip: UIScale, stroke: UIStroke, isSafe: boolean }
 local cards: { [number]: Card } = {}
 local currentPool: { [number]: boolean } = {}
 local selected: string? = nil
@@ -166,6 +180,7 @@ local timerConnection: RBXScriptConnection? = nil
 local inputBound = false
 local revealed = false
 local resultShown = false
+local previousFocus: GuiObject? = nil
 
 local function stopTimer()
 	if timerConnection then timerConnection:Disconnect(); timerConnection = nil end
@@ -188,6 +203,10 @@ local function close()
 	selected = nil
 	confirmed = false
 	gui.Enabled = false
+	if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(gui) then
+		GuiService.SelectedObject = if Layout.focusAvailable(previousFocus) then previousFocus else nil
+	end
+	previousFocus = nil
 end
 
 local function playSound(soundId: string)
@@ -203,6 +222,9 @@ end
 local function setButtons(visible: boolean)
 	for _, button in pairs(buttons) do button.Visible = visible end
 	safeMessage.Visible = not visible
+	if not visible and GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(controls) then
+		GuiService.SelectedObject = nil
+	end
 end
 
 local function putCard(userId: number, name: string, inSafeRow: boolean, dimmed: boolean): Card
@@ -229,13 +251,66 @@ local function putCard(userId: number, name: string, inSafeRow: boolean, dimmed:
 		tag.Text = "SAFE"
 		tag.TextColor3 = Color3.fromRGB(137, 158, 166)
 	end
-	return { root = root, sign = signLabel, tag = tag, flip = flip, stroke = outline }
+	return { root = root, sign = signLabel, tag = tag, flip = flip, stroke = outline, isSafe = inSafeRow }
 end
 
 local function clearCards()
 	for _, card in pairs(cards) do card.root:Destroy() end
 	cards = {}
 end
+
+local phoneGrid = Instance.new("UIGridLayout")
+phoneGrid.CellPadding = UDim2.fromOffset(4, 4)
+phoneGrid.CellSize = UDim2.new(0.25, -6, 0, 68)
+phoneGrid.FillDirectionMaxCells = 4
+phoneGrid.SortOrder = Enum.SortOrder.LayoutOrder
+local function layoutCards()
+	local compact = Layout.compact()
+	if compact then
+		activeLayout.Parent = nil
+		phoneGrid.Parent = activeRow
+		title.Position = UDim2.fromOffset(0, 4)
+		title.Size = UDim2.new(1, 0, 0, 36)
+		title.TextSize = 28
+		subTitle.Position = UDim2.fromOffset(0, 40)
+		subTitle.Size = UDim2.new(1, 0, 0, 28)
+		subTitle.TextSize = 17
+		activeRow.Position = UDim2.fromOffset(8, 70)
+		activeRow.Size = UDim2.new(1, -16, 0, 144)
+		safeTitle.Visible = false
+		safeRow.Visible = false
+	else
+		phoneGrid.Parent = nil
+		activeLayout.Parent = activeRow
+		title.Position = UDim2.fromOffset(0, 12)
+		title.Size = UDim2.fromOffset(960, 72)
+		title.TextSize = 48
+		subTitle.Position = UDim2.fromOffset(0, 86)
+		subTitle.Size = UDim2.fromOffset(960, 34)
+		subTitle.TextSize = 23
+		activeRow.Position = UDim2.fromOffset(8, 140)
+		activeRow.Size = UDim2.fromOffset(944, 150)
+		safeTitle.Visible = #safeRow:GetChildren() > 1
+		safeRow.Visible = true
+	end
+	for _, card in cards do
+		card.root.Parent = if compact then activeRow else if card.isSafe then safeRow else activeRow
+		card.root.Size = if compact then UDim2.new(0.25, -6, 0, 68) else UDim2.fromOffset(108, if card.isSafe then 94 else 132)
+		local name = card.root:FindFirstChild("Name") :: TextLabel?
+		if name then
+			name.Position = if compact then UDim2.fromOffset(4, 30) else UDim2.fromOffset(4, 58)
+			name.Size = if compact then UDim2.new(1, -8, 0, 20) else UDim2.new(1, -8, 0, 40)
+			name.TextSize = if compact then 12 else 15
+		end
+		card.sign.Position = UDim2.fromOffset(0, if compact then 2 else 8)
+		card.sign.Size = UDim2.new(1, 0, 0, if compact then 28 else 55)
+		card.sign.TextSize = if compact then 22 else 34
+		card.tag.Position = UDim2.new(0, 0, 1, if compact then -17 else -22)
+		card.tag.TextSize = if compact then 10 else 15
+	end
+end
+track(workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(layoutCards))
+if workspace.CurrentCamera then track(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutCards)) end
 
 local function choose(sign: string)
 	if not gui.Enabled or revealed or selected or not currentPool[player.UserId] then return end
@@ -314,11 +389,15 @@ track(stageStart.OnClientEvent:Connect(function(payload)
 	for _, id in ipairs(payload.pool) do currentPool[id] = true end
 	for _, id in ipairs(payload.used) do used[id] = true end
 	for _, id in ipairs(payload.safe) do safe[id] = true end
-	for _, entry in ipairs(payload.roster) do
+	for index, entry in ipairs(payload.roster) do
 		cards[entry.userId] = putCard(entry.userId, entry.name, used[entry.userId] or safe[entry.userId] or false, used[entry.userId] == true)
+		cards[entry.userId].root.LayoutOrder = index
 	end
+	layoutCards()
 	gui.Enabled = true
-	safeTitle.Visible = next(used) ~= nil or next(safe) ~= nil
+	previousFocus = GuiService.SelectedObject
+	GuiService.SelectedObject = if currentPool[player.UserId] then buttons.Rock else nil
+	safeTitle.Visible = not Layout.compact() and (next(used) ~= nil or next(safe) ~= nil)
 	setButtons(currentPool[player.UserId] == true)
 	for _, button in pairs(buttons) do
 		button.BackgroundColor3 = slate
@@ -354,11 +433,12 @@ track(revealEvent.OnClientEvent:Connect(function(payload)
 	safeMessage.Visible = false
 	title.Text = string.format("STAGE %d", payload.stage)
 	subTitle.Text = "REVEAL!"
+	local flipTime = if Theme.reducedMotion() then 0 else 0.09
 	for _, entry in ipairs(payload.signs) do
 		local card = cards[entry.userId]
-		if card then TweenService:Create(card.flip, TweenInfo.new(0.09), { Scale = 0.05 }):Play() end
+		if card and flipTime > 0 then TweenService:Create(card.flip, TweenInfo.new(flipTime), { Scale = 0.05 }):Play() end
 	end
-	task.delay(0.09, function()
+	task.delay(flipTime, function()
 		if phaseToken ~= token then return end
 		for _, entry in ipairs(payload.signs) do
 			local card = cards[entry.userId]
@@ -366,7 +446,7 @@ track(revealEvent.OnClientEvent:Connect(function(payload)
 				card.sign.Text = string.upper(entry.sign)
 				card.sign.TextSize = 20
 				card.tag.Text = ""
-				TweenService:Create(card.flip, TweenInfo.new(0.09), { Scale = 1 }):Play()
+				if flipTime > 0 then TweenService:Create(card.flip, TweenInfo.new(flipTime), { Scale = 1 }):Play() end
 			end
 		end
 		playSound(timing.RevealSoundId)
@@ -382,6 +462,7 @@ track(revealEvent.OnClientEvent:Connect(function(payload)
 			for _, id in ipairs(payload.safe) do
 				local card = cards[id]
 				if card then
+					card.isSafe = true
 					card.root.Parent = safeRow
 					card.root.Size = UDim2.fromOffset(108, 94)
 					card.root.BackgroundColor3 = Color3.fromRGB(43, 93, 68)
@@ -391,6 +472,7 @@ track(revealEvent.OnClientEvent:Connect(function(payload)
 				end
 			end
 			safeTitle.Visible = true
+			layoutCards()
 		end
 	end)
 end))

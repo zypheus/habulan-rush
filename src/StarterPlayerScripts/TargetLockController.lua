@@ -1,4 +1,8 @@
 --!strict
+-- StarterPlayerScripts/TargetLockController.lua
+-- Owner: Project Owner
+-- Responsibility: Client-only Taya target lock, reticle, and notice.
+-- Task/spec: approved UI/UX redesign, 2026-10-23.
 -- Client-only aim helper. Server tag checks must never trust it.
 -- TAYA-ONLY: the lock is a Taya tool. Runners cannot acquire or cycle, and a
 -- lock breaks the moment a tag transfer turns the local Taya into a Runner.
@@ -115,11 +119,12 @@ local function showTayaOnlyNotice()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HRUSH_TargetLockNotice"
 	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
-	gui.DisplayOrder = 50
+	gui.IgnoreGuiInset = false
+	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	gui.DisplayOrder = Config.UI.Theme.Layers.Feedback
 	local label = Instance.new("TextLabel")
-	label.AnchorPoint = Vector2.new(0.5, 1)
-	label.Position = UDim2.new(0.5, 0, 0.78, 0)
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.Position = UDim2.new(0.5, 0, 0, 88)
 	label.Size = UDim2.fromOffset(320, 34)
 	label.BackgroundColor3 = Color3.fromRGB(24, 34, 42)
 	label.BackgroundTransparency = 0.15
