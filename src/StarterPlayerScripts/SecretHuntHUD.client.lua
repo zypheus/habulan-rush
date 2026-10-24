@@ -1,9 +1,11 @@
 --!strict
+-- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/SecretHuntHUD.client.lua
 -- Owner: Project Owner
 -- Responsibility: Private Secret Hunt target card, timed hints, danger, and capture feedback.
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
+-- Task/spec: clear arcade feedback for private Hunt events, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +18,7 @@ local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
+local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
 local huntEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SecretHuntEvent") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -112,12 +115,6 @@ danger.AnchorPoint = Vector2.new(0.5, 0)
 danger.TextXAlignment = Enum.TextXAlignment.Center
 danger.Visible = false
 
-local notice = label("Notice", gui, UDim2.fromOffset(460, 56), UDim2.fromScale(0.5, 0.31),
-	"", 30, gold)
-notice.AnchorPoint = Vector2.new(0.5, 0)
-notice.TextXAlignment = Enum.TextXAlignment.Center
-notice.Visible = false
-
 local flash = frame("CaptureFlash", gui, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), gold)
 flash.BackgroundTransparency = 1
 flash.ZIndex = 1
@@ -141,8 +138,6 @@ local targetId: number? = nil
 local phase = "Simula"
 local pulseUntil = 0
 local dangerUntil = 0
-local noticeUntil = 0
-local noticeToken = 0
 local thumbnailToken = 0
 local lastSyncAt = 0
 local directions = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" }
@@ -186,8 +181,6 @@ local function resize()
 	end
 	danger.Position = UDim2.new(0.5, 0, 0, if compact then 200 else 88)
 	danger.Size = UDim2.fromOffset(if compact then 200 else 350, if compact then 36 else 40)
-	notice.Position = UDim2.new(0.5, 0, 0, if compact then 200 else 136)
-	notice.Size = UDim2.fromOffset(if compact then 200 else 420, if compact then 36 else 44)
 	cardScale.Scale = 1
 	boardScale.Scale = 1
 end
@@ -215,35 +208,11 @@ local function refreshGate()
 	if not visible then
 		leaderboard.Visible = false
 		danger.Visible = false
-		notice.Visible = false
 	end
 	if visible and Workspace:GetServerTimeNow() - lastSyncAt >= Config.SecretHunt.SyncRequestInterval then
 		lastSyncAt = Workspace:GetServerTimeNow()
 		huntEvent:FireServer("Sync")
 	end
-end
-
-local function setNotice(content: string, color: Color3, seconds: number)
-	noticeToken += 1
-	local token = noticeToken
-	notice.Text = content
-	notice.TextColor3 = color
-	notice.TextTransparency = 0
-	notice.Visible = gui.Enabled and (not Layout.compact() or not danger.Visible)
-	noticeUntil = Workspace:GetServerTimeNow() + seconds
-	if VfxScale.cosmetic() > 0 and not Theme.reducedMotion() then
-		local finishY = if Layout.compact() then 200 else 136
-		notice.Position = UDim2.new(0.5, 0, 0, finishY + 12)
-		TweenService:Create(notice, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-			{ Position = UDim2.new(0.5, 0, 0, finishY) }):Play()
-	end
-	task.delay(seconds, function()
-		if token ~= noticeToken then return end
-		TweenService:Create(notice, TweenInfo.new(0.25), { TextTransparency = 1 }):Play()
-		task.delay(0.26, function()
-			if token == noticeToken then notice.Visible = false end
-		end)
-	end)
 end
 
 local function updateTarget()
@@ -305,19 +274,19 @@ huntEvent.OnClientEvent:Connect(function(payload: any)
 		updateTarget()
 		refreshGate()
 		if changed and targetId ~= nil then
-			setNotice("NEW TARGET", gold, 2)
+			MatchFeedback.show("BAGONG TARGET", "TINGNAN ANG TARGET CARD", "followup", gold, nil, "hunt")
 			AudioRouter.playSfxId(Config.SecretHunt.Sounds.assignment, 0.7)
 		end
 	elseif payload.type == "Capture" then
 		setCaptureText(payload.captures or 0)
-		setNotice("CAPTURE +1", gold, 2)
+		MatchFeedback.show("HULI! +1", "NADAGDAGAN ANG HULI", "major", gold, true, "hunt")
 		AudioRouter.playSfxId(Config.SecretHunt.Sounds.capture, 1)
-		if VfxScale.cosmetic() > 0 then
+		if VfxScale.cosmetic() > 0 and not Theme.reducedMotion() then
 			flash.BackgroundTransparency = 0.82
 			TweenService:Create(flash, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
 		end
 	elseif payload.type == "Caught" then
-		setNotice("CAUGHT - PROTECTED", red, 2)
+		MatchFeedback.show("NAHULI KA", "LIGTAS MUNA", "major", red, true, "hunt")
 	elseif payload.type == "Hint" then
 		if typeof(payload.distance) == "number" then
 			distanceLabel.Text = if Layout.compact() then "~" .. tostring(payload.distance) .. " studs"
@@ -333,25 +302,25 @@ huntEvent.OnClientEvent:Connect(function(payload: any)
 		local wasDanger = danger.Visible
 		dangerUntil = if payload.danger == true then Workspace:GetServerTimeNow() + 2.5 else 0
 		danger.Visible = gui.Enabled and dangerUntil > 0
-		if Layout.compact() and danger.Visible then notice.Visible = false end
 		if danger.Visible and not wasDanger then AudioRouter.playSfxId(Config.SecretHunt.Sounds.danger, 0.7) end
 	elseif payload.type == "Phase" then
 		if typeof(payload.phase) == "string" then
 			phase = payload.phase
 			phaseLabel.Text = string.upper(phase)
-			if phase == "BarangayRush" then setNotice("BARANGAY RUSH", gold, 2)
+			if phase == "BarangayRush" then MatchFeedback.show("BARANGAY RUSH", "", "minor", gold, nil, "phase")
 			elseif phase == "HulingHabol" then
-				setNotice("HULING HABOL", red, 2)
+				MatchFeedback.show("HULING HABOL", "", "minor", red, nil, "phase")
 				AudioRouter.playSfxId(Config.SecretHunt.Sounds.final, 0.8)
 			end
 		end
 	elseif payload.type == "Leaderboard" and typeof(payload.entries) == "table" then
 		updateBoard(payload.entries)
 	elseif payload.type == "Recovered" then
-		setNotice("BACK IN THE HUNT", gold, 1.5)
+		MatchFeedback.show("BALIK SA HABULAN", "", "minor", gold, nil, "hunt")
 	elseif payload.type == "Close" then
 		targetId = nil
 		localPlayer:SetAttribute("HRushHuntTargetReady", false)
+		MatchFeedback.clear()
 		gui.Enabled = false
 	end
 end)
@@ -392,8 +361,6 @@ RunService.Heartbeat:Connect(function()
 		dangerUntil = 0
 		danger.Visible = false
 	end
-	if Layout.compact() and not danger.Visible and noticeUntil > now then notice.Visible = true end
-	if noticeUntil > 0 and now >= noticeUntil + 0.3 then notice.Visible = false end
 end)
 
 refreshGate()

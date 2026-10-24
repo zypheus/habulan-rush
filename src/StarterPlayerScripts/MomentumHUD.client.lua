@@ -6,6 +6,7 @@
 -- Task/spec: slide chaining diagnosis, 2026-10-19.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
 -- Task/spec: server-confirmed chain and earned sprint display, approved 2026-10-24.
+-- Task/spec: shared floating movement feedback, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,6 +20,7 @@ local Momentum = require(script.Parent:WaitForChild("MomentumController"))
 local Settings = require(script.Parent:WaitForChild("ClientSettings"))
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
+local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
 local fx = Config.Momentum.Fx
 local player = Players.LocalPlayer
 
@@ -100,11 +102,6 @@ local chain = label("Chain", gui, UDim2.fromOffset(300, 28),
 	UDim2.new(0.5, -150, 1, -meterBottom() - 37), 17)
 local chainScale = Instance.new("UIScale")
 chainScale.Parent = chain
-local lost = label("Lost", gui, UDim2.fromOffset(240, 30),
-	UDim2.new(0.5, -120, 1, -meterBottom() - 68), 18)
-lost.Text = "MOMENTUM LOST"
-lost.TextColor3 = Color3.fromRGB(255, 75, 75)
-
 local cracks: { Frame } = {}
 for index = 1, 4 do
 	local piece = frame("Crack" .. index, gui, UDim2.fromOffset(0, fx.BarHeight),
@@ -124,28 +121,12 @@ local function layoutMeter()
 	bar.Size = UDim2.fromOffset(width, fx.BarHeight)
 	bar.Position = UDim2.new(0.5, -width / 2, 1, -bottom)
 	chain.Position = UDim2.new(0.5, -150, 1, -bottom - 37)
-	lost.Position = UDim2.new(0.5, -120, 1, -bottom - 68)
 	for _, piece in cracks do piece.Position = UDim2.new(0.5, 0, 1, -bottom) end
 end
 layoutMeter()
-
-local popups: { TextLabel } = {}
-local popupTweens: { [TextLabel]: Tween } = {}
-for index = 1, fx.MaxPopups do
-	local item = label("ActionPopup" .. index, gui, UDim2.fromOffset(260, 34), UDim2.fromOffset(0, 0), 18)
-	item.ZIndex = 14
-	table.insert(popups, item)
-end
-
-local popupCursor = 0
-local lastPopup: TextLabel? = nil
-local lastPopupAt = -math.huge
-local popupWords = ""
-local popupGain = 0
 local shownTier = 0
 local confirmedTier = 0
 local shownFraction = 0
-local lostGeneration = 0
 
 local function isTaya(): boolean
 	return player:GetAttribute("HRushRole") == "Taya" and Config.Momentum.TayaBuildsMomentum
@@ -167,63 +148,8 @@ local function playAsset(key: string, pitch: number)
 	AudioRouter.playSfxId("rbxassetid://" .. id, fx.SoundVolume, nil, pitch)
 end
 
-local function popupPosition(): UDim2
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local camera = Workspace.CurrentCamera
-	if root and root:IsA("BasePart") and camera then
-		local point, visible = camera:WorldToViewportPoint(root.Position + Vector3.new(0, 3.2, 0))
-		if visible then return UDim2.fromOffset(point.X - 130, point.Y - 17) end
-	end
-	return UDim2.new(0.5, -130, 0.55, 0)
-end
-
 local function showPopup(action: string, gain: number, count: number, perfect: boolean, tier: number)
-	if Config.Momentum.Debug and action == "Slide" then
-		print(string.format("[Momentum] slide popup requested: gain=%.2f", gain))
-	end
-	if Settings.get("showPopups") ~= true then return end
-	local now = Workspace:GetServerTimeNow()
-	local word = if perfect then "PERFECT ROLL" else string.upper(action)
-	local merging = lastPopup ~= nil and lastPopup.Visible and now - lastPopupAt <= fx.PopupMergeWindow
-	local item: TextLabel
-	if merging then
-		item = lastPopup :: TextLabel
-		popupWords ..= " + " .. word
-		popupGain += gain
-	else
-		popupCursor = popupCursor % #popups + 1
-		item = popups[popupCursor]
-		popupWords = word
-		popupGain = gain
-	end
-	if popupTweens[item] then popupTweens[item]:Cancel() end
-	item.Text = if popupGain <= 0 then "MAX" else popupWords .. " +" .. string.format("%g", popupGain)
-	item.TextColor3 = if count > 1 and gain > 0 then Color3.fromRGB(160, 160, 170) else colorForTier(tier)
-	item.TextSize = if perfect then 22 else 18
-	item.TextTransparency = 0
-	item.TextStrokeTransparency = 0.45
-	item.Position = popupPosition()
-	item.Visible = true
-	if Config.Momentum.Debug and action == "Slide" then
-		print(string.format("[Momentum] slide popup shown: %s", item.Text))
-	end
-	local start = item.Position
-	local rollPopup = string.find(popupWords, "ROLL", 1, true) ~= nil
-	local fadeDelay = if rollPopup then math.max(0, fx.RollPopupTime - fx.PopupTime) else 0
-	local tween = TweenService:Create(item, TweenInfo.new(fx.PopupTime, Enum.EasingStyle.Quad,
-		Enum.EasingDirection.Out, 0, false, fadeDelay), {
-		Position = UDim2.new(start.X.Scale, start.X.Offset, start.Y.Scale, start.Y.Offset - fx.PopupRisePx),
-		TextTransparency = 1,
-		TextStrokeTransparency = 1,
-	})
-	popupTweens[item] = tween
-	tween.Completed:Connect(function()
-		if popupTweens[item] == tween then item.Visible = false end
-	end)
-	tween:Play()
-	lastPopup = item
-	lastPopupAt = now
+	MatchFeedback.showMovement(action, gain, count, perfect, colorForTier(tier))
 end
 
 local function crackBar()
@@ -252,18 +178,7 @@ end
 local function showLost()
 	chain.Visible = false
 	crackBar()
-	if Settings.get("showPopups") ~= true then return end
-	lostGeneration += 1
-	local generation = lostGeneration
-	lost.TextTransparency = 0
-	lost.TextStrokeTransparency = 0.45
-	lost.Visible = true
-	TweenService:Create(lost, TweenInfo.new(fx.LostTime), {
-		TextTransparency = 1, TextStrokeTransparency = 1,
-	}):Play()
-	task.delay(fx.LostTime, function()
-		if generation == lostGeneration then lost.Visible = false end
-	end)
+	MatchFeedback.showMovement("Lost")
 end
 
 Momentum.Changed:Connect(function(value: number, reason: string, action: string?, gain: number?, payload: any?)

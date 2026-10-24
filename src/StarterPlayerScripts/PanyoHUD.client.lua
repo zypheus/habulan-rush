@@ -1,14 +1,15 @@
 --!strict
+-- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/PanyoHUD.client.lua
 -- Owner: Project Owner
 -- Responsibility: Local Panyo timer, leaderboard, carrier marker, and event feedback.
 -- Task/spec: Agawan ng Panyo presentation, approved 2026-10-23.
 -- Task/spec: persistent Carrier highlight and trail, approved 2026-10-23.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
+-- Task/spec: clear arcade feedback for confirmed Panyo changes, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
@@ -18,6 +19,7 @@ local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
+local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
 local event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PanyoEvent") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -111,18 +113,6 @@ for index = 1, 8 do
 	boardRows[index] = row
 end
 
-local notice = label(gui, "Notice", UDim2.fromOffset(420, 48), UDim2.new(0.5, 0, 0, 88), 23)
-notice.AnchorPoint = Vector2.new(0.5, 0.5)
-notice.TextXAlignment = Enum.TextXAlignment.Center
-notice.TextColor3 = gold
-notice.TextScaled = true
-notice.TextWrapped = true
-notice.Visible = false
-local noticeSize = Instance.new("UITextSizeConstraint")
-noticeSize.MinTextSize = 14
-noticeSize.MaxTextSize = 23
-noticeSize.Parent = notice
-local noticeSerial = 0
 local carrierCharacter: Model? = nil
 local carrierRoot: BasePart? = nil
 local carrierHighlight: Highlight? = nil
@@ -154,20 +144,6 @@ local function isVisible(): boolean
 	return localPlayer:GetAttribute("HRushInMatch") == true
 		and localPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
 		and (state == "MS_03" or state == "MS_04")
-end
-
-local function showNotice(message: string, duration: number)
-	noticeSerial += 1
-	local serial = noticeSerial
-	notice.Text = message
-	notice.TextTransparency = 0
-	notice.Visible = isVisible()
-	if ClientSettings.get("vfx") ~= 0 and not Theme.reducedMotion() then
-		TweenService:Create(notice, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1 }):Play()
-	end
-	task.delay(duration, function()
-		if noticeSerial == serial then notice.Visible = false end
-	end)
 end
 
 local function syncCarrierFx(carrier: Player?)
@@ -265,8 +241,6 @@ local function refresh()
 		return
 	end
 	local compact = Layout.compact()
-	notice.Position = UDim2.new(0.5, 0, 0, if compact then 216 else 88)
-	notice.Size = UDim2.fromOffset(if compact then 200 else 420, if compact then 36 else 48)
 	panel.Position = if compact then UDim2.fromOffset(12, 56) else UDim2.fromOffset(24, 92)
 	panel.Size = UDim2.fromOffset(if compact then 200 else 300, if compact then 84 else 96)
 	scale.Scale = 1
@@ -306,21 +280,33 @@ event.OnClientEvent:Connect(function(payload: any)
 	local eventType = payload.type
 	if eventType == "Pickup" or eventType == "Steal" then
 		local carrier = if typeof(payload.toUserId) == "number" then Players:GetPlayerByUserId(payload.toUserId) else nil
-		showNotice((carrier and carrier.DisplayName or "Someone") .. (if eventType == "Steal" then " STOLE THE PANYO!" else " GRABBED THE PANYO!"), 1.5)
-		AudioRouter.playSfxId(if eventType == "Steal" then Config.Panyo.Sounds.steal else Config.Panyo.Sounds.pickup, 0.7)
+		if payload.toUserId == localPlayer.UserId then
+			MatchFeedback.show("HAWAK MO ANG PANYO", "HAWAKAN PARA UMISKOR", "major", gold, true, "panyo")
+		elseif eventType == "Steal" and payload.fromUserId == localPlayer.UserId then
+			MatchFeedback.show("NAGAW ANG PANYO!", "HABULIN ANG MAY HAWAK", "major", Theme.Colors.TayaText, true, "panyo")
+		else
+			MatchFeedback.show((carrier and carrier.DisplayName or "IBA") .. (if eventType == "Steal" then " NANGAGAW NG PANYO" else " KUMUHA NG PANYO"), "", "minor", gold, nil, "panyo")
+		end
+		if payload.toUserId == localPlayer.UserId or payload.fromUserId == localPlayer.UserId then
+			AudioRouter.playSfxId(if eventType == "Steal" then Config.Panyo.Sounds.steal else Config.Panyo.Sounds.pickup, 0.7)
+		end
 	elseif eventType == "Drop" then
-		showNotice("PANYO DROPPED!", 1.5)
+		if payload.fromUserId == localPlayer.UserId then
+			MatchFeedback.show("NAHULOG ANG PANYO", "KUNIN ITO MULI", "major", gold, nil, "panyo")
+		else
+			MatchFeedback.show("NAHULOG ANG PANYO", "", "minor", gold, nil, "panyo")
+		end
 		AudioRouter.playSfxId(Config.Panyo.Sounds.drop, 0.7)
 	elseif eventType == "Phase" then
-		if payload.phase == "HulingHabol" then showNotice("HULING HABOL!", 2) end
+		if payload.phase == "HulingHabol" then MatchFeedback.show("HULING HABOL!", "", "followup", gold, nil, "phase") end
 	elseif eventType == "Reveal" then
 		revealCarrierId = if typeof(payload.carrierUserId) == "number" then payload.carrierUserId else nil
 		revealUntil = os.clock() + Config.Panyo.RevealDuration
 		local carrier = if revealCarrierId then Players:GetPlayerByUserId(revealCarrierId) else nil
-		showNotice(if carrier then "PANYO: " .. carrier.DisplayName else "PANYO IS ON THE GROUND", 1.5)
+		MatchFeedback.show(if carrier then "PANYO: " .. carrier.DisplayName else "NASA LUPA ANG PANYO", "", "minor", gold, nil, "panyo")
 		AudioRouter.playSfxId(Config.Panyo.Sounds.reveal, 0.7)
 	elseif eventType == "FinalCue" then
-		showNotice(tostring(payload.remaining or "") .. " SECONDS!", 0.9)
+		MatchFeedback.show(tostring(payload.remaining or "") .. " SEGUNDO!", "", "followup", gold, nil, "phase")
 		AudioRouter.playSfxId(Config.Panyo.Sounds.final, 0.7)
 	end
 	refresh()

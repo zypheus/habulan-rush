@@ -8,7 +8,9 @@
 -- Task/spec: momentum steps 2 to 4, 2026-10-19.
 -- Task/spec: slide chaining and entry speed, 2026-10-19.
 -- Task/spec: source-owned wind dash VFX and accepted-dash observer presentation, 2026-10-22.
+-- Task/spec: local-only confirmed TAG sound ownership, approved 2026-10-24.
 -- Task/spec: automatic earned sprint without stamina, approved 2026-10-24.
+-- Task/spec: completed local Vault floating card, approved 2026-10-24.
 -- T09 [Code/P0] MovementController — Client movement (COMPLETE)
 --
 -- Responsibilities:
@@ -83,6 +85,7 @@ end
 
 -- Sibling module (same Rojo sync): routes one-shot sounds into the SFX group.
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
+local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
 -- Sibling module (same Rojo sync): cosmetic scale and reduced camera flag.
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
 local WindDash = require(ReplicatedStorage:WaitForChild("VFX"):WaitForChild("WindDash"))
@@ -1132,6 +1135,9 @@ function vault.finish(completed: boolean, interruption: string?, preserveMomentu
 	end
 	reportMovementState("Vault", false)
 	vault.stopAnim()
+	if completed and roundLive then
+		MatchFeedback.showMovement("Vault", nil, nil, nil, Config.UI.Theme.Teal, vault.variant)
+	end
 	vault.variant = ""
 	applySpeed()
 	pushAttributes(true)
@@ -2874,8 +2880,6 @@ TagEvent.OnClientEvent:Connect(function(payload: { taggerId: number?, targetId: 
 	if typeof(payload) ~= "table" then
 		return
 	end
-	-- Confirmation slap for every match client (non-positional, always heard).
-	AudioRouter.playSfxId(Config.Sfx.Tag.slap, Config.Sfx.Tag.volume)
 	local myId = LocalPlayer.UserId
 	if payload.targetId == myId then
 		momentum.controller.hardZero("tagged")

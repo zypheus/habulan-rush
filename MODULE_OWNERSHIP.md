@@ -61,6 +61,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | TargetLock bootstrap | `src/StarterPlayerScripts/TargetLockController.client.lua` | Starts the target-lock module | Project Owner |
 | UIController | `src/StarterPlayerScripts/UIController.client.lua` | Match HUD, cooldowns, draft presentation, and recaps | Project Owner |
 | UITheme | `src/StarterPlayerScripts/UITheme.lua` | Read-only Config UI tokens, shared surface, safe-area screen, and focus style constructors | Project Owner |
+| MatchFeedback | `src/StarterPlayerScripts/MatchFeedback.lua` | Separate floating match and movement cards with original UI icons; confirmed mode events retain priority and involved-player haptics | Project Owner |
 | UILayoutCoordinator | `src/StarterPlayerScripts/UILayoutCoordinator.lua` | Shared breakpoints, modal focus, and measured touch-control reservation | Project Owner |
 | UIAccessibility | `src/StarterPlayerScripts/UIAccessibility.client.lua` | Applies local text size and high contrast preferences to runtime screens | Project Owner |
 | TouchLayoutController | `src/StarterPlayerScripts/TouchLayoutController.client.lua` | Positions existing touch actions above the Roblox jump control without changing their input gates | Project Owner |

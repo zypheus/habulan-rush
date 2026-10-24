@@ -1,8 +1,10 @@
 --!strict
+-- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/UIController.client.lua
 -- Owner: Project Owner
 -- Responsibility: HUD (role banner, countdown, scoreboard, movement cooldowns),
 -- Task/spec: stamina removal and compact action dock, approved 2026-10-24.
+-- Task/spec: clear arcade feedback for confirmed tags, approved 2026-10-24.
 -- Task/spec: Lihim na Target mode HUD and recaps, approved 2026-10-23.
 -- Task/spec: simple click-to-tag HUD cleanup, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo recaps and splash, approved 2026-10-23.
@@ -38,6 +40,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
+local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
 local Mv     = Config.Movement
 local TS     = Config.UI.Tsinelas -- RS_03 slot sizes, labels, and timings
 
@@ -826,7 +829,7 @@ local function pushTagFeed(taggerName: string, targetName: string, iAmTagger: bo
 	local text = oLabel({
 		Position = UDim2.fromOffset(12, 0),
 		Size = UDim2.new(1, -24, 1, 0),
-		Text = taggerName .. " tagged " .. targetName .. "!",
+		Text = taggerName .. " nag-tag kay " .. targetName .. "!",
 		TextSize = 12,
 		TextColor3 = iAmTarget and Color3.fromRGB(255, 170, 120) or HUD_WHITE,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -856,11 +859,21 @@ end
 
 TagEvent.OnClientEvent:Connect(function(payload: any)
 	if typeof(payload) ~= "table" then return end
-	local taggerName = typeof(payload.taggerName) == "string" and payload.taggerName or "Taya"
-	local targetName = typeof(payload.targetName) == "string" and payload.targetName or "Runner"
+	if typeof(payload.taggerId) ~= "number" or typeof(payload.targetId) ~= "number" then return end
+	local tagger = Players:GetPlayerByUserId(payload.taggerId)
+	local target = Players:GetPlayerByUserId(payload.targetId)
+	local taggerName = if tagger then tagger.DisplayName else "Taya"
+	local targetName = if target then target.DisplayName else "Runner"
 	local iAmTagger = payload.taggerId == LocalPlayer.UserId
 	local iAmTarget = payload.targetId == LocalPlayer.UserId
 	pushTagFeed(taggerName, targetName, iAmTagger, iAmTarget)
+	if iAmTagger then
+		MatchFeedback.show("NA-TAG MO SIYA!", "LIGTAS KA AT MAS MABILIS", "major", HUD_CYAN, true, "tag")
+		AudioRouter.playSfxId(Config.Sfx.Tag.slap, Config.Sfx.Tag.volume)
+	elseif iAmTarget then
+		MatchFeedback.show("IKAW ANG TAYA!", "HABULIN ANG MGA RUNNER", "major", HUD_RED, true, "tag")
+		AudioRouter.playSfxId(Config.Sfx.Tag.slap, Config.Sfx.Tag.volume)
+	end
 end)
 
 -- ── B. ROLE SPLASH + COUNTDOWN (MS_03) ───────────────────────────────────────

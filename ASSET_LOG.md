@@ -16,6 +16,12 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Floating action icons, 2026-10-24
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-24 | Slide, roll, vault, tag, cloth, target, clock and loss icons | Procedural UI / Script | Original Frames, corners and strokes authored in MatchFeedback by Codex | Original project UI | Floating action cards | Pending Review | No uploaded or external asset ID. Owner visual acceptance pending. |
+
 ### Open authored map import, 2026-10-24
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |

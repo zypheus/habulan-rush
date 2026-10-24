@@ -1,0 +1,43 @@
+{
+  "name": "HabulanRushFeedbackSync",
+  "servePlaceIds": [
+    127422539599317
+  ],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": {
+        "$path": "src/ReplicatedStorage/Config.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "MatchFeedback": {
+          "$path": "src/StarterPlayerScripts/MatchFeedback.lua"
+        },
+        "UIController": {
+          "$path": "src/StarterPlayerScripts/UIController.client.lua"
+        },
+        "PanyoHUD": {
+          "$path": "src/StarterPlayerScripts/PanyoHUD.client.lua"
+        },
+        "SecretHuntHUD": {
+          "$path": "src/StarterPlayerScripts/SecretHuntHUD.client.lua"
+        },
+        "MovementController": {
+          "$path": "src/StarterPlayerScripts/MovementController.client.lua"
+        },
+        "MomentumHUD": {
+          "$path": "src/StarterPlayerScripts/MomentumHUD.client.lua"
+        }
+      }
+    }
+  }
+}

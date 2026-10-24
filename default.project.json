@@ -118,6 +118,7 @@
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
         "UITheme": { "$path": "src/StarterPlayerScripts/UITheme.lua" },
+        "MatchFeedback": { "$path": "src/StarterPlayerScripts/MatchFeedback.lua" },
         "UILayoutCoordinator": { "$path": "src/StarterPlayerScripts/UILayoutCoordinator.lua" },
         "NametagController": { "$path": "src/StarterPlayerScripts/NametagController.client.lua" },
         "TouchLayoutController": { "$path": "src/StarterPlayerScripts/TouchLayoutController.client.lua" },

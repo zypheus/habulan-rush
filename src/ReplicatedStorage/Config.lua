@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: floating action notice presentation, approved 2026-10-24.
 -- ReplicatedStorage/Config.lua
 -- Owner: Project Owner
 -- Responsibility: immutable shared gameplay and presentation tuning.
@@ -1043,6 +1044,17 @@ Config.Sfx = {
 		pitchMin = 0.95, -- [SD] footstep pitch variation low
 		pitchMax = 1.05, -- [SD] footstep pitch variation high
 	},
+}
+Config.MatchFeedback = { -- [SD] local confirmed-action notice and supported-gamepad cue
+	MajorSeconds = 1.25, -- [SD] involved player action/result
+	FollowupSeconds = 1.1, -- [SD] target reassignment and round events
+	MinorSeconds = 1.0, -- [SD] bystander update
+	VaultSeconds = 0.9, -- [SD] completed local Vault card lifetime
+	EntrySeconds = 0.16, -- [SD] card appearance and scale settle
+	ExitSeconds = 0.18, -- [SD] card fade and final rise
+	FloatPx = 18, -- [SD] total gentle upward travel
+	HapticPeak = 0.28, -- [SD] restrained controller waveform intensity
+	HapticMillis = 110, -- [SD] controller waveform length
 }
 -- ============================================================
 -- UI (T18 RS_03 slot; full skill bar lands at T14/T17)
