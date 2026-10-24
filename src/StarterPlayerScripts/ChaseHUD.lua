@@ -1,10 +1,10 @@
 --!strict
 -- StarterPlayerScripts/ChaseHUD.lua (ModuleScript)
 -- Owner: Project Owner
+-- Task/spec: remove the view toggle from first-person-only matches, approved 2026-10-24.
 -- Responsibility: Phase 3 chase HUD: the Runner edge chevron toward a near
 -- Taya, the Taya advisory tag-target marker, the tag-transfer edge pulse,
--- and the mobile hold-to-look-back button; plus the Phase 4 mobile view mode
--- button (reports and flips the CameraDirector mode). Reads ChaseState,
+-- and the mobile hold-to-look-back button. Reads ChaseState,
 -- ClientSettings, TargetLockController, and the live camera; writes only its
 -- own ScreenGui. Advisory visuals only: no remotes, no game state, no tag
 -- validation (the server still decides every tag).
@@ -51,8 +51,6 @@ local markerScale: UIScale? = nil
 local pulse: Frame? = nil
 local pulseStroke: UIStroke? = nil
 local lookButton: TextButton? = nil
-local viewButton: TextButton? = nil
-local lastViewLabel = ""
 
 local pulseT = math.huge
 local pulseAt = -1000.0
@@ -308,27 +306,12 @@ function onRender(dt: number)
 		end
 	end
 
-	-- Mobile view mode button (Phase 4) and hold-to-look-back button. The
-	-- view button reports and flips the CameraDirector mode; look-back hides
-	-- in first person because the swing is a third-person camera feature.
+	-- Look-back is a third-person feature and stays hidden in match view.
 	local viewMode = "ThirdPerson"
 	if director ~= nil then
 		local got = director.getViewMode()
 		if typeof(got) == "string" then
 			viewMode = got
-		end
-	end
-	local showView = UserInputService.TouchEnabled
-		and Cfg.FirstPerson.Enabled == true
-		and actionPhase()
-	if viewButton ~= nil then
-		viewButton.Visible = showView
-		if showView then
-			local label = if viewMode == "FirstPerson" then "1P" else "3P"
-			if label ~= lastViewLabel then
-				lastViewLabel = label
-				viewButton.Text = label
-			end
 		end
 	end
 	local role = localPlayer:GetAttribute("HRushRole")
@@ -370,9 +353,6 @@ local function syncBound()
 		end
 		if pulse ~= nil then
 			pulse.Visible = false
-		end
-		if viewButton ~= nil then
-			viewButton.Visible = false
 		end
 		pulseT = math.huge
 		clearScan()
@@ -505,34 +485,11 @@ local function build()
 	buttonStroke.Transparency = 0.4
 	buttonStroke.Parent = button
 
-	local viewBtn = Instance.new("TextButton")
-	viewBtn.Name = "ViewModeButton"
-	viewBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-	viewBtn.Position = UDim2.fromScale(0.94, 0.40)
-	viewBtn.Size = UDim2.fromOffset(48, 48)
-	viewBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-	viewBtn.BackgroundTransparency = 0.35
-	viewBtn.Text = "3P"
-	viewBtn.TextColor3 = Color3.fromRGB(235, 235, 240)
-	viewBtn.TextSize = 14
-	viewBtn.Font = Enum.Font.GothamBold
-	viewBtn.AutoButtonColor = false
-	viewBtn.Visible = false
-	viewBtn.ZIndex = 4
-	local viewCorner = Instance.new("UICorner")
-	viewCorner.CornerRadius = UDim.new(1, 0)
-	viewCorner.Parent = viewBtn
-	local viewStroke = Instance.new("UIStroke")
-	viewStroke.Thickness = 2
-	viewStroke.Color = MARKER_WHITE
-	viewStroke.Transparency = 0.4
-	viewStroke.Parent = viewBtn
 
 	pulseFrame.Parent = screen
 	chevronFrame.Parent = screen
 	markerFrame.Parent = screen
 	button.Parent = screen
-	viewBtn.Parent = screen
 	screen.Parent = playerGui
 
 	gui = screen
@@ -542,7 +499,6 @@ local function build()
 	pulse = pulseFrame
 	pulseStroke = pulseStrokeObj
 	lookButton = button
-	viewButton = viewBtn
 
 	button.InputBegan:Connect(function(input: InputObject)
 		if input.UserInputType ~= Enum.UserInputType.Touch or not button.Visible then
@@ -560,14 +516,6 @@ local function build()
 		releaseTouchLook()
 	end)
 
-	viewBtn.InputBegan:Connect(function(input: InputObject)
-		if input.UserInputType ~= Enum.UserInputType.Touch or not viewBtn.Visible then
-			return
-		end
-		if director ~= nil then
-			director.toggleViewMode()
-		end
-	end)
 end
 
 function ChaseHUD.start()

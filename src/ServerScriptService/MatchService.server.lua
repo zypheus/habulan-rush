@@ -7,6 +7,7 @@
 -- Task/spec: Agawan ng Panyo Phase 1 mode selection, approved 2026-10-23.
 -- Task/spec: Agawan ng Panyo full mode, approved 2026-10-23.
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
+-- Task/spec: open-experience random round spawns, approved 2026-10-24.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
 -- CHANGED IN v1.2
@@ -50,6 +51,7 @@ CommitTag.Parent = ServerScriptService
 local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
 local PanyoMode = require(ServerScriptService:WaitForChild("PanyoMode"))
 local SecretHuntMode = require(ServerScriptService:WaitForChild("SecretHuntMode"))
+local SpawnSelector = require(ServerScriptService:WaitForChild("SpawnSelector"))
 
 -- QueueEvent is created here if your Remotes setup script doesn't define it yet
 local QueueEvent: RemoteEvent
@@ -111,7 +113,6 @@ local MATCH = Config.Match
 local MAX_PLAYERS: number = MATCH.MaxPlayers or 8
 local SEARCH_TIMEOUT: number = MATCH.SearchTimeout or 10
 local TAG_IMMUNITY: number = Config.Tag.SafeWindowDuration or 2 -- Safe Window: ex-Taya cannot be re-tagged for this long
-local ARENA_RADIUS: number = (Config.Maps and Config.Maps.Kalsada and Config.Maps.Kalsada.greybox and Config.Maps.Kalsada.greybox.spawnRadius) or 55
 
 -- ============================================================
 -- HELPERS (participants = Player)
@@ -345,36 +346,34 @@ end
 -- ============================================================
 -- TELEPORT
 -- ============================================================
-local function teleportToSpawns(list: { Instance })
-	local spawnFolder = Workspace:FindFirstChild("SpawnLocations")
-	local n = #list
-
-	for idx, inst in ipairs(list) do
-		task.spawn(function()
-			local model: Model? = nil
-			if inst:IsA("Player") then
-				local char = inst.Character
-				if not char then
-					char = inst.CharacterAdded:Wait()
+local function teleportToPositions(list: { Player }, assignments: { [Player]: Vector3 }): boolean
+	local ready: { { character: Model, position: Vector3 } } = {}
+	for _, player in ipairs(list) do
+		if player.Parent == Players then
+			local position = assignments[player]
+			local character: Model? = nil
+			local deadline = os.clock() + 5
+			repeat
+				local candidate = player.Character
+				local root = candidate and candidate:FindFirstChild("HumanoidRootPart")
+				local humanoid = candidate and candidate:FindFirstChildOfClass("Humanoid")
+				if candidate and root and root:IsA("BasePart") and humanoid and humanoid.Health > 0 then
+					character = candidate
+					break
 				end
-				model = char
+				task.wait(0.1)
+			until os.clock() >= deadline or player.Parent ~= Players
+			if character == nil or position == nil then
+				warn(string.format("[MatchService] Round spawn unavailable for %s", player.Name))
+				return false
 			end
-
-			if model then
-				model:WaitForChild("HumanoidRootPart", 5)
-				local spawnName = string.format("Spawn%02d", ((idx - 1) % 8) + 1)
-				local spawnObj = spawnFolder and spawnFolder:FindFirstChild(spawnName)
-				local spawnPos: Vector3
-				if spawnObj and spawnObj:IsA("BasePart") then
-					spawnPos = spawnObj.Position + Vector3.new(0, 3, 0)
-				else
-					local angle = math.rad((idx - 1) * (360 / math.max(1, n)))
-					spawnPos = Vector3.new(math.cos(angle) * ARENA_RADIUS, 3, math.sin(angle) * ARENA_RADIUS)
-				end
-				model:PivotTo(CFrame.new(spawnPos, Vector3.new(0, 3, 0)))
-			end
-		end)
+			table.insert(ready, { character = character, position = position })
+		end
 	end
+	for _, entry in ipairs(ready) do
+		entry.character:PivotTo(CFrame.new(entry.position))
+	end
+	return true
 end
 
 -- ============================================================
@@ -1020,8 +1019,12 @@ local function runMatch()
 		ReplicatedStorage:SetAttribute("HRushSelectedMap", selectedMap)
 		print(string.format("[MatchService] Map vote completed. Selected map: %s", selectedMap))
 
-		-- Place everyone in the arena while the loading screen still covers the view.
-		teleportToSpawns(getParticipants())
+		-- Sample once at match entry; the first round reuses these positions.
+		local roundSpawns = SpawnSelector.assignRound(getParticipants() :: { Player })
+		if roundSpawns == nil or not teleportToPositions(getParticipants() :: { Player }, roundSpawns) then
+			warn("[MatchService] Safe authored-map spawns unavailable; ending match")
+			continue
+		end
 		task.wait(0.5)
 
 		local practiceSolo = currentMode == "AgawanNgPanyo" and participantCount() == 1
@@ -1037,6 +1040,10 @@ local function runMatch()
 		local abort = false
 
 		for roundNum = 1, totalRounds do
+			if roundNum > 1 then
+				roundSpawns = SpawnSelector.assignRound(getParticipants() :: { Player })
+				if roundSpawns == nil then abort = true break end
+			end
 			currentRound = roundNum
 			tayaTimeThisRound = {}
 			for _, p in ipairs(getParticipants()) do
@@ -1071,7 +1078,10 @@ local function runMatch()
 			end
 			-- MS_03 COUNTDOWN
 			matchState = "MS_03"
-			teleportToSpawns(getParticipants())
+			if not teleportToPositions(getParticipants() :: { Player }, roundSpawns :: { [Player]: Vector3 }) then
+				abort = true
+				break
+			end
 			if currentMode == "ClassicTag" then
 				setRoles(startingTaya :: Instance)
 			elseif currentMode == "AgawanNgPanyo" then
@@ -1083,7 +1093,8 @@ local function runMatch()
 				end
 			else
 				broadcastState(nil)
-				if not SecretHuntMode.PrepareRound(getParticipants() :: { Player }, currentRound) then
+				if not SecretHuntMode.PrepareRound(getParticipants() :: { Player }, currentRound,
+					roundSpawns :: { [Player]: Vector3 }) then
 					warn("[MatchService] Secret Hunt roster unavailable; ending match safely")
 					abort = true
 					break

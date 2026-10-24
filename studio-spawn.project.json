@@ -1,0 +1,32 @@
+{
+  "name": "HabulanRushSpawnSync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": { "$path": "src/ReplicatedStorage/Config.lua" }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$ignoreUnknownInstances": true,
+      "Map": {
+        "$className": "Model",
+        "$ignoreUnknownInstances": true,
+        "SpawnRegions": { "$path": "assets/SpawnRegions.rbxmx" },
+        "PanyoSpawn": { "$path": "assets/PanyoSpawn.rbxmx" }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "Bootstrap": { "$path": "src/ServerScriptService/Bootstrap.server.lua" },
+      "MatchService": { "$path": "src/ServerScriptService/MatchService.server.lua" },
+      "PanyoMode": { "$path": "src/ServerScriptService/PanyoMode.lua" },
+      "SecretHuntMode": { "$path": "src/ServerScriptService/SecretHuntMode.lua" },
+      "SpawnSelector": { "$path": "src/ServerScriptService/SpawnSelector.lua" }
+    }
+  }
+}

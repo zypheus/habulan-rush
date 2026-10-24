@@ -8,15 +8,16 @@
 -- Task/spec: momentum steps 2 to 4, 2026-10-19.
 -- Task/spec: slide chaining and entry speed, 2026-10-19.
 -- Task/spec: source-owned wind dash VFX and accepted-dash observer presentation, 2026-10-22.
--- T09 [Code/P0] MovementController — Client movement & stamina (COMPLETE)
+-- Task/spec: automatic earned sprint without stamina, approved 2026-10-24.
+-- T09 [Code/P0] MovementController — Client movement (COMPLETE)
 --
 -- Responsibilities:
---   • Runner walk / sprint speed via Humanoid.WalkSpeed (16 / 21, Config-driven)
---   • Stamina drain 20/s, regen 12/s after 1s, depletion lock until >= 10
+--   • Runner and Taya walk / earned sprint speed via Humanoid.WalkSpeed
+--   • Three-second server-confirmed sprint after a two-action movement chain
 --   • Post-tag ex-Taya boost: +20% walk+sprint for 2s (F08, via TagEvent)
---   • Dash: 12 studs linear in 0.2s, 6s cooldown, 0.15s tag-action invulnerability (F07),
+--   • Dash: 12 studs linear in 0.2s, 5s cooldown, 0.15s tag-action invulnerability (F07),
 --     wall-clamped raycast, RequestDash → server (server validates + records)
---   • Slide: 1.0s, 3s cooldown, 50% hitbox (HipHeight), momentum gain
+--   • Slide: 1.0s, 1.25s cooldown, 50% hitbox (HipHeight), momentum gain
 --     momentum entry sustained per-Heartbeat, locked heading, both roles (F09)
 --   • Roll: slide input buffered for 0.15s before landing, momentum preserved,
 --     server-validated momentum gain, normal tag profile, both roles
@@ -30,7 +31,7 @@
 --     MS_01 lobby warm-up and MS_04 Round Live, closed otherwise.
 --     NOTE (playtest): spawn straight into the lobby and press C — no
 --     FIND MATCH needed to test slide; MatchService owns MS_02-MS_06.
---   • Bindings (UI/UX Spec §4): PC Shift/Q/C/E · Gamepad L2-stick/B/R1/X · Touch
+--   • Bindings: PC Q/C/E, gamepad B/R1/X, and touch actions; sprint is automatic
 --   • Dash VFX: local wind burst and four ribbons; accepted live dashes render for observers.
 --   • UI bridge: HRush* attributes on LocalPlayer (UIController reads poll-free)
 --   • Skill RS_01 Luksong Baka (T18 slice): request + facing to SkillService,
@@ -106,12 +107,9 @@ local SkillVFX = Remotes:WaitForChild("SkillVFX") :: RemoteEvent
 local SkillLanded = Remotes:WaitForChild("SkillLanded") :: RemoteEvent
 
 -- ── State ────────────────────────────────────────────────────────────────────
--- Stamina
-local stamina = Mv.StaminaMax
-local isDepletion = false -- true after stamina reaches 0; locked until >= StaminaDepletedMin
-local isSprinting = false -- whether sprint key is held AND conditions allow sprinting
+-- Server-confirmed chain earns a timed sprint during live rounds.
+local isSprinting = false
 local lastSprintSent = false -- last sprint state fired on the SprintVFX bridge
-local regenTimer = 0.0 -- seconds since sprint stopped
 
 -- Dash
 local isDashing = false
@@ -143,7 +141,6 @@ local roll: any = {
 -- Automatic low-obstacle vault. One table avoids exhausting this legacy
 -- controller's top-level local-register budget.
 local vault: any = {
-	sprintTriggerHeld = false,
 	active = false,
 	cooldown = 0.0,
 	probe = 0.0,
@@ -198,7 +195,7 @@ local skillDebugTick = 0.0 -- throttles the debug label text update
 -- only: this client never decides hits. Removed when PickSkill owns unlocks.
 local TSINELAS_KEY = Enum.KeyCode.G -- TEMP (T18): test key until T17 draft
 local TSINELAS_CANCEL_KEY = Enum.KeyCode.X -- TEMP (T18): explicit aim cancel
-local tsinelasHeld = false -- G physically held (sprintHeld pattern)
+local tsinelasHeld = false -- G physically held for release-to-throw
 local tsinelasAiming = false -- aim line live, waiting for release
 local tsinelasAimHoldLeft = 0.0 -- max hold countdown while aiming
 local tsinelasAimDots: { BasePart } = {} -- parabola dots, owner only
@@ -231,7 +228,7 @@ local function characterMass(): number
 	return mass
 end
 
--- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s, stamina rules unchanged.
+-- Post-tag boost (Spec §3 / F08): ex-Taya +20% walk+sprint for 2s.
 local boostLeft = 0.0
 
 -- Movement lock: MS_03 Countdown locks input; MS_05/MS_06/MS_02 freeze & end slides.
@@ -243,9 +240,6 @@ local role = "Runner" -- "Runner" | "Taya"; updated by StateChanged
 local roundLive = false -- true only during MS_04 Round Live (dash/slide gate)
 local lobbyWarmup = true -- true in MS_01 lobby OR before the first StateChanged
 
--- Sprint input held flags per device
-local sprintHeld_KB     = false
-local sprintHeld_GP     = false
 local dashRequested_KB  = false
 local dashRequested_GP  = false
 local slideRequested_KB = false
@@ -272,8 +266,8 @@ end
 
 -- ── Speed management ─────────────────────────────────────────────────────────
 -- Spec §3 + F08: Runner walk 16 / sprint 21. Ex-Taya gets +20% on BOTH base
--- speeds for 2s (PostTagSpeedBoostMult/Duration); stamina rules unchanged.
--- Taya is a flat 18 with no stamina. Slide holds its entry speed (momentum).
+-- speeds for 2s (PostTagSpeedBoostMult/Duration). Earned sprint is server-owned.
+-- Taya walks at base 18. Slide holds its entry speed (momentum).
 -- Call this any time role / sprint / boost / lock state changes.
 -- Stun gate (RS_03/T13): the server owns HRushStunned. While it is true the
 -- client holds speed at 0 and starts no movement action. One helper plus
@@ -324,50 +318,18 @@ local function applySpeed()
 		if typeof(landingMult) == "number" then landingMult else 1, momentum.controller.value())
 end
 
--- ── Stamina ──────────────────────────────────────────────────────────────────
--- Spec §3: drain 20/s while sprinting; regen +12/s after 1s without sprinting.
--- Depletion (hit 0) forces walk until stamina >= StaminaDepletedMin (10).
--- Sprint counts only while the character is actually trying to move
--- (Humanoid.MoveDirection), so holding Shift while standing still never drains.
-local function updateStamina(dt: number)
-	local sprintKeyHeld = sprintHeld_KB or sprintHeld_GP
+-- ── Earned sprint ─────────────────────────────────────────────────────────────
+local function updateSprint()
+	local sprintReadyAt, sprintUntil = momentum.controller.sprintWindow()
+	local now = Workspace:GetServerTimeNow()
 	local isMoving = false
 	if Humanoid then
 		isMoving = Humanoid.MoveDirection.Magnitude > 0.1
 	end
 
-	-- Decide if we're actually sprinting this frame.
-	-- Landing recovery (RS_01) keeps sprint off briefly without blocking walk.
-	-- Stun keeps sprint off without blocking regen.
-	local wantSprint = sprintKeyHeld and isMoving and not isSliding and not isDashing and not roll.active and not vault.active
-		and skillRecoveryLeft <= 0 and not isStunned()
-	if role == "Runner" and isDepletion and stamina < Mv.StaminaDepletedMin then
-		wantSprint = false -- forced walk until stamina recovers enough
-	elseif role == "Runner" and isDepletion and stamina >= Mv.StaminaDepletedMin then
-		isDepletion = false -- depletion lock released
-	end
-
-	if wantSprint then
-		-- Drain stamina
-		isSprinting = true
-		regenTimer = 0.0
-		if role == "Runner" then
-			stamina = clamp(stamina - Mv.StaminaDrainRate * dt, 0, Mv.StaminaMax)
-		end
-		if role == "Runner" and stamina <= 0 then
-			stamina = 0
-			isSprinting = false
-			isDepletion = true -- enter depletion; walk enforced
-			AudioRouter.playSfxId(Config.Sfx.Movement.staminaEmpty, Config.Sfx.Movement.volume)
-		end
-	else
-		-- Regen stamina after delay
-		isSprinting = false
-		regenTimer = regenTimer + dt
-		if role == "Runner" and regenTimer >= Mv.StaminaRegenDelay then
-			stamina = clamp(stamina + Mv.StaminaRegenRate * dt, 0, Mv.StaminaMax)
-		end
-	end
+	isSprinting = roundLive and isMoving and now >= sprintReadyAt and now < sprintUntil
+		and not isSliding and not isDashing and not roll.active and not vault.active
+		and skillRecoveryLeft <= 0 and skillWindupLeft <= 0 and skillFlightLeft <= 0 and not isStunned()
 
 	-- Sprint VFX bridge: fire only on transitions. SprintVFX owns the event;
 	-- this side only finds and fires it, never creates it.
@@ -386,9 +348,9 @@ end
 -- ── UI attribute bridge ────────────────────────────────────────────────────────
 -- LocalScripts cannot be require()d, so UIController reads live movement state
 -- from attributes on LocalPlayer (poll-free via GetAttributeChangedSignal):
---   HRushStamina (0–100), HRushStaminaMax, HRushDashCD, HRushSlideCD,
+--   HRushDashCD, HRushSlideCD,
 --   HRushDashing, HRushSliding, HRushRolling, HRushBoost (seconds left),
---   HRushRole ("Runner" | "Taya") — UI gates Runner-only HUD (stamina bar),
+--   HRushRole ("Runner" | "Taya") — UI gates Runner-only dash HUD,
 --   HRushSkillId (granted skill id, "" = none), HRushSkillCD (seconds left),
 --   plus the SprintVFXState bridge event (true/false on sprint transitions).
 --   HRushSkillId_RS03 ("RS_03" when granted, "" = none),
@@ -453,8 +415,6 @@ local function pushAttributes(force: boolean?)
 		return
 	end
 	lastPush = now
-	LocalPlayer:SetAttribute("HRushStamina", stamina)
-	LocalPlayer:SetAttribute("HRushStaminaMax", Mv.StaminaMax)
 	LocalPlayer:SetAttribute("HRushDashCD", dashCooldownLeft)
 	LocalPlayer:SetAttribute("HRushSlideCD", slideCooldownLeft)
 	LocalPlayer:SetAttribute("HRushDashing", isDashing)
@@ -723,9 +683,6 @@ local function performDash()
 	if isDashing or dashCooldownLeft > 0 then
 		return
 	end
-	if stamina < Mv.DashStaminaCost then
-		return -- not enough in the tank; show nothing, HUD already shows the bar
-	end
 	if isSliding or roll.active or vault.active then
 		return
 	end
@@ -735,14 +692,6 @@ local function performDash()
 
 	isDashing = true
 	dashCooldownLeft = Mv.DashCooldown
-	-- Stamina spend: same depletion entry as sprint (walk until StaminaDepletedMin).
-	stamina = clamp(stamina - Mv.DashStaminaCost, 0, Mv.StaminaMax)
-	if stamina <= 0 then
-		stamina = 0
-		isDepletion = true
-		AudioRouter.playSfxId(Config.Sfx.Movement.staminaEmpty, Config.Sfx.Movement.volume)
-	end
-	regenTimer = 0.0
 	pushAttributes(true)
 
 	-- Direction: current move direction if moving, else facing.
@@ -1310,7 +1259,7 @@ local function handleSlideInput()
 end
 
 -- ── Published animation tracks ────────────────────────────────────────────────
--- Loads once per character. Tracks never touch speed, stamina, or hitbox.
+-- Loads once per character. Tracks never touch speed or hitbox.
 local function loadAnimTracks()
 	sprintTrack = nil
 	slideTrack = nil
@@ -2721,7 +2670,6 @@ end
 
 -- ── Heartbeat ────────────────────────────────────────────────────────────────
 local heartbeatConn: RBXScriptConnection? = nil
-local gamepadTick = 0.0
 local function startHeartbeat()
 	if heartbeatConn then
 		heartbeatConn:Disconnect()
@@ -2826,30 +2774,8 @@ local function startHeartbeat()
 			end
 		end
 
-		-- Gamepad sprint (throttled to 10 Hz): left stick full tilt = sprinting.
-		-- Spec-correct bindings are L2 (ButtonL2) for sprint-hold, Touch = Sprint button.
-		gamepadTick += dt
-		if gamepadTick >= 0.1 then
-			gamepadTick = 0.0
-			local found = false
-			local ok, gp = pcall(UserInputService.GetGamepadState, UserInputService, Enum.UserInputType.Gamepad1)
-			if ok and gp then
-				for _, inputObj in gp do
-					if inputObj.KeyCode == Enum.KeyCode.Thumbstick1 then
-						sprintHeld_GP = vault.sprintTriggerHeld or inputObj.Position.Magnitude > 0.8
-						found = true
-						break
-					end
-				end
-			end
-			if not found then
-				-- Fall back to the L2 hold flag set by ContextActionService below.
-				-- (Keeps sprint working on gamepads whose stick state isn't exposed.)
-			end
-		end
-
 		tickCooldowns(dt)
-		updateStamina(dt)
+		updateSprint()
 		tickSprintAnim()
 		pushAttributes(false)
 
@@ -2890,7 +2816,7 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 		local newRole = payload.role
 		if newRole ~= role then
 			momentum.controller.hardZero("role changed")
-			-- Tag swap cleanup: cancel movement visuals while retaining held sprint input.
+			-- Tag swap cleanup: cancel movement visuals and the prior sprint window.
 			if isSliding then
 				endSlide()
 			end
@@ -2900,7 +2826,6 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 			endRoll()
 			vault.finish(false, "role changed", false)
 			isSprinting = false
-			-- Preserve held sprint input across a tag so recovery can resume it.
 			role = newRole
 		end
 	end
@@ -2909,10 +2834,8 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 		lobbyWarmup = (state == "MS_01")
 		inputLocked = (state == "MS_03") or (not roundLive and not lobbyWarmup)
 		if state == "MS_03" then
-			-- Countdown: lock in place, full stamina, abilities cooling.
+			-- Countdown: lock in place and clear earned sprint.
 			isSprinting = false
-			sprintHeld_KB = false
-			sprintHeld_GP = false
 		end
 		if not roundLive then
 			momentum.controller.hardZero("round ended")
@@ -2975,16 +2898,14 @@ TagEvent.OnClientEvent:Connect(function(payload: { taggerId: number?, targetId: 
 end)
 
 -- ── PC Keyboard bindings ──────────────────────────────────────────────────────
--- UI/UX Spec §4: Move WASD, Sprint LeftShift, Dash Q, Slide or landing roll C.
+-- Move WASD, Dash Q, Slide or landing roll C. Sprint is earned automatically.
 local function onInputBegan(input: InputObject, gameProcessed: boolean)
 	if gameProcessed then
 		return
 	end
 
 	local kc = input.KeyCode
-	if kc == Enum.KeyCode.LeftShift or kc == Enum.KeyCode.RightShift then
-		sprintHeld_KB = true
-	elseif kc == Enum.KeyCode.Q then
+	if kc == Enum.KeyCode.Q then
 		dashRequested_KB = true
 	elseif kc == Enum.KeyCode.C then
 		slideRequested_KB = true
@@ -3000,9 +2921,7 @@ end
 
 local function onInputEnded(input: InputObject, _gameProcessed: boolean)
 	local kc = input.KeyCode
-	if kc == Enum.KeyCode.LeftShift or kc == Enum.KeyCode.RightShift then
-		sprintHeld_KB = false
-	elseif kc == TSINELAS_KEY then
+	if kc == TSINELAS_KEY then
 		tsinelasHeld = false
 		tsinelasReleaseThrow()
 	end
@@ -3013,32 +2932,15 @@ UserInputService.InputEnded:Connect(onInputEnded)
 -- A release outside the window never fires InputEnded: cancel instead of
 -- wedging the aim state.
 UserInputService.WindowFocusReleased:Connect(function()
-	sprintHeld_KB = false
-	sprintHeld_GP = false
-	vault.sprintTriggerHeld = false
 	tsinelasHeld = false
 	tsinelasCancelAim("focus lost")
 end)
 
 -- ── Gamepad bindings (UI/UX Spec §4) ─────────────────────────────────────────
--- Sprint: Left trigger hold (ButtonL2) OR left stick full tilt (see heartbeat).
 -- Dash:   B (ButtonB). Slide: Right bumper (ButtonR1). Skill: X (ButtonX).
 -- Diskarte Y (ButtonY) is owned by UIController (T22).
-local SPRINT_GP_ACTION = "HRUSH_Sprint_GP"
 local DASH_GP_ACTION = "HRUSH_Dash_GP"
 local SLIDE_GP_ACTION = "HRUSH_Slide_GP"
-
-ContextActionService:BindAction(SPRINT_GP_ACTION, function(_name, state, _obj)
-	if state == Enum.UserInputState.Begin then
-		vault.sprintTriggerHeld = true
-		sprintHeld_GP = true
-	elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
-		vault.sprintTriggerHeld = false
-		-- Stick-tilt check in heartbeat may re-assert this while tilted.
-		sprintHeld_GP = false
-	end
-	return Enum.ContextActionResult.Pass
-end, false, Enum.KeyCode.ButtonL2)
 
 ContextActionService:BindAction(DASH_GP_ACTION, function(_name, state, _obj)
 	if state == Enum.UserInputState.Begin then
@@ -3078,10 +2980,9 @@ ContextActionService:BindAction(TSINELAS_GP_ACTION, function(_name, state, _obj)
 end, false, Enum.KeyCode.ButtonA)
 
 -- ── Mobile touch buttons (UI/UX Spec §4) ───────────────────────────────────────
--- UIController creates on-screen Sprint / Dash / Slide buttons (min 64px).
+-- ContextActionService creates on-screen Dash / Slide / Skill buttons.
 -- They fire BindableEvents in ReplicatedStorage; we hook them once they exist
--- (retry loop covers UIController loading after us). Touch Sprint also works
--- via ContextActionService so it shows on the touch UI automatically.
+-- (retry loop covers UIController loading after us).
 local mobileHooked = false
 local function hookMobileBindables()
 	if mobileHooked then
@@ -3090,15 +2991,6 @@ local function hookMobileBindables()
 	mobileHooked = true
 
 	-- Touch buttons via ContextActionService (creates touch UI automatically).
-	ContextActionService:BindAction("HRUSH_Sprint_Touch", function(_name, state, _obj)
-		if state == Enum.UserInputState.Begin then
-			sprintHeld_KB = true
-		elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
-			sprintHeld_KB = false
-		end
-		return Enum.ContextActionResult.Pass
-	end, true)
-
 	ContextActionService:BindAction("HRUSH_Dash_Touch", function(_name, state, _obj)
 		if state == Enum.UserInputState.Begin then
 			dashRequested_KB = true
@@ -3127,8 +3019,6 @@ local function hookMobileBindables()
 			local dashBe = ReplicatedStorage:FindFirstChild("MobileDashPressed")
 			local slideBe = ReplicatedStorage:FindFirstChild("MobileSlidePressed")
 			local skillBe = ReplicatedStorage:FindFirstChild("MobileSkillPressed")
-			local sprintBegin = ReplicatedStorage:FindFirstChild("MobileSprintBegan")
-			local sprintEnd = ReplicatedStorage:FindFirstChild("MobileSprintEnded")
 			local tsinelasBe = ReplicatedStorage:FindFirstChild("MobileTsinelas")
 			if dashBe and dashBe:IsA("BindableEvent") then
 				dashBe.Event:Connect(function()
@@ -3143,16 +3033,6 @@ local function hookMobileBindables()
 			if skillBe and skillBe:IsA("BindableEvent") then
 				skillBe.Event:Connect(function()
 					skillRequested = true
-				end)
-			end
-			if sprintBegin and sprintBegin:IsA("BindableEvent") then
-				sprintBegin.Event:Connect(function()
-					sprintHeld_KB = true
-				end)
-			end
-			if sprintEnd and sprintEnd:IsA("BindableEvent") then
-				sprintEnd.Event:Connect(function()
-					sprintHeld_KB = false
 				end)
 			end
 			-- RS_03 touch bridge (UIController touch button): one event
@@ -3171,7 +3051,7 @@ local function hookMobileBindables()
 					end
 				end)
 			end
-			if dashBe or slideBe or skillBe or sprintBegin or sprintEnd or tsinelasBe then
+			if dashBe or slideBe or skillBe or tsinelasBe then
 				break
 			end
 			task.wait(0.2)
@@ -3214,10 +3094,7 @@ function vault.onCharacterAdded(char: Model)
 	loadAnimTracks() -- sprint/slide tracks (rebuilt per respawn)
 
 	-- Reset state on respawn
-	stamina = Mv.StaminaMax
-	isDepletion = false
 	isSprinting = false
-	regenTimer = 0.0
 	isDashing = false
 	dashCooldownLeft = 0.0
 	isSliding = false
@@ -3257,8 +3134,6 @@ function vault.onCharacterAdded(char: Model)
 		Humanoid.HipHeight
 	))
 	boostLeft = 0.0
-	sprintHeld_KB = false
-	sprintHeld_GP = false
 	dashRequested_KB = false
 	dashRequested_GP = false
 	slideRequested_KB = false

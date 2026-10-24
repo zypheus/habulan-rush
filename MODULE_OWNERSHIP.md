@@ -1,6 +1,6 @@
 # Module Ownership
 
-Updated: 2026-10-23
+Updated: 2026-10-24
 Human merge owner: **Project Owner**, sole maintainer
 Primary coding agent: **Codex**, only for the currently approved item
 
@@ -34,6 +34,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | PanyoMode | `src/ServerScriptService/PanyoMode.lua` | One panyo instance, server-observed pickup, Carrier ownership, steal protection, recovery, and possession clock | Project Owner |
 | PanyoEvents | `src/ServerScriptService/PanyoEvents.lua` | Panyo phase transitions, periodic reveals, and final-second cues | Project Owner |
 | SecretHuntMode | `src/ServerScriptService/SecretHuntMode.lua` | Private target cycle, capture ledger, protection, streaks, recovery, and timed Hunt cues | Project Owner |
+| SpawnSelector | `src/ServerScriptService/SpawnSelector.lua` | Server-owned authored-map ground sampling and distinct round spawn assignments | Project Owner |
 | MovementAuthority | `src/ServerScriptService/MovementAuthority.lua` | Server movement state, request validation, cooldowns, and passive speed/displacement observation | Project Owner |
 | MovementAuthority bootstrap | `src/ServerScriptService/MovementAuthority.server.lua` | Starts the MovementAuthority lifecycle | Project Owner |
 | TagService | `src/ServerScriptService/TagService.server.lua` | Click tag rate guard, target selection, spatial/arc/LOS validation, and replicated third-person tag animation | Project Owner |
@@ -74,7 +75,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |
 | MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client match-state music playback and fades | Project Owner |
 | VfxScale | `src/StarterPlayerScripts/VfxScale.lua` | Client cosmetic intensity and telegraph floor | Project Owner |
-| CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | In-match base third-person shoulder camera: pose, look input, collision, shoulder swap, cursor state, saved-state handoff around aim and target lock, the centralized movement camera effects (sprint, falling, landing, dash, slide, vault, roll), and the Phase 3 chase awareness set (role profiles, hold-to-look-back with movement assist, chase FOV, tag-transfer feedback) | Project Owner |
+| CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | First-person-only match camera with lobby-preference restoration, pose and look input, aim and target-lock handoff, movement camera effects, and chase feedback | Project Owner |
 | CameraDirector bootstrap | `src/StarterPlayerScripts/CameraDirector.client.lua` | Starts CameraDirector once | Project Owner |
 | ChaseState | `src/StarterPlayerScripts/ChaseState.lua` | Client-only chase awareness state: active Taya resolution (players and bots), distance, closing speed, visibility, and one smoothed chase intensity shared by camera and HUD | Project Owner |
 | ChaseHUD | `src/StarterPlayerScripts/ChaseHUD.lua` | Phase 3 chase HUD: Runner edge chevron, Taya advisory tag-target marker, tag-transfer edge pulse, and the mobile hold-to-look-back button | Project Owner |
@@ -85,7 +86,10 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Area | Canonical source | Responsibility | Owner |
 |---|---|---|---|
 | Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua`, `tools/AnimationDev/HRush_AnimPreview.lua` | Data-driven original R15 animation definitions, validation, building, and local preview | Project Owner |
-| Workspace map input | `assets/Map.rbxmx` | Minimal Rojo Workspace map input; Bootstrap currently builds Kalsada | Project Owner |
+| Workspace map input | `assets/Map.rbxmx`, `assets/Terrain.rbxmx` | Owner-exported authored Kalsada scene, original lobby spawn, tagged walkable ground, spawn regions, and terrain | Project Owner |
+| Open Studio spawn overlay | `assets/SpawnRegions.rbxmx`, `assets/PanyoSpawn.rbxmx`, `studio-spawn.project.json` | Targeted sync into the existing open place while preserving its authored Workspace objects | Project Owner |
+| Open Studio camera and TAG overlay | `studio-camera-tag.project.json` | Place-ID-restricted sync of four approved client modules while preserving all other Studio objects | Project Owner |
+| Open Studio earned sprint overlay | `studio-earned-sprint.project.json` | Place-ID-restricted sync of movement balance modules and Config while preserving the authored map and other Studio objects | Project Owner |
 
 ## Rules
 

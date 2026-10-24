@@ -63,6 +63,9 @@
       "$className": "Workspace",
       "Map": {
         "$path": "assets/Map.rbxmx"
+      },
+      "Terrain": {
+        "$path": "assets/Terrain.rbxmx"
       }
     },
 
@@ -83,6 +86,9 @@
       },
       "SecretHuntMode": {
         "$path": "src/ServerScriptService/SecretHuntMode.lua"
+      },
+      "SpawnSelector": {
+        "$path": "src/ServerScriptService/SpawnSelector.lua"
       },
       "MovementAuthority": {
         "$path": "src/ServerScriptService/MovementAuthority.lua"

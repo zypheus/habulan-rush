@@ -3,6 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: Place existing touch actions above the measured Roblox jump control.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
+-- Task/spec: automatic sprint touch layout, approved 2026-10-24.
 
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
@@ -16,9 +17,8 @@ if UserInputService.TouchEnabled then
 	local slots = {
 		{ action = "HRUSH_Skill_Touch", column = 0, row = 0, title = "SKILL", cooldown = "HRushSkillCD" },
 		{ action = "HRUSH_Tag", column = 2, row = 0 },
-		{ action = "HRUSH_Sprint_Touch", column = 0, row = 1, title = "SPRINT" },
-		{ action = "HRUSH_Dash_Touch", column = 1, row = 1, title = "DASH", cooldown = "HRushDashCD" },
-		{ action = "HRUSH_Slide_Touch", column = 2, row = 1, title = "SLIDE", cooldown = "HRushSlideCD" },
+		{ action = "HRUSH_Dash_Touch", column = 0, row = 1, title = "DASH", cooldown = "HRushDashCD" },
+		{ action = "HRUSH_Slide_Touch", column = 1, row = 1, title = "SLIDE", cooldown = "HRushSlideCD" },
 	}
 	local function place()
 		local size = Layout.viewport()
@@ -39,11 +39,10 @@ if UserInputService.TouchEnabled then
 					local seconds = if slot.cooldown then player:GetAttribute(slot.cooldown) else 0
 					local cooling = typeof(seconds) == "number" and seconds > 0
 					local blocked = player:GetAttribute("HRushStunned") == true
-					local exhausted = slot.action == "HRUSH_Sprint_Touch" and (player:GetAttribute("HRushStamina") or 0) <= 0
 					local caption = if blocked then "STUN" else if cooling then tostring(math.ceil(seconds)) .. "s"
-						else if exhausted then "LOW" else (slot.title or "ACTION")
+						else (slot.title or "ACTION")
 					ContextActionService:SetTitle(slot.action, caption)
-					button.ImageColor3 = if blocked or cooling or exhausted then Theme.Colors.Disabled else Theme.Colors.Gold
+					button.ImageColor3 = if blocked or cooling then Theme.Colors.Disabled else Theme.Colors.Gold
 				end
 			end
 		end

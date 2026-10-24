@@ -1,0 +1,20 @@
+{
+  "name": "HabulanRushCameraTagSync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "TagController": { "$path": "src/StarterPlayerScripts/TagController.lua" },
+        "CameraDirector": { "$path": "src/StarterPlayerScripts/CameraDirector.lua" },
+        "TargetLockController": { "$path": "src/StarterPlayerScripts/TargetLockController.lua" },
+        "ChaseHUD": { "$path": "src/StarterPlayerScripts/ChaseHUD.lua" }
+      }
+    }
+  }
+}

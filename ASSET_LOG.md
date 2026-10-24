@@ -16,6 +16,13 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Open authored map import, 2026-10-24
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-24 | Authored Habulan Rush map and terrain (`assets/Map.rbxmx`, `assets/Terrain.rbxmx`) | Model / terrain | Project-owner supplied open-place export `C:\Users\Acer\Downloads\Hrush.rbxl` | Individual mesh and texture rights unconfirmed | Kalsada full map and continuous round spawns | Pending Review | Imported 475 Workspace-root objects and the existing Map model; preserved layout, added 150 walkable ground tags, 12 invisible spawn regions, and one Panyo marker. SHA-256 and all 58 referenced Roblox IDs are recorded individually in [open map asset inventory](docs/OPEN_MAP_ASSET_INVENTORY.md). Owner must confirm competition-safe rights before release. |
+| 2026-10-24 | SpawnRegions and PanyoSpawn (`assets/SpawnRegions.rbxmx`, `assets/PanyoSpawn.rbxmx`) | Model | Derived from the owner-provided map geometry by Codex | Original project geometry | Targeted overlay in the currently open Studio place | Pending Review | Invisible noncolliding sampling volumes and one marker; no new external asset ID. |
+
 ### Agawan ng Panyo, 2026-10-23
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
@@ -48,7 +55,7 @@ _All models, textures, audio, and assets used in the game must be logged here._
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 2026-10-18 | HRush_TagFirstPerson (`rbxassetid://105436702082738`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Local first-person tag action (`Config.Tag.FirstPersonAnimationId`) | Pending Review | Loaded on an isolated local arm rig so it never competes with or replicates through the live character Animator. |
-| 2026-10-22 | HRush_TagThirdPerson replacement (`rbxassetid://132133679924288`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Replicated tag action (`Config.Tag.ThirdPersonAnimationId`) | Pending Review | Replaces `139144393566205`; server plays it on the character Animator. Arm-only blending awaits owner Studio verification. |
+| 2026-10-22 | HRush_TagThirdPerson replacement (`rbxassetid://132133679924288`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Replicated tag action (`Config.Tag.ThirdPersonAnimationId`) | Pending Review | Replaces `139144393566205`; server plays it on the character Animator. Owner reported granting this experience asset access on 2026-10-24 after Studio denied it; playback and arm-only blending still await owner Studio verification. |
 | 2026-10-18 | HRush_TagThirdPerson (`rbxassetid://139144393566205`) | Animation | Exact published ID supplied by project owner | Owner provenance confirmation pending | Former replicated tag action | Superseded | Replaced by `132133679924288` on 2026-10-22. |
 
 ### Pounce integration, 2026-10-16

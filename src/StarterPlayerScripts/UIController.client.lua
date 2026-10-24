@@ -1,7 +1,8 @@
 --!strict
 -- StarterPlayerScripts/UIController.client.lua
 -- Owner: Project Owner
--- Responsibility: HUD (role banner, countdown, scoreboard, stamina bar),
+-- Responsibility: HUD (role banner, countdown, scoreboard, movement cooldowns),
+-- Task/spec: stamina removal and compact action dock, approved 2026-10-24.
 -- Task/spec: Lihim na Target mode HUD and recaps, approved 2026-10-23.
 -- Task/spec: simple click-to-tag HUD cleanup, approved 2026-10-18.
 -- Task/spec: Agawan ng Panyo recaps and splash, approved 2026-10-23.
@@ -11,8 +12,6 @@
 -- See UI/UX Specification and Config.Match / Config.Events.
 --
 -- HUD v1.1 (T09 playtest slice + RS_01 skill chip):
---   • Stamina bar — bottom left, Runner-only (UI/UX Spec §2), fill tween-smoothed
---     at the bridge's 10 Hz rate, pulses red when depleted (≤ StaminaDepletedMin)
 --   • Dash cooldown chip — "Q" keycap, vertical cooldown wipe + live countdown,
 --     pops green the instant it becomes ready
 --   • Skill chip — "E" keycap + skill name caption, cooldown wipe/countdown from
@@ -33,7 +32,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
-local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
@@ -76,9 +74,6 @@ local function fmtTaya(sec: number): string
 end
 
 -- ── Palette (placeholder; Art Bible pass later in T14) ────────────────────────
-local COL_FILL_OK    = Color3.fromRGB(86, 214, 90)
-local COL_LOW        = Color3.fromRGB(226, 61, 61)
-local COL_LOW_DARK   = Color3.fromRGB(96, 24, 24)
 local COL_PANEL      = Color3.fromRGB(18, 18, 24)
 local COL_TEXT       = Color3.fromRGB(235, 235, 240)
 local COL_STROKE_CD  = Color3.fromRGB(90, 90, 100)
@@ -108,64 +103,19 @@ Theme.screen(gui, Theme.Layers.HUD)
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = PlayerGui
 
--- ── Bottom-left cluster: stamina bar + dash chip ──────────────────────────────
+-- ── Bottom-left movement and skill chips ────────────────────────────────────
 local cluster = Instance.new("Frame")
 cluster.Name = "MoveCluster"
 cluster.AnchorPoint = Vector2.new(0, 1)
 cluster.Position = UDim2.fromScale(0.015, 0.97)
-cluster.Size = UDim2.fromOffset(364, 56) -- room for stamina + dash chip + skill chip
+cluster.Size = UDim2.fromOffset(240, 56)
 cluster.BackgroundTransparency = 1
 cluster.Parent = gui
 
-local title = Instance.new("TextLabel")
-title.Name = "StaminaLabel"
-title.BackgroundTransparency = 1
-title.Position = UDim2.fromOffset(2, 0)
-title.Size = UDim2.fromOffset(140, 14)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 11
-title.Text = "STAMINA"
-title.TextColor3 = COL_TEXT
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.TextStrokeTransparency = 0.6
-title.Parent = cluster
-
-local barBg = Instance.new("Frame")
-barBg.Name = "BarBG"
-barBg.Position = UDim2.fromOffset(2, 18)
-barBg.Size = UDim2.fromOffset(220, 16)
-barBg.BackgroundColor3 = COL_PANEL
-barBg.BackgroundTransparency = 0.25
-barBg.BorderSizePixel = 0
-barBg.ClipsDescendants = true
-barBg.Parent = cluster
-corner(barBg, 4)
-stroke(barBg, Color3.new(0, 0, 0), 1)
-
-local fill = Instance.new("Frame")
-fill.Name = "Fill"
-fill.Size = UDim2.fromScale(1, 1) -- corrected on first attribute read
-fill.BackgroundColor3 = COL_FILL_OK
-fill.BorderSizePixel = 0
-fill.Parent = barBg
-corner(fill, 4)
-
-local pct = Instance.new("TextLabel")
-pct.Name = "Pct"
-pct.BackgroundTransparency = 1
-pct.Size = UDim2.fromScale(1, 1)
-pct.Font = Enum.Font.GothamBold
-pct.TextSize = 10
-pct.Text = "100"
-pct.TextColor3 = Color3.new(1, 1, 1)
-pct.TextStrokeTransparency = 0.5
-pct.ZIndex = 3
-pct.Parent = barBg
-
--- Dash cooldown chip (right of the bar).
+-- Dash cooldown chip.
 local chip = Instance.new("Frame")
 chip.Name = "DashChip"
-chip.Position = UDim2.fromOffset(236, 10)
+chip.Position = UDim2.fromOffset(2, 10)
 chip.Size = UDim2.fromOffset(44, 44)
 chip.BackgroundColor3 = COL_PANEL
 chip.BackgroundTransparency = 0.15
@@ -201,7 +151,7 @@ keyText.Parent = chip
 local chipCaption = Instance.new("TextLabel")
 chipCaption.Name = "DashCaption"
 chipCaption.BackgroundTransparency = 1
-chipCaption.Position = UDim2.fromOffset(232, 44)
+chipCaption.Position = UDim2.fromOffset(0, 44)
 chipCaption.Size = UDim2.fromOffset(52, 12)
 chipCaption.Font = Enum.Font.Gotham
 chipCaption.TextSize = 9
@@ -213,7 +163,7 @@ chipCaption.Parent = cluster
 -- Skill chip (right of the dash chip): "E" keycap + name caption, CD wipe.
 local skillChip = Instance.new("Frame")
 skillChip.Name = "SkillChip"
-skillChip.Position = UDim2.fromOffset(296, 10)
+skillChip.Position = UDim2.fromOffset(82, 10)
 skillChip.Size = UDim2.fromOffset(44, 44)
 skillChip.BackgroundColor3 = COL_PANEL
 skillChip.BackgroundTransparency = 0.15
@@ -249,7 +199,7 @@ skillKey.Parent = skillChip
 local skillCaption = Instance.new("TextLabel")
 skillCaption.Name = "SkillCaption"
 skillCaption.BackgroundTransparency = 1
-skillCaption.Position = UDim2.fromOffset(284, 44)
+skillCaption.Position = UDim2.fromOffset(74, 44)
 skillCaption.Size = UDim2.fromOffset(76, 12)
 skillCaption.Font = Enum.Font.Gotham
 skillCaption.TextSize = 9
@@ -472,55 +422,17 @@ local function attrStr(name: string, fallback: string): string
 	return fallback
 end
 
--- ── Stamina bar logic ─────────────────────────────────────────────────────────
-local fillTween: Tween? = nil
-local flashConn: RBXScriptConnection? = nil
+-- ── Movement chip visibility ────────────────────────────────────────────────
 local curRole = attrStr("HRushRole", "Runner")
 local curSkillId = "" -- granted skill id (declared early so visibility logic sees it)
 
-local function setFlash(on: boolean)
-	if on and not flashConn then
-		-- Fast red pulse while depleted (~2 Hz); stops when stamina recovers.
-		flashConn = RunService.Heartbeat:Connect(function(t: number)
-			local a = math.sin(t * 12) * 0.5 + 0.5 -- 0..1
-			fill.BackgroundColor3 = COL_LOW:Lerp(COL_LOW_DARK, a)
-		end)
-	elseif not on and flashConn then
-		flashConn:Disconnect()
-		flashConn = nil
-		fill.BackgroundColor3 = COL_FILL_OK
-	end
-end
-
-local function updateStamina()
-	local stamina = attrNum("HRushStamina", Mv.StaminaMax)
-	local max = math.max(1, attrNum("HRushStaminaMax", Mv.StaminaMax))
-	local ratio = math.clamp(stamina / max, 0, 1)
-
-	-- Tween-smoothed fill: 10 Hz bridge + 0.12 s tween = continuous-looking bar.
-	if fillTween then
-		fillTween:Cancel()
-	end
-	fillTween = TweenService:Create(
-		fill,
-		TweenInfo.new(0.12, Enum.EasingStyle.Linear),
-		{ Size = UDim2.fromScale(ratio, 1) }
-	)
-	fillTween:Play()
-
-	pct.Text = tostring(math.floor(stamina + 0.5))
-	setFlash(stamina <= Mv.StaminaDepletedMin and curRole == "Runner")
-end
-
 local function updateVisibility()
-	-- Stamina and dash stay Runner-only; the skill chip follows the grant list
+	-- Dash stays Runner-only; the skill chip follows the grant list
 	-- instead, so Config.Debug.AllowAnyRoleForSkills can show it on Taya too.
 	-- The chip is also a circle (not a rounded square), so it reads apart from
 	-- the dash chip by SHAPE, not only by color.
 	local isRunner = (curRole == "Runner")
 	local hasSkill = (curSkillId ~= "")
-	title.Visible = isRunner
-	barBg.Visible = isRunner
 	chip.Visible = isRunner
 	chipCaption.Visible = isRunner
 	cluster.Visible = isRunner or hasSkill or attrStr("HRushSkillId_RS03", "") ~= ""
@@ -1707,9 +1619,11 @@ local function applyOverlayGate()
 	tagFeed.Size = UDim2.fromOffset(if compact then 190 else 320, if compact then 74 else 160)
 	cluster.Position = if compact then UDim2.fromOffset(12, 160) else UDim2.fromScale(0.015, 0.97)
 	cluster.AnchorPoint = if compact then Vector2.new(0, 0) else Vector2.new(0, 1)
-	cluster.Size = UDim2.fromOffset(if compact then 180 else 364, if compact then 36 else 56)
+	cluster.Size = UDim2.fromOffset(240, if compact then 44 else 56)
 	cluster.ClipsDescendants = compact
-	barBg.Size = UDim2.fromOffset(if compact then 178 else 220, 16)
+	chip.Position = UDim2.fromOffset(2, if compact then 0 else 10)
+	skillChip.Position = UDim2.fromOffset(82, if compact then 0 else 10)
+	tsinelasChip.Position = UDim2.fromOffset(TS.SlotOffsetX, if compact then 0 else 10)
 end
 
 local function setPhase(st: string?)
@@ -1837,8 +1751,6 @@ local function hookAttr(name: string, fn: () -> ())
 	fn() -- apply current value immediately (covers late UI load)
 end
 
-hookAttr("HRushStamina", updateStamina)
-hookAttr("HRushStaminaMax", updateStamina)
 hookAttr("HRushDashCD", updateDashCD)
 hookAttr("HRushSkillCD", updateSkillCD)
 hookAttr("HRushSkillId", updateSkillCD)
@@ -1850,16 +1762,13 @@ hookAttr("HRushStunned", updateTsinelasCD)
 hookAttr("HRushRole", function()
 	curRole = attrStr("HRushRole", curRole)
 	updateVisibility()
-	updateStamina()
 	updateSkillCD()
 	updateRoleBanner()
 	updateTsinelasCD()
 end)
-hookAttr("HRushBoost", updateStamina) -- reserve: boost-active bar highlight (T14)
 hookAttr("HRushState", updateTsinelasCD) -- round transitions refresh the dimmed state
 
 updateVisibility()
-updateStamina()
 updateDashCD()
 updateSkillCD()
 updateTsinelasCD()

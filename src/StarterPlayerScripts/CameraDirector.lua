@@ -18,6 +18,8 @@
 -- Task/spec: camera overhaul Phase 4, approved 2026-10-18.
 -- Task/spec: momentum step 4 FOV composition, 2026-10-19.
 -- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
+-- Task/spec: first-person-only match camera, approved 2026-10-24.
+-- Task/spec: removal of manual sprint touch action, approved 2026-10-24.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -182,7 +184,6 @@ local SHOULDER_ACTION = "HRUSH_CameraShoulder"
 local LOOKBACK_ACTION = "HRUSH_CameraLookBack"
 local VIEW_ACTION = "HRUSH_CameraView"
 local TOUCH_BUTTON_ACTIONS = {
-	"HRUSH_Sprint_Touch",
 	"HRUSH_Dash_Touch",
 	"HRUSH_Slide_Touch",
 	"HRUSH_Skill_Touch",
@@ -378,6 +379,9 @@ end
 -- assist only has an effect while actually moving.
 local function lookBackAllowed(): boolean
 	if not bound or yielded then
+		return false
+	end
+	if viewMode == "FirstPerson" then
 		return false
 	end
 	if Cfg.LookBack.Enabled ~= true or ClientSettings.get("lookBackEnabled") ~= true then
@@ -943,6 +947,8 @@ local function acquire()
 	if not inMatch() then
 		return
 	end
+	viewMode = "FirstPerson"
+	pendingMode = nil
 	local cam = Workspace.CurrentCamera
 	if cam == nil then
 		return
@@ -1107,11 +1113,10 @@ function onRender(dt: number)
 		if shouldYield then
 			yielded = true
 			-- Presence still runs while yielded: body facing always hands
-			-- AutoRotate back, and first person keeps the head hidden during
-			-- the RS_03 aim (a head-based camera) but shows the body while
-			-- the TargetLock camera owns a third-person style view.
+			-- AutoRotate back and keep the head hidden while either eye-height
+			-- aim or target lock owns the first-person camera.
 			stepFacing(dt, nil)
-			applyHeadHidden(viewMode == "FirstPerson" and aimActive)
+			applyHeadHidden(viewMode == "FirstPerson" and (aimActive or lockActive))
 			return
 		end
 		yielded = false
@@ -1410,6 +1415,12 @@ end
 
 local function onMatchChanged()
 	if inMatch() and Cfg.Enabled then
+		-- Set the required view before the deferred lobby-camera handoff.
+		viewMode = "FirstPerson"
+		pendingMode = nil
+		blendLeft = 0
+		blendFrom = nil
+		visDirty = true
 		-- One frame later, so the lobby gate has finished its own handoff
 		-- (Custom, FOV 70, CameraSubject) before we capture it.
 		task.spawn(function()
@@ -1418,6 +1429,9 @@ local function onMatchChanged()
 		end)
 	else
 		release(true)
+		pendingMode = nil
+		viewMode = if ClientSettings.get("cameraViewMode") == "FirstPerson" and modeEnabled()
+			then "FirstPerson" else "ThirdPerson"
 	end
 end
 
@@ -1457,9 +1471,12 @@ function CameraDirector.start()
 		end
 	end)
 	refreshSensitivity()
-	-- Phase 4: honor a saved view mode; first person is opt-in.
+	-- The lobby retains its saved preference; a match always starts in first person.
 	local savedMode = ClientSettings.get("cameraViewMode")
 	if savedMode == "FirstPerson" and modeEnabled() then
+		viewMode = "FirstPerson"
+	end
+	if inMatch() then
 		viewMode = "FirstPerson"
 	end
 	if localPlayer:GetAttribute("HRushAiming") == "RS_03" then
@@ -1491,9 +1508,11 @@ function CameraDirector.start()
 		if key == "cameraSensitivity" then
 			refreshSensitivity()
 		elseif key == "cameraViewMode" then
-			-- The setting is the single source of truth: every toggle request
-			-- lands here and waits until the frame is free.
-			pendingMode = if value == "FirstPerson" and modeEnabled() then "FirstPerson" else "ThirdPerson"
+			-- A preference change cannot override the required match view.
+			if not inMatch() then
+				pendingMode = nil
+				viewMode = if value == "FirstPerson" and modeEnabled() then "FirstPerson" else "ThirdPerson"
+			end
 		end
 	end)
 
@@ -1518,9 +1537,8 @@ function CameraDirector.start()
 	ContextActionService:BindActionAtPriority(LOOKBACK_ACTION, onLookBackAction, false,
 		Enum.ContextActionPriority.Default.Value, Cfg.LookBack.Key, Cfg.LookBack.GamepadKey)
 
-	-- View mode toggle (Phase 4). Passes whenever the match camera is not the
-	-- live input owner, so the settings panel keeps its DPad navigation and
-	-- the lobby keys stay untouched.
+	-- Match view is fixed. Pass these keys through so settings and other
+	-- controls can still use them.
 	ContextActionService:BindActionAtPriority(VIEW_ACTION, function(_name, inputState, _input)
 		if inputState ~= Enum.UserInputState.Begin then
 			return Enum.ContextActionResult.Pass
@@ -1528,7 +1546,7 @@ function CameraDirector.start()
 		if UserInputService:GetFocusedTextBox() ~= nil then
 			return Enum.ContextActionResult.Pass
 		end
-		if not bound or not actionPhase() or settingsOpen() or not modeEnabled() then
+		if inMatch() or not bound or not actionPhase() or settingsOpen() or not modeEnabled() then
 			return Enum.ContextActionResult.Pass
 		end
 		CameraDirector.toggleViewMode()
@@ -1550,13 +1568,10 @@ function CameraDirector.setLookBackTouch(held: boolean)
 	lookBackTouchHeld = held == true
 end
 
--- Phase 4 view mode API. toggleViewMode writes the request through
--- ClientSettings, so the Changed handler above stays the single path that
--- arms a deferred switch; the ChaseHUD touch button and the key bind both
--- call it. getViewMode reports the active mode for perspective-specific UI
--- and animation playback.
+-- Preserve the view-mode API for callers outside a match. Match requests do
+-- nothing; getViewMode reports the active mode for local animation playback.
 function CameraDirector.toggleViewMode()
-	if not modeEnabled() then
+	if inMatch() or not modeEnabled() then
 		return
 	end
 	local current = if pendingMode ~= nil then pendingMode else viewMode

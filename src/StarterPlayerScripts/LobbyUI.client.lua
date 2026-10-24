@@ -6,6 +6,7 @@
 -- Task/spec: momentum step 3 presentation toggles, 2026-10-19.
 -- Task/spec: owner-approved first-person FOV setting and in-match settings, 2026-10-22.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
+-- Task/spec: earned sprint help and loading tips, approved 2026-10-24.
 --[[
 	HABULAN RUSH - Lobby UI
 	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
@@ -2211,7 +2212,7 @@ do
 		"Classic Tag: click, R2, or TAG to tag. Lowest total Taya time wins.",
 		"Agawan ng Panyo: hold near the cloth to pick it up; STEAL the carrier. Longest hold wins.",
 		"Lihim na Target: CAPTURE only your private target. Most captures wins.",
-		"Move with your device controls. Sprint, dash, slide, and granted skills appear during play.",
+		"Chain two slides or landing rolls to sprint automatically for three seconds.",
 	}
 	for index, line in help do
 		local card = createCard(scroll, 0, 0, 584, 66)
@@ -2634,7 +2635,7 @@ applyMatchGate()
 local LOADING_WAIT_STATES = { MS_01 = true }
 local LOADING_MIN_SECONDS = 1.5
 local LOADING_TIPS = {
-	"Sprint uses stamina. Watch the bar during a chase.",
+	"Chain two slides or landing rolls within 2.5 seconds to earn sprint.",
 	"Dash and slide are shown in the ability dock when ready.",
 }
 local MODE_TIPS = {

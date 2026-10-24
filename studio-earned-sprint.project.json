@@ -1,0 +1,33 @@
+{
+  "name": "HabulanRushEarnedSprintSync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": { "$path": "src/ReplicatedStorage/Config.lua" }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "MovementAuthority": { "$path": "src/ServerScriptService/MovementAuthority.lua" }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "MovementController": { "$path": "src/StarterPlayerScripts/MovementController.client.lua" },
+        "MomentumController": { "$path": "src/StarterPlayerScripts/MomentumController.lua" },
+        "MomentumHUD": { "$path": "src/StarterPlayerScripts/MomentumHUD.client.lua" },
+        "UIController": { "$path": "src/StarterPlayerScripts/UIController.client.lua" },
+        "TouchLayoutController": { "$path": "src/StarterPlayerScripts/TouchLayoutController.client.lua" },
+        "CameraDirector": { "$path": "src/StarterPlayerScripts/CameraDirector.lua" },
+        "LobbyUI": { "$path": "src/StarterPlayerScripts/LobbyUI.client.lua" }
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@
 -- Integration attributes, set by the server on Players:
 -- HRushRole: "Taya" for Taya; "Runner" for Runner.
 -- Task/spec: Lihim na Target disables target lock without a role toast, approved 2026-10-23.
+-- Task/spec: keep target lock at eye height during first-person-only matches, approved 2026-10-24.
 -- IsTaya: true for Taya; false or absent for a Runner (legacy / fallback).
 -- LockDelayUntil: server timestamp; T12 blocks acquisition until it expires.
 -- LockDisabled: true while TS_03 blocks acquisition and breaks the lock.
@@ -50,7 +51,8 @@ local ASSIST_BIND = "TargetLockAssist"
 local assistBound = false
 local steerFlag = false -- set true on any camera input this frame
 local stickMag = 0      -- right-stick magnitude, kept while held
-local camOffset: Vector3? = nil  -- world-space camera-to-HRP offset, captured at lock
+local camOffset: Vector3? = nil  -- camera-to-root offset captured outside matches
+local matchEyeOffset = Vector3.new(0, Config.Camera.FirstPerson.CameraHeight, 0)
 local smoothedAim: Vector3? = nil  -- EMA-smoothed aim point for jitter-free tracking
 local TOGGLE_ACTION = "HRUSH_TargetLockToggle"
 local CYCLE_ACTION = "HRUSH_TargetLockCycle"
@@ -373,11 +375,10 @@ local function onAssistRender(dt: number)
 		smoothedAim = smoothedAim:Lerp(aimPoint :: Vector3, smoothRate)
 	end
 
-	-- Position the camera at the captured world-space offset from the player.
-	-- This keeps the camera following the player naturally (same distance
-	-- and height as when the lock started) while we rotate it to look at
-	-- the target.
-	local camPos = playerRoot.Position + (camOffset or Vector3.new(0, 5, -12))
+	-- Match lock stays at eye height; outside a match, keep the captured offset.
+	local offset = if LocalPlayer:GetAttribute("HRushInMatch") == true
+		then matchEyeOffset else (camOffset or Vector3.new(0, 5, -12))
+	local camPos = playerRoot.Position + offset
 
 	-- Simple exponential lerp toward the target look direction.
 	-- No deadzone, no rateRamp, no maxTurn cap — those were all needed to
@@ -412,11 +413,13 @@ local function bindAssist()
 		return
 	end
 
-	-- Capture the camera's world-space offset from the player's HRP so we
-	-- can maintain the same follow distance/height in Scriptable mode.
+	-- Match lock uses an eye-height offset. Outside a match, capture the live
+	-- camera offset for the Scriptable assist.
 	local playerChar = LocalPlayer.Character
 	local playerRoot = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
-	if playerRoot and playerRoot:IsA("BasePart") then
+	if LocalPlayer:GetAttribute("HRushInMatch") == true then
+		camOffset = matchEyeOffset
+	elseif playerRoot and playerRoot:IsA("BasePart") then
 		camOffset = camera.CFrame.Position - playerRoot.Position
 	else
 		camOffset = Vector3.new(0, 5, -12)

@@ -1,12 +1,13 @@
 --!strict
 -- ServerScriptService/Bootstrap.server.lua
 -- Owner: Project Owner
--- Responsibility: build the playable arena so the place never loads empty.
+-- Responsibility: use the authored map, with a greybox fallback for source-only places.
 -- Task/spec: T08 arena bootstrap and T09 movement Step 1 Config migration.
 -- Task/spec: Agawan ng Panyo Kalsada pickup marker, approved 2026-10-23.
+-- Task/spec: open-experience random round spawns, approved 2026-10-24.
 --   Street baseplate (150x150), boundary walls, sidewalks, central basketball
 --   court, sari-sari store cover blocks, 4 vault-height jeepneys (roof <= 4),
---   4 crate vaults, 2 low gaps for sliding, 8 equidistant spawns (r = 55),
+--   4 crate vaults and 2 low gaps for sliding in the fallback greybox,
 --   world lighting defaults, and StarterPlayer character defaults.
 -- Level-design rules encoded here (GDD §9 / T08 / Art Bible):
 --   * Metrics derive from Config.Movement: JP50 jump ~7.2 studs -> all vaults
@@ -33,8 +34,7 @@ local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
 
 local Map = Config.Maps.Kalsada
 local GB = Map.greybox
-local ARENA_SIZE = Map.size.X -- 150 studs, square
-local SPAWN_COUNT = Map.spawnCount -- 8 equidistant
+local ARENA_SIZE = GB.size -- legacy greybox dimensions
 
 -- Palette (Art Bible: bright, stylized, readable; court distinct from street)
 local COL = {
@@ -53,8 +53,6 @@ local COL = {
 	crate     = Color3.fromRGB(170, 130, 80),
 	tunnel    = Color3.fromRGB(178, 178, 172),
 	lintel    = Color3.fromRGB(222, 182, 70),
-	spawn     = Color3.fromRGB(60, 140, 220),
-	spawnRing = Color3.fromRGB(90, 200, 255),
 }
 
 local folder: Folder -- KalsadaGreybox, assigned in buildGreybox()
@@ -242,62 +240,6 @@ local function buildLowGaps()
 	end
 end
 
--- ── Spawns: 8 equidistant pads @ r=55, facing the centre, neon ground rings ──
-local function ensureSpawns()
-	local spawnFolder = Workspace:FindFirstChild("SpawnLocations")
-	if not spawnFolder then
-		spawnFolder = Instance.new("Folder")
-		spawnFolder.Name = "SpawnLocations"
-		spawnFolder.Parent = Workspace
-	end
-	for i = 1, SPAWN_COUNT do
-		local angle = (math.pi * 2 / SPAWN_COUNT) * (i - 1)
-		local cx = math.cos(angle) * GB.spawnRadius
-		local cz = math.sin(angle) * GB.spawnRadius
-		local name = string.format("Spawn%02d", i)
-
-		local spawn = spawnFolder:FindFirstChild(name)
-		if not spawn then
-			spawn = Instance.new("SpawnLocation")
-			spawn.Name = name
-			spawn.Parent = spawnFolder
-		end
-		if spawn:IsA("SpawnLocation") then
-			spawn.Position = Vector3.new(cx, 3, cz) -- 3 studs up: never clips the floor
-			spawn.Size = Vector3.new(GB.spawnPadSize, 1.2, GB.spawnPadSize)
-			spawn.Anchored = true
-			spawn.Enabled = true
-			spawn.AllowTeamChangeOnTouch = false
-			spawn.Neutral = true
-			spawn.Material = Enum.Material.SmoothPlastic
-			spawn.Color = COL.spawn
-			spawn.TopSurface = Enum.SurfaceType.Smooth
-			spawn.BottomSurface = Enum.SurfaceType.Weld
-			-- face the court (derived: forward = -Z -> yaw = 90deg - theta)
-			spawn.Orientation = Vector3.new(0, 90 - math.deg(angle), 0)
-			local decal = spawn:FindFirstChildOfClass("Decal")
-			if decal then
-				decal:Destroy()
-			end
-		end
-
-		-- neon ground ring: visible from anywhere on the street (readability)
-		local ring = Instance.new("Part")
-		ring.Name = "SpawnRing"
-		ring.Shape = Enum.PartType.Cylinder
-		ring.Size = Vector3.new(0.2, 16, 16) -- cylinder axis X -> rotate flat
-		ring.CFrame = CFrame.new(cx, 0, cz) * CFrame.Angles(0, 0, math.rad(90))
-		ring.Anchored = true
-		ring.CanCollide = false
-		ring.Color = COL.spawnRing
-		ring.Material = Enum.Material.Neon
-		ring.Parent = folder
-	end
-end
-
--- Full blockout rebuild: destroy + regenerate (idempotent on every boot/resync).
--- `rebuilding` suppresses the ChildRemoved listener while we destroy our own
--- folder, otherwise self-destruction would schedule an infinite rebuild loop.
 local rebuilding = false
 local function buildGreybox()
 	rebuilding = true
@@ -321,7 +263,6 @@ local function buildGreybox()
 	buildJeepneys()
 	buildCrates()
 	buildLowGaps()
-	ensureSpawns()
 	rebuilding = false
 end
 
@@ -341,8 +282,13 @@ local function ensureCharacterDefaults()
 end
 
 -- ── Boot ─────────────────────────────────────────────────────────────────────
-ensureBaseplate()
-buildGreybox()
+local map = Workspace:FindFirstChild("Map")
+local authoredRegions = map and map:FindFirstChild(Config.Spawn.RegionFolder)
+local authoredMap = authoredRegions ~= nil and authoredRegions:IsA("Folder")
+if not authoredMap then
+	ensureBaseplate()
+	buildGreybox()
+end
 ensureLighting()
 ensureCharacterDefaults()
 
@@ -369,19 +315,15 @@ ensureCharacterDefaults()
 -- [DISABLED] end
 
 -- Late-join safety: if Workspace gets cleared, rebuild once.
-Workspace.ChildRemoved:Connect(function(child)
-	if child.Name == "KalsadaBaseplate" then
-		task.defer(ensureBaseplate)
-	end
-	if child.Name == "KalsadaGreybox" and not rebuilding then
-		task.defer(buildGreybox)
-	end
-end)
+if not authoredMap then
+	Workspace.ChildRemoved:Connect(function(child)
+		if child.Name == "KalsadaBaseplate" then task.defer(ensureBaseplate) end
+		if child.Name == "KalsadaGreybox" and not rebuilding then task.defer(buildGreybox) end
+	end)
+end
 
-print(string.format(
-	"[Bootstrap] Kalsada greybox ready — %dx%d street, walls h=%d, court %dx%d, "
-		.. "4 jeepneys + 4 crates (vaults <=4), 2 low gaps (%.1f studs), "
-		.. "%d spawns @ r=%d, dead-end rule >=10 studs audited. T09 movement testable.",
-	ARENA_SIZE, ARENA_SIZE, GB.wallHeight, GB.courtLength, GB.courtWidth,
-	GB.lowGapHeight, SPAWN_COUNT, GB.spawnRadius
-))
+if authoredMap then
+	print("[Bootstrap] Authored Kalsada map ready; origin spawn remains for lobby respawns")
+else
+	warn("[Bootstrap] Authored SpawnRegions missing; legacy greybox loaded without round pads")
+end

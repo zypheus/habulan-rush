@@ -13,13 +13,15 @@
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
 -- Task/spec: owner-approved first-person FOV setting, 2026-10-22.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
+-- Task/spec: open-experience random round spawns, approved 2026-10-24.
+-- Task/spec: earned sprint and movement balance, approved 2026-10-24.
 
 local Config = {}
 
 Config.Movement = {
 	RunnerWalkSpeed   = 16, -- [LOCKED GDD RM_01, DESIGN_LOCK F08]
 	RunnerSprintSpeed = 21, -- [LOCKED GDD RM_02, DESIGN_LOCK F08]
-	TayaSprintSpeed = 21, -- [LOCKED] Project-owner Taya sprint revision, 2026-10-16
+	TayaSprintSpeed = 22, -- [LOCKED] Project-owner earned-sprint balance revision, 2026-10-24
 	SpeedScale = 1.2, -- [SD] approved 2026-10-15; multiplies every movement speed and speed-derived distance (1 = locked bases)
 	JumpPower = 50, -- [SD] existing Bootstrap value moved here without behavior change
 	FallGravityMult = 1.6, -- [SD] Part 1 total gravity multiplier while falling
@@ -33,15 +35,11 @@ Config.Movement = {
 	SprintFovBoost = 10, -- [SD] reserved; Phase 2 sprint FOV lives in Config.Camera.Effects.Sprint
 	FovTweenTime = 0.2, -- [SD] reserved; Phase 2 sprint FOV easing lives in Config.Camera.Effects.Sprint
 	SprintVfxMinSpeedPct = 0.9, -- [SD] share of effective sprint speed that starts the sprint camera widen
-	StaminaMax         = 100,
-	StaminaDrainRate   = 20,
-	StaminaRegenRate   = 16, -- [SD] was 12; recharges one dash in ~1.9 s with the 0.6 s delay
-	StaminaRegenDelay  = 0.6, -- [SD] was 1.0
-	StaminaDepletedMin = 10,
+	AutoSprintChainCount = 2, -- [SD] accepted slides or landing rolls required
+	AutoSprintDuration = 3.0, -- [SD] seconds after the qualifying action ends
 	DashDistance           = 12,
 	DashDuration           = 0.2,
-	DashCooldown           = 1.5, -- [SD] was 6.0; stamina cost governs spam now
-	DashStaminaCost        = 20, -- [SD] stamina per dash; 5 dashes empty a full tank
+	DashCooldown           = 5.0, -- [SD] Runner-only dash; sole dash use limiter
 	DashTagInvulnTime      = 0.15,
 	DashSoundId            = "rbxassetid://115548807322300", -- [SD] dash whoosh (Pixabay Sound Effects, royalty-free, see ASSET_LOG)
 	DashSoundVolume        = 0.7, -- [SD] dash whoosh volume 0-1
@@ -207,7 +205,8 @@ Config.Momentum = {
 	MovingThreshold = 0.1, -- [SD] Horizontal studs/s treated as movement
 	SyncInterval = 0.2, -- [SD] Server correction cadence while momentum decays
 	ZeroSyncInterval = 1.0, -- [SD] Correction cadence when rejected local actions predict momentum from zero
-	ChainWindow = 2.5, -- [SD] Cosmetic action chain window
+	ChainWindow = 2.5, -- [SD] Server-owned accepted-action chain window
+	ChainSlideMinWalkPct = 0.5, -- [SD] server-observed walking-speed share for slide chain credit
 	TierThresholds = { 0.25, 0.50, 0.85 }, -- [SD] Fractions of Cap
 	GlobalSpeedCeiling = 30, -- [SD] Maximum ordinary movement speed after modifiers
 	TayaBuildsMomentum = true, -- [SD] Taya uses the same gains and decay
@@ -609,7 +608,7 @@ Config.Skills = {
 		weakness = "No air steering",
 		counterCondition = "Escapes a tag action or Lambat while airborne",
 	},
-	RS_02 = { id="RS_02", name="Pekeng Takbo", role="Runner", type="Decoy", cooldown=18, duration=4, range=0, params={breakLock=true}, tell={vfx="SmokePuff",sfx="Psssh"}, weakness="Decoy has no stamina and runs in a straight line", counterCondition="Taya locks onto or tags the decoy" },
+	RS_02 = { id="RS_02", name="Pekeng Takbo", role="Runner", type="Decoy", cooldown=18, duration=4, range=0, params={breakLock=true}, tell={vfx="SmokePuff",sfx="Psssh"}, weakness="Decoy runs in a straight line", counterCondition="Taya locks onto or tags the decoy" },
 	RS_03 = {
 		id       = "RS_03",
 		name     = "Tsinelas Throw",
@@ -690,10 +689,26 @@ Config.Performance = { MaxPartsPerMap=6000, MaxActiveEmitters=30, ServerFrameBud
 
 Config.Maps = {
 	Kalsada = {
-		id="Kalsada", name="Barangay Kalsada", size=Vector2.new(150,150), spawnCount=8, rushEvent="CourtRush",
-		greybox = { wallHeight=14, sidewalkWidth=8, spawnRadius=55, spawnPadSize=8, courtLength=56, courtWidth=32, buildingX=20, buildingZ=12, buildingHeight=10, jeepneyLength=12, jeepneyWidth=5, jeepneyHeight=4, crateSize=4, crateHeight=3.5, lowGapHeight=3.5, lowGapSpan=12 },
+		id="Kalsada", name="Barangay Kalsada", size=Vector2.new(467,512), rushEvent="CourtRush",
+		-- [SD] Authored-map walking bounds, inset from the observed Workspace.map ground edges.
+		arena = { minX=-248, maxX=203, minZ=-248, maxZ=248, minY=-10, maxY=35 },
+		greybox = { size=150, wallHeight=14, sidewalkWidth=8, courtLength=56, courtWidth=32, buildingX=20, buildingZ=12, buildingHeight=10, jeepneyLength=12, jeepneyWidth=5, jeepneyHeight=4, crateSize=4, crateHeight=3.5, lowGapHeight=3.5, lowGapSpan=12 },
 	},
 	Binaha = { id="Binaha", name="Binaha na Baryo", size=Vector2.new(150,150), spawnCount=8, rushEvent="TubigTumataas", floodSpeedMult=0.80, evacSafeWindowDuration=1.5 },
+}
+
+Config.Spawn = { -- [SD] Full authored-map round spawn sampling.
+	GroundTag = "HRUSH_SpawnGround",
+	RegionFolder = "SpawnRegions",
+	MinSeparation = 20,
+	MaxAttemptsPerPlayer = 64,
+	RegionEdgeInset = 4,
+	MinGroundNormalY = 0.85,
+	MaxFootHeightDifference = 1.5,
+	FootprintRadius = 2,
+	ClearanceSize = Vector3.new(4, 6, 4),
+	OverheadProbeHeight = 30,
+	PivotHeight = 3,
 }
 
 Config.Party = { MaxSize=4, SlotSpacing=3.2 }
@@ -718,9 +733,6 @@ Config.Panyo = {
 	PickupPollInterval = 0.1, -- [SD] server collection and carrier watchdog cadence
 	NewCarrierSafe = 1.0, -- [SD] protection after a pickup or steal
 	PreviousCarrierBlock = 2.0, -- [SD] previous carrier cannot steal back immediately
-	MaxArenaCoordinate = 70, -- [SD] Kalsada bounds inside the walls
-	MinArenaY = -10, -- [SD] invalid low position recovery threshold
-	MaxArenaY = 35, -- [SD] invalid high position recovery threshold
 	MaxObservedSpeed = 65, -- [SD] pickup plausibility speed in studs per second
 	PositionSlack = 10, -- [SD] network update allowance for the pickup plausibility check
 	InvalidMoveCooldown = 1.5, -- [SD] wait after an impossible pickup displacement
@@ -758,9 +770,6 @@ Config.SecretHunt = {
 	AssignmentAttempts = 128, -- [SD] bounded randomized cycle search
 	SyncRequestInterval = 1, -- [SD] client snapshot request guard
 	WatchInterval = 0.25, -- [SD] server arena and hint cadence
-	ArenaXzLimit = 70, -- [SD] Kalsada bounds inside the walls
-	ArenaMinY = -10, -- [SD] recovery below arena
-	ArenaMaxY = 35, -- [SD] recovery above arena
 	DistanceBucket = 10, -- [SD] approximate target distance in studs
 	DangerDistance = 22, -- [SD] private nearby-Hunter warning distance
 	HintPulseDuration = 1.25, -- [SD] brief directional hint lifetime
@@ -773,7 +782,7 @@ Config.SecretHunt = {
 }
 
 Config.MapVote = {
-	Pool = { "Kalsada", "Binaha" },
+	Pool = { "Kalsada" }, -- [SD] Only the authored Kalsada map has safe spawn regions.
 	Duration = 10, RevealTime = 1.5,
 	Info = {
 		Kalsada = { tagline="Own the court. Outrun the neighborhood.", event="EVENT · COURT RUSH" },
@@ -1030,7 +1039,6 @@ Config.Sfx = {
 	},
 	Movement = {
 		footstep = "rbxassetid://139613878484113", -- [SD] sprint footstep tap (positional, throttled by dust rate)
-		staminaEmpty = "rbxassetid://81474882182684", -- [SD] stamina depletion cue (once per entry)
 		volume = 0.5, -- [SD] movement one-shot volume 0-1
 		pitchMin = 0.95, -- [SD] footstep pitch variation low
 		pitchMax = 1.05, -- [SD] footstep pitch variation high
@@ -1074,7 +1082,7 @@ Config.UI = {
 	},
 	Tsinelas = {
 		SlotSize = 44,
-		SlotOffsetX = 356,
+		SlotOffsetX = 162, -- [SD] third chip in the compact movement dock
 		KeyLabel = "G",
 		CaptionText = "TSINELAS",
 		ReadyPulseTime = 0.16,

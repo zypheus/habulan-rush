@@ -4,6 +4,7 @@
 -- Responsibility: local momentum prediction, server reconciliation, and local change events.
 -- Task/spec: momentum steps 2 to 4, 2026-10-19.
 -- Task/spec: slide chaining correction, 2026-10-19.
+-- Task/spec: server-confirmed earned sprint chain, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,6 +27,10 @@ local lastSequence = 0
 local lastLocalResetAt = -math.huge
 local previous: { [string]: { at: number, count: number } } = {}
 local confirmedSlide: { at: number, count: number }? = nil
+local chainCount = 0
+local chainExpiresAt = 0
+local sprintReadyAt = 0
+local sprintUntil = 0
 
 local function moving(): boolean
 	local character = player.Character
@@ -47,6 +52,15 @@ end
 function MomentumController.value(): number
 	advance(Workspace:GetServerTimeNow())
 	return amount
+end
+
+function MomentumController.chainState(): (number, number)
+	local visibleCount = if Workspace:GetServerTimeNow() <= chainExpiresAt then chainCount else 0
+	return visibleCount, chainExpiresAt
+end
+
+function MomentumController.sprintWindow(): (number, number)
+	return sprintReadyAt, sprintUntil
 end
 
 function MomentumController.predict(action: string, perfect: boolean?): number
@@ -73,6 +87,10 @@ function MomentumController.hardZero(reason: string)
 	lastSampleAt = lastLocalResetAt
 	previous = {}
 	confirmedSlide = nil
+	chainCount = 0
+	chainExpiresAt = 0
+	sprintReadyAt = 0
+	sprintUntil = 0
 	if hadMomentum then
 		changed:Fire(0, "lost", reason, 0)
 	end
@@ -92,6 +110,15 @@ function MomentumController.start()
 		lastSequence = nextSequence
 		if typeof(payload.serverTime) == "number" and payload.serverTime <= lastLocalResetAt
 			and payload.action ~= "Lost" then return end
+		if typeof(payload.chainCount) == "number" and payload.chainCount >= 0
+			and typeof(payload.chainExpiresAt) == "number" and payload.chainExpiresAt == payload.chainExpiresAt
+			and typeof(payload.sprintReadyAt) == "number" and payload.sprintReadyAt == payload.sprintReadyAt
+			and typeof(payload.sprintUntil) == "number" and payload.sprintUntil == payload.sprintUntil then
+			chainCount = payload.chainCount
+			chainExpiresAt = payload.chainExpiresAt
+			sprintReadyAt = payload.sprintReadyAt
+			sprintUntil = payload.sprintUntil
+		end
 		local now = Workspace:GetServerTimeNow()
 		local oldAmount = amount
 		amount = nextValue
@@ -101,14 +128,14 @@ function MomentumController.start()
 		end
 		if payload.rejectedAction == "Slide" or payload.rejectedAction == "Roll" then
 			previous[payload.rejectedAction] = if payload.rejectedAction == "Slide" then confirmedSlide else nil
-			changed:Fire(amount, "reconcile", nil, 0)
+			changed:Fire(amount, "reconcile", nil, 0, payload)
 			return
 		end
 		if payload.action == "Lost" then
 			previous = {}
 			confirmedSlide = nil
 			lastGainAt = 0
-			if oldAmount > 0 then changed:Fire(0, "lost", "server", 0) end
+			if oldAmount > 0 then changed:Fire(0, "lost", "server", 0, payload) end
 		elseif typeof(payload.action) == "string" then
 			local action = payload.action
 			if typeof(payload.count) == "number" then
@@ -117,7 +144,7 @@ function MomentumController.start()
 			end
 			changed:Fire(amount, "confirmed", action, payload.gain, payload)
 		else
-			changed:Fire(amount, "reconcile", nil, 0)
+			changed:Fire(amount, "reconcile", nil, 0, payload)
 		end
 	end)
 end

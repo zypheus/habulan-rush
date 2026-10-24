@@ -3,13 +3,16 @@
 -- Owner: Project Owner
 -- Responsibility: Private target cycle, captures, protection, streaks, and Hunt phase cues.
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
+-- Task/spec: open-experience random round spawns, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
+local SpawnSelector = require(ServerScriptService:WaitForChild("SpawnSelector"))
 local SecretHuntEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SecretHuntEvent") :: RemoteEvent
 local rules = Config.SecretHunt
 
@@ -22,7 +25,7 @@ type Score = {
 	streakStartedAt: number?,
 	safeUntil: number,
 	lastCaptureAt: number,
-	spawnIndex: number,
+	spawnPosition: Vector3,
 	left: boolean,
 }
 
@@ -158,19 +161,15 @@ local function assignAll(recentA: Player?, recentB: Player?)
 end
 
 local function inArena(position: Vector3): boolean
-	return math.abs(position.X) <= rules.ArenaXzLimit and math.abs(position.Z) <= rules.ArenaXzLimit
-		and position.Y >= rules.ArenaMinY and position.Y <= rules.ArenaMaxY
+	return SpawnSelector.inArena(position)
 end
 
 local function recover(player: Player, score: Score, now: number)
 	local character = player.Character
 	if character == nil then return end
 	finishStreak(player, now)
-	local folder = Workspace:FindFirstChild("SpawnLocations")
-	local spawnName = string.format("Spawn%02d", ((score.spawnIndex - 1) % 8) + 1)
-	local spawn = folder and folder:FindFirstChild(spawnName)
-	local position = if spawn and spawn:IsA("BasePart") then spawn.Position + Vector3.new(0, 3, 0)
-		else Vector3.new(0, 5, 0)
+	local position = SpawnSelector.recoveryPosition(player) or score.spawnPosition
+	score.spawnPosition = position
 	character:PivotTo(CFrame.new(position))
 	score.safeUntil = now + rules.RespawnSafe
 	player:SetAttribute("HRushHuntSafeUntil", score.safeUntil)
@@ -265,7 +264,8 @@ local function bindCharacter(player: Player, character: Model)
 	end)
 end
 
-function SecretHuntMode.PrepareRound(players: { Player }, round: number): boolean
+function SecretHuntMode.PrepareRound(players: { Player }, round: number,
+	spawnPositions: { [Player]: Vector3 }): boolean
 	SecretHuntMode.EndRound()
 	generation += 1
 	prepared = true
@@ -276,11 +276,13 @@ function SecretHuntMode.PrepareRound(players: { Player }, round: number): boolea
 	previousTarget = {}
 	pairCapturedAt = {}
 	lastSyncAt = {}
-	for index, player in ipairs(players) do
+	for _, player in ipairs(players) do
 		if player.Parent == Players then
+			local spawnPosition = spawnPositions[player]
+			if spawnPosition == nil then return false end
 			roster[player] = { player = player, userId = player.UserId, name = player.DisplayName,
 				captures = 0, bestStreak = 0, streakStartedAt = nil, safeUntil = 0,
-				lastCaptureAt = 0, spawnIndex = index, left = false }
+				lastCaptureAt = 0, spawnPosition = spawnPosition, left = false }
 			player:SetAttribute("HRushHuntCaptures", 0)
 			player:SetAttribute("HRushHuntBestStreak", 0)
 			player:SetAttribute("HRushHuntSafeUntil", nil)

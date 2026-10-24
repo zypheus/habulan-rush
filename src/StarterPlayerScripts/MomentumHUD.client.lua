@@ -5,6 +5,7 @@
 -- Task/spec: momentum step 3, 2026-10-19.
 -- Task/spec: slide chaining diagnosis, 2026-10-19.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
+-- Task/spec: server-confirmed chain and earned sprint display, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -95,8 +96,8 @@ local flash = frame("TierFlash", bar, UDim2.fromScale(1, 1), UDim2.fromScale(0, 
 flash.BackgroundTransparency = 1
 flash.ZIndex = 3
 
-local chain = label("Chain", gui, UDim2.fromOffset(180, 28),
-	UDim2.new(0.5, -90, 1, -meterBottom() - 37), 17)
+local chain = label("Chain", gui, UDim2.fromOffset(300, 28),
+	UDim2.new(0.5, -150, 1, -meterBottom() - 37), 17)
 local chainScale = Instance.new("UIScale")
 chainScale.Parent = chain
 local lost = label("Lost", gui, UDim2.fromOffset(240, 30),
@@ -122,7 +123,7 @@ local function layoutMeter()
 	local bottom = meterBottom()
 	bar.Size = UDim2.fromOffset(width, fx.BarHeight)
 	bar.Position = UDim2.new(0.5, -width / 2, 1, -bottom)
-	chain.Position = UDim2.new(0.5, -90, 1, -bottom - 37)
+	chain.Position = UDim2.new(0.5, -150, 1, -bottom - 37)
 	lost.Position = UDim2.new(0.5, -120, 1, -bottom - 68)
 	for _, piece in cracks do piece.Position = UDim2.new(0.5, 0, 1, -bottom) end
 end
@@ -141,8 +142,6 @@ local lastPopup: TextLabel? = nil
 local lastPopupAt = -math.huge
 local popupWords = ""
 local popupGain = 0
-local lastActionAt = -math.huge
-local chainCount = 0
 local shownTier = 0
 local confirmedTier = 0
 local shownFraction = 0
@@ -251,7 +250,6 @@ local function crackBar()
 end
 
 local function showLost()
-	chainCount = 0
 	chain.Visible = false
 	crackBar()
 	if Settings.get("showPopups") ~= true then return end
@@ -274,26 +272,21 @@ Momentum.Changed:Connect(function(value: number, reason: string, action: string?
 		confirmedTier = 0
 		return
 	end
+	local chainCount = Momentum.chainState()
+	if payload ~= nil and typeof(payload.chainAction) == "string" and chainCount > 0 then
+		chainScale.Scale = 1.25
+		TweenService:Create(chainScale, TweenInfo.new(fx.ChainPopTime, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end
 	if reason ~= "confirmed" or action == nil or typeof(gain) ~= "number" then
 		if reason == "reconcile" then confirmedTier = Rules.tier(value) end
 		return
 	end
-	local now = Workspace:GetServerTimeNow()
-	chainCount = Rules.nextChainCount(chainCount, lastActionAt, now)
-	lastActionAt = now
 	if Config.Momentum.Debug then
 		print(string.format("[Momentum] chain count changed: %d after %s", chainCount, action))
 	end
 	local tier = Rules.tier(value)
 	local perfect = payload ~= nil and payload.perfect == true
 	showPopup(action, gain, if payload and typeof(payload.count) == "number" then payload.count else 1, perfect, tier)
-	if chainCount >= 2 and Settings.get("momentumBar") == true then
-		chain.Text = "x" .. chainCount .. " CHAIN"
-		chain.TextColor3 = colorForTier(tier)
-		chain.Visible = true
-		chainScale.Scale = 1.25
-		TweenService:Create(chainScale, TweenInfo.new(fx.ChainPopTime, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-	end
 	if gain > 0 then
 		playAsset("Sfx_GainTick", math.min(fx.GainPitchCap, 1 + (chainCount - 1) * fx.GainPitchStep))
 	end
@@ -306,7 +299,18 @@ RunService.RenderStepped:Connect(function()
 	layoutMeter()
 	local live = player:GetAttribute("HRushState") == "MS_04"
 	bar.Visible = live and Settings.get("momentumBar") == true
-	chain.Visible = chain.Visible and bar.Visible and Workspace:GetServerTimeNow() - lastActionAt <= Config.Momentum.ChainWindow
+	local now = Workspace:GetServerTimeNow()
+	local chainCount = Momentum.chainState()
+	local sprintReadyAt, sprintUntil = Momentum.sprintWindow()
+	chain.Visible = bar.Visible and (chainCount > 0 or sprintUntil > now)
+	if sprintUntil > now then
+		chain.Text = if now < sprintReadyAt then "x" .. chainCount .. " CHAIN · SPRINT READY"
+			else string.format("SPRINT %.1fs", sprintUntil - now)
+		chain.TextColor3 = Color3.fromRGB(255, 218, 90)
+	elseif chainCount > 0 then
+		chain.Text = string.format("CHAIN %d/%d", chainCount, Config.Movement.AutoSprintChainCount)
+		chain.TextColor3 = colorForTier(Rules.tier(Momentum.value()))
+	end
 	if not live then return end
 	local value = Momentum.value()
 	local tier = Rules.tier(value)

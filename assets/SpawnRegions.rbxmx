@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<roblox version="4">
+  <Item class="Folder" referent="HRUSH_REGIONS">
+    <Properties>
+      <string name="Name">SpawnRegions</string>
+    </Properties>
+    <Item class="Part" referent="HRUSH_REGION_01">
+      <Properties>
+        <string name="Name">Region01</string>
+        <CoordinateFrame name="CFrame">
+          <X>-143.99185</X>
+          <Y>10</Y>
+          <Z>96.35337</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>43.306767</X>
+          <Y>30</Y>
+          <Z>174.79964</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_02">
+      <Properties>
+        <string name="Name">Region02</string>
+        <CoordinateFrame name="CFrame">
+          <X>-157.83496</X>
+          <Y>10</Y>
+          <Z>-97.84012</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>209.68024</X>
+          <Y>30</Y>
+          <Z>191.66992</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_03">
+      <Properties>
+        <string name="Name">Region03</string>
+        <CoordinateFrame name="CFrame">
+          <X>-145.16504</X>
+          <Y>10</Y>
+          <Z>20.503391</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>27.006783</X>
+          <Y>30</Y>
+          <Z>161.66992</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_04">
+      <Properties>
+        <string name="Name">Region04</string>
+        <CoordinateFrame name="CFrame">
+          <X>-124.29748</X>
+          <Y>10</Y>
+          <Z>26.250607</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>-1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>92.81569</X>
+          <Y>30</Y>
+          <Z>56.286545</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_05">
+      <Properties>
+        <string name="Name">Region05</string>
+        <CoordinateFrame name="CFrame">
+          <X>51.875305</X>
+          <Y>10</Y>
+          <Z>196.66669</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>50.666656</X>
+          <Y>30</Y>
+          <Z>217.19421</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_06">
+      <Properties>
+        <string name="Name">Region06</string>
+        <CoordinateFrame name="CFrame">
+          <X>-144.05676</X>
+          <Y>10</Y>
+          <Z>193.33334</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>43.99997</X>
+          <Y>30</Y>
+          <Z>174.66992</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_07">
+      <Properties>
+        <string name="Name">Region07</string>
+        <CoordinateFrame name="CFrame">
+          <X>-103.66504</X>
+          <Y>10</Y>
+          <Z>97.343506</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>41.326553</X>
+          <Y>30</Y>
+          <Z>92.66992</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_08">
+      <Properties>
+        <string name="Name">Region08</string>
+        <CoordinateFrame name="CFrame">
+          <X>102.04198</X>
+          <Y>10</Y>
+          <Z>160.33337</Z>
+          <R00>0</R00>
+          <R01>0</R01>
+          <R02>-1</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>1</R20>
+          <R21>0</R21>
+          <R22>0</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>22</X>
+          <Y>30</Y>
+          <Z>115.52758</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_09">
+      <Properties>
+        <string name="Name">Region09</string>
+        <CoordinateFrame name="CFrame">
+          <X>46.902885</X>
+          <Y>10</Y>
+          <Z>14</Z>
+          <R00>1</R00>
+          <R01>0</R01>
+          <R02>0</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>0</R20>
+          <R21>0</R21>
+          <R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>203.80577</X>
+          <Y>30</Y>
+          <Z>88</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_10">
+      <Properties>
+        <string name="Name">Region10</string>
+        <CoordinateFrame name="CFrame">
+          <X>13</X>
+          <Y>10</Y>
+          <Z>-71.49999</Z>
+          <R00>1</R00>
+          <R01>0</R01>
+          <R02>0</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>0</R20>
+          <R21>0</R21>
+          <R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>108</X>
+          <Y>30</Y>
+          <Z>83</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_11">
+      <Properties>
+        <string name="Name">Region11</string>
+        <CoordinateFrame name="CFrame">
+          <X>121</X>
+          <Y>10</Y>
+          <Z>-71.5</Z>
+          <R00>1</R00>
+          <R01>0</R01>
+          <R02>0</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>0</R20>
+          <R21>0</R21>
+          <R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>108</X>
+          <Y>30</Y>
+          <Z>83</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_REGION_12">
+      <Properties>
+        <string name="Name">Region12</string>
+        <CoordinateFrame name="CFrame">
+          <X>109.902885</X>
+          <Y>10</Y>
+          <Z>78.937874</Z>
+          <R00>1</R00>
+          <R01>0</R01>
+          <R02>0</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>0</R20>
+          <R21>0</R21>
+          <R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size">
+          <X>77.80577</X>
+          <Y>30</Y>
+          <Z>42.124252</Z>
+        </Vector3>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool>
+        <bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>

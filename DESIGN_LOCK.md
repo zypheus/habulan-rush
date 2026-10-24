@@ -8,6 +8,12 @@ These values are the single source of truth; they must match `ReplicatedStorage.
 
 ## Confirmed Findings (HIGH severity)
 
+### Earned sprint balance revision, 2026-10-24
+
+The project owner approved removing stamina and manual sprint. In live rounds, both roles earn a three-second automatic sprint after two server-accepted slides or landing rolls within 2.5 seconds. Further accepted actions in that chain refresh the sprint. A slide needs server-observed speed of at least half the role's walk speed to count; dash never counts. The timer starts when the qualifying action ends. Role transfer, stun, death, respawn, and round end reset the chain and sprint. The lobby uses walking speed.
+
+Runner base walk and sprint remain 16 and 21; Taya base walk remains 18. Taya base sprint is now 22, or 26.4 studs/s with the existing 1.2 scale. Runner-only dash keeps its 12-stud base distance and 0.2-second travel, with a five-second cooldown and no stamina cost. This revision supersedes earlier held-sprint, stamina, Taya sprint, and dash cooldown rules below and in the baseline specification. The post-tag 20% speed boost remains.
+
 ### Reduced pounce cooldowns and airborne fix, 2026-10-17
 
 The owner requested shorter pounce cooldowns and a fix for midair activation. Hit cooldown is now 0.8 seconds and miss cooldown is 1.05 seconds, both measured from launch. These supersede the earlier 1.6/2.1 values. Airborne movement eligibility and launch direction use existing horizontal momentum because the normal air controller clears Humanoid.MoveDirection. Stationary jumps without horizontal movement do not qualify. Recovery timings and incompatible-state gates remain unchanged.

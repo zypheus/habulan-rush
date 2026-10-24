@@ -3,7 +3,9 @@
 -- Owner: Project Owner
 -- Responsibility: One authoritative panyo, pickup, steals, possession clock, and recovery.
 -- Task/spec: Agawan ng Panyo gameplay mode, approved 2026-10-23.
+-- Task/spec: open-experience random round spawns, approved 2026-10-24.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local PanyoEvents = require(ServerScriptService:WaitForChild("PanyoEvents"))
+local SpawnSelector = require(ServerScriptService:WaitForChild("SpawnSelector"))
 local PanyoEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PanyoEvent") :: RemoteEvent
 local rules = Config.Panyo
 
@@ -75,10 +78,7 @@ local events = PanyoEvents.new(function(eventType: string, data: { [string]: any
 end)
 
 local function inArena(position: Vector3): boolean
-	return math.abs(position.X) <= rules.MaxArenaCoordinate
-		and math.abs(position.Z) <= rules.MaxArenaCoordinate
-		and position.Y >= rules.MinArenaY
-		and position.Y <= rules.MaxArenaY
+	return SpawnSelector.inArena(position)
 end
 
 local function liveRoot(player: Player): BasePart?
@@ -112,9 +112,12 @@ local function floorAt(position: Vector3, character: Model?): Vector3?
 	if cloth then table.insert(exclusions, cloth) end
 	if ring then table.insert(exclusions, ring) end
 	params.FilterDescendantsInstances = exclusions
-	params.IgnoreWater = true
+	params.IgnoreWater = false
 	local result = Workspace:Raycast(position + Vector3.new(0, 12, 0), Vector3.new(0, -80, 0), params)
-	if result == nil or result.Normal.Y < 0.7 or not result.Instance.CanCollide then return nil end
+	if result == nil or result.Material == Enum.Material.Water
+		or result.Normal.Y < Config.Spawn.MinGroundNormalY
+		or not result.Instance:IsA("BasePart") or not result.Instance.CanCollide
+		or not CollectionService:HasTag(result.Instance, Config.Spawn.GroundTag) then return nil end
 	local grounded = result.Position + Vector3.new(0, 0.4, 0)
 	if not inArena(grounded) then return nil end
 	return grounded
@@ -122,8 +125,10 @@ end
 
 local function resolveSpawn(mapId: string): Vector3?
 	if mapId ~= "Kalsada" then return nil end
+	local map = Workspace:FindFirstChild("Map")
 	local greybox = Workspace:FindFirstChild("KalsadaGreybox")
-	local marker = greybox and greybox:FindFirstChild("PanyoSpawn")
+	local marker = (map and map:FindFirstChild("PanyoSpawn"))
+		or (greybox and greybox:FindFirstChild("PanyoSpawn"))
 	if marker and marker:IsA("BasePart") then
 		local position = floorAt(marker.Position, nil)
 		if position then return position end
@@ -248,7 +253,7 @@ local function drop(reason: string, atTime: number)
 	carrier = nil
 	carrierSafeUntil = 0
 	version += 1
-	local position = if lastSafeGround and lastSafeGround.Y <= 5 then lastSafeGround else resolveSpawn("Kalsada")
+	local position = if lastSafeGround and inArena(lastSafeGround) then lastSafeGround else resolveSpawn("Kalsada")
 	if position then showOnGround(position) end
 	ReplicatedStorage:SetAttribute("HRushPanyoCarrierUserId", nil)
 	ReplicatedStorage:SetAttribute("HRushPanyoVersion", version)

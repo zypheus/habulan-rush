@@ -6,6 +6,7 @@
 -- Task/spec: Agawan ng Panyo steal input, approved 2026-10-23.
 -- Task/spec: Panyo mobile STEAL button recovery, approved 2026-10-23.
 -- Task/spec: Lihim na Target capture input, approved 2026-10-23.
+-- Task/spec: complete R15 punch rig before local playback, approved 2026-10-24.
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -31,6 +32,10 @@ local ARM_NAMES: { [string]: boolean } = {
 	RightLowerArm = true,
 	RightHand = true,
 }
+local ARM_JOINT_NAMES = {
+	"LeftShoulder", "LeftElbow", "LeftWrist",
+	"RightShoulder", "RightElbow", "RightWrist",
+}
 
 local running = false
 local activeCharacter: Model? = nil
@@ -40,6 +45,7 @@ local viewModelArms: { BasePart } = {}
 local hiddenCharacterArms: { [BasePart]: number } = {}
 local firstPersonPlaying = false
 local playGeneration = 0
+local buildGeneration = 0
 local touchRefreshElapsed = 0
 local lastTouchButton: Instance? = nil
 local lastTouchTitle = ""
@@ -148,18 +154,68 @@ local function tryActivate(): boolean
 	return true
 end
 
+local function waitForArmRig(character: Model, generation: number): boolean
+	local warnAt = os.clock() + 5
+	local warned = false
+	while buildGeneration == generation and localPlayer.Character == character do
+		local missing: string? = nil
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid == nil then
+			missing = "Humanoid"
+		elseif humanoid.RigType ~= Enum.HumanoidRigType.R15 then
+			warn("[TagController] First-person TAG animation requires an R15 character")
+			return false
+		elseif character:FindFirstChild("UpperTorso") == nil then
+			missing = "UpperTorso"
+		else
+			for partName in ARM_NAMES do
+				if character:FindFirstChild(partName) == nil then
+					missing = partName
+					break
+				end
+			end
+			if missing == nil then
+				for _, jointName in ARM_JOINT_NAMES do
+					if character:FindFirstChild(jointName, true) == nil then
+						missing = jointName
+						break
+					end
+				end
+			end
+		end
+		if missing == nil then
+			return true
+		end
+		if not warned and os.clock() >= warnAt then
+			warn("[TagController] Waiting for R15 TAG arm rig: missing " .. missing)
+			warned = true
+		end
+		task.wait(0.1)
+	end
+	return false
+end
+
 local function buildViewModel(character: Model)
+	buildGeneration += 1
+	local generation = buildGeneration
 	clearViewModel()
-	local humanoid = character:WaitForChild("Humanoid", 5)
-	if humanoid == nil or not humanoid:IsA("Humanoid") or humanoid.RigType ~= Enum.HumanoidRigType.R15 then
+	if not waitForArmRig(character, generation) then
 		return
 	end
 
 	local wasArchivable = character.Archivable
 	character.Archivable = true
-	local clone = character:Clone() :: Model
+	local cloned, result = pcall(function(): Model?
+		return character:Clone()
+	end)
 	character.Archivable = wasArchivable
+	if not cloned or result == nil then
+		warn("[TagController] Failed to clone the first-person TAG arm rig: " .. tostring(result))
+		return
+	end
+	local clone = result :: Model
 	clone.Name = VIEW_MODEL_NAME
+	local cloneArms: { BasePart } = {}
 
 	for _, descendant in clone:GetDescendants() do
 		if descendant:IsA("LuaSourceContainer")
@@ -177,10 +233,15 @@ local function buildViewModel(character: Model)
 			descendant.CastShadow = false
 			descendant.Massless = true
 			descendant.Transparency = 1
-			if ARM_NAMES[descendant.Name] then
-				table.insert(viewModelArms, descendant)
+			if ARM_NAMES[descendant.Name] and descendant.Parent == clone then
+				table.insert(cloneArms, descendant)
 			end
 		end
+	end
+	if #cloneArms ~= 6 then
+		clone:Destroy()
+		warn("[TagController] Cloned first-person TAG rig is missing arm parts")
+		return
 	end
 
 	local animationController = Instance.new("AnimationController")
@@ -199,15 +260,27 @@ local function buildViewModel(character: Model)
 	animation:Destroy()
 	if not ok then
 		clone:Destroy()
-		table.clear(viewModelArms)
-		warn("[TagController] Failed to load the first-person tag animation")
+		warn("[TagController] Failed to load first-person TAG animation "
+			.. Config.Tag.FirstPersonAnimationId .. ": " .. tostring(loaded))
 		return
 	end
 	loaded.Priority = Enum.AnimationPriority.Action4
 	loaded.Looped = false
+	if buildGeneration ~= generation or localPlayer.Character ~= character then
+		loaded:Destroy()
+		clone:Destroy()
+		return
+	end
 	activeCharacter = character
 	viewModel = clone
 	viewModelTrack = loaded
+	viewModelArms = cloneArms
+	task.delay(5, function()
+		if viewModelTrack == loaded and loaded.Length <= 0 then
+			warn("[TagController] First-person TAG animation " .. Config.Tag.FirstPersonAnimationId
+				.. " has not loaded; check experience access to this asset")
+		end
+	end)
 end
 
 local function updateTouchButton()
@@ -240,6 +313,10 @@ function TagController.start()
 		task.spawn(buildViewModel, localPlayer.Character)
 	end
 	localPlayer.CharacterAdded:Connect(buildViewModel)
+	localPlayer.CharacterRemoving:Connect(function()
+		buildGeneration += 1
+		clearViewModel()
+	end)
 
 	RunService.RenderStepped:Connect(function(dt)
 		touchRefreshElapsed += dt

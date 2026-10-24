@@ -9,6 +9,7 @@
 -- Task/spec: slide chaining and entry speed, 2026-10-19.
 -- Task/spec: server-owned equipment launch and glide bridge, 2026-10-22.
 -- Task/spec: accepted-dash cosmetic broadcast, approved 2026-10-22.
+-- Task/spec: server-owned earned sprint, approved 2026-10-24.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -48,6 +49,10 @@ type Ledger = {
 	momentumSyncAt: number,
 	momentumSeq: number,
 	momentumMoves: { [string]: { at: number, count: number } },
+	chainCount: number,
+	chainLastAt: number,
+	sprintReadyAt: number,
+	sprintUntil: number,
 	requestWindowStartedAt: number,
 	requestCount: number,
 	lastPosition: Vector3?,
@@ -105,7 +110,7 @@ local function updateMomentumTier(player: Player, value: number)
 	if changed then character:SetAttribute("MomentumTier", nextTier) end
 end
 
-local function sendMomentum(player: Player, ledger: Ledger, now: number, action: string?, gain: number?, count: number?, perfect: boolean?, rejectedAction: string?)
+local function sendMomentum(player: Player, ledger: Ledger, now: number, action: string?, gain: number?, count: number?, perfect: boolean?, rejectedAction: string?, chainAction: string?)
 	ledger.momentumSeq += 1
 	ledger.momentumSyncAt = now
 	local serverTime = Workspace:GetServerTimeNow()
@@ -119,11 +124,26 @@ local function sendMomentum(player: Player, ledger: Ledger, now: number, action:
 		count = count,
 		perfect = perfect,
 		rejectedAction = rejectedAction,
+		chainAction = chainAction,
+		chainCount = ledger.chainCount,
+		chainExpiresAt = if ledger.chainCount > 0 then serverTime + ledger.chainLastAt + momentum.ChainWindow - now else 0,
+		sprintReadyAt = if ledger.sprintReadyAt > 0 then serverTime + ledger.sprintReadyAt - now else 0,
+		sprintUntil = if ledger.sprintUntil > 0 then serverTime + ledger.sprintUntil - now else 0,
 	})
+end
+
+local function recordChain(ledger: Ledger, action: string, now: number)
+	ledger.chainCount = MomentumRules.nextChainCount(ledger.chainCount, ledger.chainLastAt, now)
+	ledger.chainLastAt = now
+	if ledger.chainCount >= movement.AutoSprintChainCount then
+		ledger.sprintReadyAt = now + (if action == "Slide" then movement.SlideDuration else movement.RollDuration)
+		ledger.sprintUntil = ledger.sprintReadyAt + movement.AutoSprintDuration
+	end
 end
 
 local function grantMomentum(player: Player, ledger: Ledger, action: string, baseGain: number, now: number, perfect: boolean?)
 	if player:GetAttribute("HRushRole") == "Taya" and not momentum.TayaBuildsMomentum then
+		sendMomentum(player, ledger, now, nil, nil, nil, nil, nil, action)
 		return
 	end
 	local previous = ledger.momentumMoves[action]
@@ -141,7 +161,7 @@ local function grantMomentum(player: Player, ledger: Ledger, action: string, bas
 		print(string.format("[Momentum] slide gain awarded: %s +%.2f total=%.2f count=%d",
 			player.Name, gain, value, count))
 	end
-	sendMomentum(player, ledger, now, action, gain, count, perfect)
+	sendMomentum(player, ledger, now, action, gain, count, perfect, nil, action)
 end
 
 local function finiteNumber(value: number): boolean
@@ -193,14 +213,19 @@ local function resetLedger(player: Player, ledger: Ledger)
 	ledger.airPeakY = 0
 	ledger.hardLandUntil = 0
 	ledger.boostUntil = 0
-	if ledger.momentum > 0 then
-		ledger.momentum = 0
-		ledger.momentumGainAt = 0
-		sendMomentum(player, ledger, os.clock(), "Lost", 0)
-	end
+	local hadMomentum = ledger.momentum > 0
+	local hadChain = ledger.chainCount > 0 or ledger.sprintUntil > 0
+	ledger.momentum = 0
+	ledger.chainCount = 0
+	ledger.chainLastAt = 0
+	ledger.sprintReadyAt = 0
+	ledger.sprintUntil = 0
 	ledger.momentumGainAt = 0
 	ledger.momentumSampleAt = os.clock()
 	ledger.momentumMoves = {}
+	if hadMomentum or hadChain then
+		sendMomentum(player, ledger, os.clock(), if hadMomentum then "Lost" else nil, if hadMomentum then 0 else nil)
+	end
 	updateMomentumTier(player, 0)
 	ledger.lastPosition = nil
 	ledger.lastSampleAt = os.clock()
@@ -286,7 +311,9 @@ local function allowedSpeed(player: Player, ledger: Ledger, now: number): number
 	local exTayaMult = if now < ledger.boostUntil and player:GetAttribute("HRushRole") == "Runner"
 		then movement.PostTagSpeedBoostMult else 1
 	local hardLandMult = if now < ledger.hardLandUntil then movement.HardLandSpeedMult else 1
-	local baseSpeed = roleSpeed(player, ledger.state == "Slide" or ledger.state == "Sprint")
+	local earnedSprint = (ledger.state == "Walk" or ledger.state == "Sprint")
+		and now >= ledger.sprintReadyAt and now < ledger.sprintUntil
+	local baseSpeed = roleSpeed(player, ledger.state == "Slide" or earnedSprint)
 	return MomentumRules.speed(baseSpeed, exTayaMult, hardLandMult, ledger.momentum)
 end
 
@@ -622,6 +649,7 @@ local function beginRoll(player: Player, ledger: Ledger, root: BasePart, role: s
 	ledger.rollIntentAt = 0
 	ledger.hardLandUntil = 0
 	player:SetAttribute("HRushServerHardLandUntil", 0)
+	recordChain(ledger, "Roll", now)
 	grantMomentum(player, ledger, "Roll", if perfect then momentum.GainRollPerfect else momentum.GainRoll, now, perfect)
 	ledger.rollBaseSpeed = math.max(walkSpeed, carriedSpeed - priorMomentum)
 	ledger.rollUntil = now + movement.RollDuration
@@ -815,8 +843,19 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 	end
 
 	if action == "Sprint" then
-		if ledger.state == "Roll" or ledger.state == "Vault" then
+		-- The client may receive the earned window on the exact frame that the
+		-- server's Slide/Roll observer has not yet cleared its expired state.
+		if (ledger.state == "Slide" and now >= ledger.slideUntil)
+			or (ledger.state == "Roll" and now >= ledger.rollUntil) then
+			if ledger.state == "Roll" then ledger.rollBaseSpeed = 0 end
+			setState(player, ledger, "Walk")
+		end
+		if ledger.state ~= "Walk" and ledger.state ~= "Sprint" then
 			recordViolation(player, ledger, "sprint_state", ledger.state)
+			return
+		end
+		if now < ledger.sprintReadyAt or now >= ledger.sprintUntil then
+			recordViolation(player, ledger, "sprint_unearned", ledger.state)
 			return
 		end
 		setState(player, ledger, "Sprint")
@@ -951,12 +990,14 @@ local function handleMovementState(player: Player, action: unknown, active: unkn
 	ledger.hardLandUntil = 0
 	player:SetAttribute("HRushServerHardLandUntil", 0)
 	setState(player, ledger, "Slide")
+	local countsForChain = entrySpeed >= roleSpeed(player, false) * momentum.ChainSlideMinWalkPct
+	if countsForChain then recordChain(ledger, "Slide", now) end
 	if earnsMomentum then
 		grantMomentum(player, ledger, "Slide", momentum.GainSlide, now)
 	else
-		-- A valid slow slide has no gain event, popup, or chain step. This
-		-- snapshot also corrects any client prediction based on a stale speed.
-		sendMomentum(player, ledger, now, nil, nil, nil, nil, "Slide")
+		-- A valid slow slide has no momentum popup. The same snapshot corrects
+		-- prediction and carries server-confirmed chain credit when moving.
+		sendMomentum(player, ledger, now, nil, nil, nil, nil, "Slide", if countsForChain then "Slide" else nil)
 	end
 end
 
@@ -1023,6 +1064,9 @@ local function observePlayer(player: Player, ledger: Ledger, now: number)
 		sendMomentum(player, ledger, now, nil, nil)
 	end
 	ledger.momentumSampleAt = now
+	if ledger.state == "Sprint" and now >= ledger.sprintUntil then
+		setState(player, ledger, "Walk")
+	end
 	if ledger.state == "Dash" and now >= ledger.dashUntil then
 		setState(player, ledger, "Walk")
 	elseif ledger.state == "Slide" and now >= ledger.slideUntil then
@@ -1261,6 +1305,10 @@ local function attachPlayer(player: Player)
 		momentumSyncAt = now,
 		momentumSeq = 0,
 		momentumMoves = {},
+		chainCount = 0,
+		chainLastAt = 0,
+		sprintReadyAt = 0,
+		sprintUntil = 0,
 		requestWindowStartedAt = now,
 		requestCount = 0,
 		lastPosition = nil,
@@ -1341,6 +1389,8 @@ local function validateConfig()
 	assert(momentum.ZeroSyncInterval > 0, "Momentum zero sync must be positive")
 	assert(momentum.PerfectRollWindow > 0 and momentum.PerfectRollWindow <= movement.RollWindow, "Perfect roll window is invalid")
 	assert(momentum.SlideMinSpeedPct > 0 and momentum.SlideMinSpeedPct <= 1, "Slide minimum speed must be a percentage")
+	assert(momentum.ChainWindow > 0 and momentum.ChainSlideMinWalkPct > 0 and momentum.ChainSlideMinWalkPct <= 1, "Movement chain tuning is invalid")
+	assert(movement.AutoSprintChainCount >= 2 and movement.AutoSprintDuration > 0, "Earned sprint tuning is invalid")
 	assert(movement.VaultMinH > 0 and movement.VaultMaxH >= movement.VaultMinH, "Vault relative height range is invalid")
 	assert(movement.VaultMaxAboveGround >= movement.VaultMaxH, "Vault absolute cap must cover the relative range")
 	assert(movement.VaultMinDrop > 0, "Vault landing drop must be positive")

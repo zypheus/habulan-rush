@@ -3,9 +3,9 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: ui-redesign-all-phases
-updated: 2026-10-23
-source: 2026-10-23 owner-approved Habulan Rush UI/UX audit and redesign proposal
+task: earned-sprint-movement-balance
+updated: 2026-10-24
+source: 2026-10-24 owner-approved earned sprint and movement balance plan
 related:
   - ../AGENTS.md
   - ../docs/MOVEMENT_AUDIT.md
@@ -19,6 +19,9 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-24: Implemented and synced the owner-approved earned sprint balance into the same open Habulan Rush Edit place. Two server-accepted slides or landing rolls within 2.5 seconds grant a three-second automatic sprint after the action ends; later accepted chain actions refresh it. Both roles qualify, slide chain credit needs half walking speed, dash does not count, and role/stun/death/respawn/round-end resets are server-owned. Removed stamina and manual sprint controls, set Runner dash cooldown to 5 seconds and Taya base sprint to 22, and updated the momentum HUD, design lock, and lobby tip. Source syntax, notes, diff, and full and targeted Rojo builds pass. Read-only Studio inspection confirmed all nine mapped scripts, no `HRushStamina` or touch sprint references, and preserved spawn objects. Owner save and gameplay testing remain; see [earned sprint handoff](playtests/2026-10-24-earned-sprint-handoff.md).
+- 2026-10-24: Implemented and synced the owner-approved first-person-only match camera and TAG animation source repair into the same open Habulan Rush Edit place. The local TAG rig waits for all R15 arm parts and joints, stale builds are cancelled, target lock stays at eye height, and the mobile view toggle is removed. Read-only Studio inspection confirmed the four updated modules and preserved spawn objects. Studio output had identified an access denial for third-person animation `132133679924288`; the owner subsequently reported granting this experience access. Source checks and both Rojo builds passed. Owner save and gameplay validation remain; see [first-person TAG handoff](playtests/2026-10-24-first-person-tag-handoff.md).
+- 2026-10-24: Imported the currently open place's owner-provided `Hrush.rbxl` into the canonical Rojo map and terrain assets. Tagged 150 walkable ground Parts, added 12 invisible sampling regions and a Panyo marker, and implemented server-owned distinct match-entry and per-round random spawns. Classic, Panyo, Secret Hunt recovery, Bootstrap, and arena bounds now use the authored map. The place-ID-restricted targeted Rojo sync was accepted in the same open Studio Edit place, and read-only inspection confirmed the new objects and preserved origin spawn. Owner save and gameplay validation are pending. See [open map spawn handoff](playtests/2026-10-24-open-map-spawn-handoff.md).
 - 2026-10-23: Implemented the approved UI redesign phases 1-6 in repository source. Shared theme, safe-area layout, touch docking, truthful lobby, phone ballots/RPS, common live timer, mode cards, local nametags, responsive results/settings, and accessibility controls are mapped in the fresh Rojo place. Source checks passed. Owner rendered screenshots and Studio/device acceptance remain pending; see [UI redesign handoff](playtests/2026-10-23-ui-redesign-handoff.md).
 - 2026-10-23: Implemented the approved Lihim na Target phases in repository source and rebuilt `HabulanRush.rbxlx`. The mode uses private server-owned target cycles, validated click/R2/mobile captures, protections and streaks, 120-second rounds, practice rules, timed hints, a private HUD, and Hunt recaps. Syntax, notes, diff whitespace, and Rojo checks passed. Owner Studio acceptance remains pending; see [full-mode handoff](playtests/2026-10-23-secret-hunt-full-mode-handoff.md).
 - 2026-10-23: Implemented the owner-approved mobile STEAL button refresh and persistent Carrier highlight and trail in source. The touch button now rechecks its actual visibility every 0.1 seconds, while the Carrier has a gold outline and movement trail with stronger timed reveals. Syntax, notes, diff whitespace, and Rojo build passed; fresh-build owner Studio acceptance remains pending; see [full-mode handoff](playtests/2026-10-23-panyo-full-mode-handoff.md).
@@ -60,7 +63,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 - Owner requested no agent testing. Follow the [latest manual checklist](playtests/2026-10-17-pounce-only-tags.md). Earlier gameplay results do not validate this revision.
 
 - Pounce / Tag implementation is built in `HabulanRush.rbxlx` and handed to the project owner for testing on 2026-10-17. The owner explicitly requested no further agent testing.
-- Approved Taya sprint is 21 base, 25.2 effective studs/s. Pounce uses the four exact supplied animation IDs and the approved 0.07-second windup, now 0.8/1.05-second hit/miss cooldowns.
+- The 2026-10-24 earned-sprint revision supersedes this earlier 21-base Taya sprint value with 22 base, 26.4 effective studs/s. Pounce uses the four exact supplied animation IDs and the approved 0.07-second windup, now 0.8/1.05-second hit/miss cooldowns.
 - Known unresolved result: earlier multiplayer runs confirmed hits, but the last asserted run received Denied for an expected hit. Do not mark gameplay validation complete. See [pounce handoff](playtests/2026-10-16-pounce-tag.md).
 
 - Movement upgrade Part 1 is approved after project-owner Studio testing. `FallGravityMult` remains 1.6.
@@ -77,6 +80,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Implemented and synced the first-person-only match and TAG animation source changes with a place-ID-restricted four-module Rojo overlay; no server tag rule, animation ID, locked value, or map object changed.
+- Imported the authored scene and terrain from the owner-provided open-place export, marked safe ground, added continuous spawn sampling, wired three modes, and prepared a targeted overlay sync that preserves the open place's other objects.
 - UI redesign Phases 1-6: mapped shared presentation modules, reflowed lobby/votes/RPS/live HUD/results/settings, added accessibility and local nametags, and recorded owner visual acceptance. No remote or asset was added.
 - Lihim na Target Phases 0-5: audited repository and connected Studio Edit model read-only; implemented and enabled the full source mode; added the owner test and audio handoff. No new asset was added.
 - Added a Panyo touch-button recovery check and persistent client-only Carrier highlight and trail. The server-owned steal rules and Classic tag path remain unchanged.
@@ -166,6 +171,9 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner: save the same open Habulan Rush Edit place, then run the [earned sprint checklist](playtests/2026-10-24-earned-sprint-handoff.md) with 2 and 8 players in Classic, Panyo, and Secret Hunt. Report the first failure with mode, role, device, action timing, and relevant Studio Output. Do not publish for this handoff.
+- Project owner: save the same open Habulan Rush Edit place and run the [first-person TAG checklist](playtests/2026-10-24-first-person-tag-handoff.md). Confirm `132133679924288` now loads without a new denial. Share `105436702082738` too if the first-person clip reports the same permission error.
+- Project owner: save the same open Habulan Rush Edit place, then run the [open map spawn checklist](playtests/2026-10-24-open-map-spawn-handoff.md) for repeated 2-player and 8-player rounds in all three modes. Report any invalid position with coordinates and screenshot.
 - Project owner: open the fresh Rojo place and run the [UI redesign acceptance checklist](playtests/2026-10-23-ui-redesign-handoff.md). Capture desktop and phone screenshots from Phase 0, then check 1366x768, notched phone, tablet, TV/gamepad, each match state, all three modes, touch bounds, private Hunt badges, Panyo carrier, settings, recaps, and cleanup. Return the first reproduced overlap or interaction failure with device size, client count, state, steps, and screenshot.
 - Project owner: run the [Lihim na Target full-mode checklist](playtests/2026-10-23-secret-hunt-full-mode-handoff.md) from the fresh Rojo place with 1, 2, 4, and 8 clients, then PC, mobile, gamepad, Classic Tag, and Panyo regressions. Report the first failure with client count, steps, server time, affected player, relevant `HRushHunt*` attributes, and expected versus observed behavior. Supply original or approved audio IDs for Hunt cues before audio acceptance.
 - Project owner: in the fresh Rojo place, use two mobile clients to repeat A to B to A steals. After A loses possession, confirm STEAL reappears, the 2-second return block still rejects early attempts, and a valid later tag transfers possession once. Check PC and R2, the Carrier highlight and trail in third person, own first-person HUD without world effects, VFX 0 and 100, cleanup on death/drop/round end, and one Classic match.
@@ -209,11 +217,14 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Blockers
 
+- Earned sprint source and same-place Edit sync are complete. Owner save, gameplay, mobile, and gamepad acceptance remain pending; no agent Studio test or publish was run.
+- First-person/TAG source and same-place Edit sync are complete. The owner reports granting the experience access to the third-person TAG animation, but playback after that change remains unverified. Owner save and gameplay validation remain pending.
+- Owner save and gameplay validation remain pending. No Studio gameplay was run by the agent. The 58 referenced Roblox asset IDs in the imported authored scene need owner competition-rights review before release.
 - UI redesign has no owner rendered screenshots or Studio/device results. Phone safe-area and touch-control placement, gamepad focus, nametag line of sight, and eight-player overlap require owner acceptance. No gameplay behavior change was intended.
 - Lihim na Target is source-complete but has no owner Studio gameplay, mobile, or gamepad results. Its four sound hooks have blank IDs until original or approved cues are supplied and logged. Kalsada is its only verified playable map.
 - The owner-reported mobile STEAL disappearance and new Carrier effects need a fresh-build Studio check. Source inspection cannot prove the ContextActionService button lifecycle or visual clarity on mobile.
 - Agawan ng Panyo is built from source but has no owner Studio, mobile, or gamepad validation yet. The five original WAV cues need owner upload and approved Roblox IDs; their runtime IDs are blank, so Panyo-specific cues are silent. Kalsada is the only playable Panyo map.
-- The replacement third-person tag animation has not been loaded or visually checked in Studio. Its arm-only blend, availability, and two-player replication remain pending owner validation; provenance confirmation remains pending before release.
+- Studio output confirms the replacement third-person TAG animation is inaccessible to this experience. The owner must grant asset access before arm-only blending and two-player replication can be validated; provenance confirmation remains pending before release.
 - Wind dash final acceptance remains with the project owner: close and gameplay views, wall-stop and interruption cleanup, repeated-dash residue, mobile touch, and full gamepad feel. No release or publish has occurred for this item.
 - The slide chaining fix is in the newly built `HabulanRush.rbxlx`, but live slide, popup, chain, two-player, mobile, and gamepad checks remain pending. Momentum steps 1 to 4 also await pure and client Command Bar assertions, two-player chase, perfect-roll receipt timing, cap, FOV, layout, and sound playback. In-match settings access now awaits owner validation.
 - MS_RPS gameplay, two-player, gamepad, and mobile validation are pending after a successful Rojo build. `RevealSoundId` and `ResultSoundId` are empty placeholders. The GDD, System Spec, production tracker, and DESIGN_LOCK revisions need owner sign-off.
@@ -222,7 +233,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 - The jump animation replacements have no runtime check yet. Takeoff, airborne, landing, marker firing, and 2-player replication are pending project-owner review. No Studio metadata probe was run at owner choice, so published durations, priorities, loop flags, and keyframe counts for the four new IDs are unverified.
 - The sprint animation replacement has no runtime check yet. Loop, speed-fit playback, and 2-player replication are pending project-owner review. The ASSET_LOG row is Pending Review until the owner confirms provenance.
 - The first-person exit `AutoRotate` fix has no Studio validation yet. The repro (FP, pounce or vault, return to TP) is pending project-owner review.
-- Bot removal has no Studio validation yet: solo search-timeout start, zero bot spawns, solo round end, and two-player target lock and marker checks are pending owner or agent testing. Note the `TayaSpeed` legacy key is now unread and should be dropped in a later Config cleanup round with owner sign-off (it is outside this approved item).
+- Bot removal has no Studio validation yet: solo search-timeout start, zero bot spawns, solo round end, and two-player target lock and marker checks are pending owner testing. `TayaSpeed` remains active in the movement client and server.
 - Pounce aiming and TargetLock findings are recorded but unapproved: no lock-aware pounce direction, dormant `BreakRange` and `LosBreakTime`, no immunity filtering in acquisition, unimplemented `LockDisabled` and `LockDelayUntil`, and no manual look while the lock camera is active.
 - Camera Phase 4 has no Studio validation yet. Toggle feel, blend, body yaw, head visibility, aim and lock resumes, mobile button, and effect feel are pending project-owner review. 2-player, gamepad, and mobile checks are required.
 - Camera Phase 3 has no Studio validation yet. 2-player, gamepad, and mobile checks are pending project-owner review.
@@ -281,6 +292,9 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Validation
 
+- 2026-10-24 earned sprint: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, full Rojo build, and place-ID-restricted nine-module Rojo build passed. Studio MCP confirmed place `127422539599317` in Edit mode. A Rojo server reconnect applied the overlay after an initial stale connection. Read-only script inspection confirmed Config's Taya sprint 22 and dash cooldown 5, server chain timing, client sprint timer, HUD and touch layout, camera, and lobby updates. Studio script search found `AutoSprintChainCount` in the expected modules and no `HRushStamina` or `HRUSH_Sprint_Touch` references. The 12 spawn regions, Panyo marker, and origin Spawn remained. No Studio gameplay, Luau execution, or publish was run by the agent.
+- 2026-10-24 first-person/TAG: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, full Rojo build, and place-ID-restricted four-module Rojo build passed. Read-only inspection confirmed the same open Studio Edit place received the four new modules and retained 12 spawn regions, SpawnSelector, and the enabled origin Map.Spawn. No Studio gameplay, Luau execution, or publish was run by the agent.
+- 2026-10-24 open map random spawn source: binary owner export converted and inspected; 475 top-level authored objects plus existing Map and Terrain preserved in source. Luau syntax, Obsidian notes, diff whitespace, targeted Rojo build, and full Rojo build passed. The same open Studio Edit place received the targeted Rojo sync; read-only inspection confirmed 12 regions, Panyo marker at `(-10, 10, 0)`, SpawnSelector, MatchService references, and the original enabled spawn with its unchanged UniqueId. Owner gameplay testing remains pending.
 - 2026-10-23 UI redesign: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio execution or rendered gameplay review was performed by the agent; owner matrix remains pending.
 - 2026-10-23 Lihim na Target full mode: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio execution or gameplay test was run by the agent. The owner-run 1, 2, 4, and 8-client matrix and Classic/Panyo regressions remain pending.
 - 2026-10-23 Panyo mobile STEAL and Carrier feedback: `scripts/check-syntax.ps1`, `scripts/check-notes.ps1`, `git diff --check`, and Rojo build passed. No Studio execution or gameplay test was run by the agent.

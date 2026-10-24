@@ -43,10 +43,10 @@ This document turns GDD v2.0 into implementable rules. It defines state, rules, 
 
 |**Rule**|**Specification**|
 |---|---|
-|Runner speed|Walk 16, sprint 21 studs/s. Sprint requires stamina > 0 and drains 20/s.|
-|Stamina|Max 100. Regen +12/s after 1 s without sprinting. Reaching 0 forces walk until stamina ≥<br>10 [SD].|
-|Dash|12 studs in 0.2 s, 6 s cooldown, 0.15 s pounce invulnerability [SD]. Counts as a lock-break<br>when it ends outside pounce reach or breaks line of sight.|
-|Slide|0.6 s, 3 s cooldown, reduced hitbox (50% height) [SD], reduced speed during slide. Touch|
+|Runner speed|Walk 16, earned sprint 21 studs/s before the 1.2 speed scale. Two accepted slides or landing rolls within 2.5 s grant a 3 s automatic sprint [owner revision 2026-10-24].|
+|Stamina|Removed. Sprint and Runner dash have no stamina cost [owner revision 2026-10-24].|
+|Dash|12 studs in 0.2 s, 5 s cooldown, 0.15 s tag-action invulnerability [SD]. Runner-only; does not count toward the sprint chain.|
+|Slide|1.0 s, 1.25 s cooldown from entry, reduced hitbox (50% height) [SD]. A server-accepted slide counts toward earned sprint when observed speed is at least half the role's walk speed, even without momentum gain.|
 
 
 
@@ -55,7 +55,7 @@ Habulan Rush • System Specification • Page 1
 |**Rule**|**Specification**|
 |---|---|
 ||tags cannot hit a Runner passing a low gap.|
-|Taya speed|18 studs/s constant, no stamina.|
+|Taya speed|Walk 18, earned sprint 22 studs/s before the 1.2 speed scale. Uses the same chain rule as Runner [owner revision 2026-10-24].|
 |Post-tag boost|Ex-Taya: +20% on base walk and sprint speed for 2 s [SD].|
 
 
