@@ -1059,8 +1059,8 @@ Config.Settings = {
 	TelegraphFloor = 0.35, -- [SD] minimum visibility kept for telegraph effects
 }
 
--- Per-match-state music tracks. All IDs stay "" until licensed audio is
--- logged in ASSET_LOG.md. The MusicController skips empty entries.
+-- Per-match-state music tracks. Empty slots use the existing match BGM until
+-- dedicated licensed tracks are logged in ASSET_LOG.md.
 Config.Audio = {
 	Music = {
 		lobby = "", -- [SD] MS_01

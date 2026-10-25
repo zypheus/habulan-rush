@@ -2223,6 +2223,7 @@ do
 	create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
 	local help = {
 		"FIND MATCH opens the real mode ballot. The lobby cards describe the modes.",
+		"Lobby: walk and jump freely. Press Z, gamepad Y, or tap VIEW to switch camera. DPad Down focuses the menu; B returns to roaming.",
 		"Classic Tag: click, R2, or TAG to tag. Lowest total Taya time wins.",
 		"Agawan ng Panyo: hold near the cloth to pick it up; STEAL the carrier. Longest hold wins.",
 		"Lihim na Target: CAPTURE only your private target. Most captures wins.",
@@ -2520,7 +2521,8 @@ ClientSettings.Changed:Connect(function(key: unknown)
 end)
 
 ContextActionService:BindAction("HRUSH_LobbyView", function(_name, state, _input)
-	if state ~= Enum.UserInputState.Begin or player:GetAttribute("HRushInMatch") == true then
+	if state ~= Enum.UserInputState.Begin or player:GetAttribute("HRushInMatch") == true
+		or player:GetAttribute("HRushState") ~= "MS_01" then
 		return Enum.ContextActionResult.Pass
 	end
 	if currentPanel ~= nil or GuiService.MenuIsOpen or UserInputService:GetFocusedTextBox() ~= nil then
@@ -2531,7 +2533,8 @@ ContextActionService:BindAction("HRUSH_LobbyView", function(_name, state, _input
 end, false, SharedConfig.Camera.FirstPerson.ToggleKey, SharedConfig.Camera.FirstPerson.ToggleGamepad)
 
 ContextActionService:BindAction("HRUSH_LobbyMenuFocus", function(_name, state, input)
-	if state ~= Enum.UserInputState.Begin or player:GetAttribute("HRushInMatch") == true or currentPanel ~= nil then
+	if state ~= Enum.UserInputState.Begin or player:GetAttribute("HRushInMatch") == true
+		or player:GetAttribute("HRushState") ~= "MS_01" or currentPanel ~= nil then
 		return Enum.ContextActionResult.Pass
 	end
 	if input.KeyCode == Enum.KeyCode.DPadDown and GuiService.SelectedObject == nil then
@@ -2553,6 +2556,7 @@ local function setupResponsiveUI()
 	local vp = cam and cam.ViewportSize or Vector2.new(1380, 778)
 	isPortrait = vp.Y > vp.X
 	local touch = UserInputService.TouchEnabled
+	viewTouch.Position = if isPortrait then UDim2.fromOffset(12, 156) else UDim2.fromOffset(12, 80)
 
 	local s
 	if isPortrait then

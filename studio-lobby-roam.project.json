@@ -1,0 +1,24 @@
+{
+  "name": "HabulanRushLobbyRoamSync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": { "$path": "src/ReplicatedStorage/Config.lua", "$ignoreUnknownInstances": true }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "LobbyUI": { "$path": "src/StarterPlayerScripts/LobbyUI.client.lua", "$ignoreUnknownInstances": true },
+        "MovementController": { "$path": "src/StarterPlayerScripts/MovementController.client.lua", "$ignoreUnknownInstances": true },
+        "MusicController": { "$path": "src/StarterPlayerScripts/MusicController.lua", "$ignoreUnknownInstances": true }
+      }
+    }
+  }
+}

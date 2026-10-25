@@ -19,6 +19,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Current
 
+- 2026-10-25 lobby free roam: Owner approved walking/jumping in the current Kalsada lobby, a third-person default with lobby-only Z/gamepad Y/touch VIEW switching, and reuse of the existing match BGM in lobby. LobbyUI now uses Roblox's character-following camera and enables controls, while MovementController keeps abilities live-round-only. MusicController uses the match BGM as an empty lobby-slot fallback. Four affected Studio scripts matched source before editing and were backed up to `C:/Users/Acer/AppData/Local/Temp/hrush-lobby-roam-20261025-183250`; the existing showcase Rojo process was paused. Offline lobby checks, syntax, Luau compilation, notes, whitespace and main/tutorial/four-script overlay builds pass. The owner reconnected targeted Rojo on localhost:34874 and synced; read-only inspection verified the four complete Studio sources equal the repository, Edit mode, and unchanged Workspace/Map identities and 725 root children. Owner save and Studio gameplay review remain. See [lobby handoff](playtests/2026-10-25-lobby-roam-handoff.md).
+
 - 2026-10-25 varied showcase motion: Owner approved gentle curved movement for only the five Kalsada map clips. Config now stores quadratic control points; MatchShowcase follows those points while keeping its current landmarks, two-second cuts, server deadlines, fixed reduced-motion frames, lineup, handoff and countdown. The open Edit place's Config and MatchShowcase matched source before changes. Both sources and the overlay were backed up in `C:/Users/Acer/AppData/Local/Temp/hrush-showcase-motion-20261025-150700`, and targeted Rojo was paused. Offline recovery/path checks, syntax, compilation, notes, whitespace and main/tutorial/overlay builds pass. The owner reconnected targeted Rojo on localhost:34874 and synced; read-only verification found all 11 full mapped script sources equal to the repository, with one MatchShowcase and UIController, unchanged Workspace and Map IDs, 704 root children, and Edit mode. Owner save and visual review remain. See [opening handoff](playtests/2026-10-25-match-opening-handoff.md).
 
 - 2026-10-25 five-clip opening: Owner chose five distinct Kalsada landmark clips and an extended first-round opening. Config now provides five two-second camera paths for the wide map, Barangay Hall, multipurpose court, fountain and parked-car street, followed by the existing 3.5-second lineup and 0.5-second handoff. The first-round server preparation is 19 seconds including the unchanged five-second countdown; later rounds are unchanged. Studio Config and MatchShowcase matched source before editing. Both were backed up in `C:/Users/Acer/AppData/Local/Temp/hrush-five-clips-20261025-143735`, and targeted Rojo was paused. Offline clip and recovery checks, syntax, compilation, notes, whitespace and all three Rojo builds pass. The owner reconnected the place-restricted Rojo server on localhost:34874 and synced. Read-only verification confirmed all 11 complete Studio script sources match the repository, one MatchShowcase and one UIController, the same Workspace and Map instance IDs, and Edit mode. Workspace currently has 704 root children after concurrent owner work; the overlay contains no Workspace path. Owner save and visual playtest remain. See [opening handoff](playtests/2026-10-25-match-opening-handoff.md).
@@ -106,6 +108,7 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Completed
 
+- Implemented and synced walk/jump lobby roaming, third/first person lobby view switching, gamepad menu focus, and lobby playback of the existing match BGM. Added a four-script place-restricted Rojo overlay and offline checks; no map or new audio asset was added.
 - Varied the five Kalsada showcase camera paths, synced the two affected sources to the open main Edit place through the targeted overlay, and verified all 11 mapped script sources match. No Workspace source was mapped or changed by this revision.
 - Implemented and synced the first-person-only match and TAG animation source changes with a place-ID-restricted four-module Rojo overlay; no server tag rule, animation ID, locked value, or map object changed.
 - Imported the authored scene and terrain from the owner-provided open-place export, marked safe ground, added continuous spawn sampling, wired three modes, and prepared a targeted overlay sync that preserves the open place's other objects.
@@ -198,6 +201,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Lobby free roam: owner saves the open main Edit place and follows the [lobby checklist](playtests/2026-10-25-lobby-roam-handoff.md), including desktop, phone, gamepad, countdown, respawn and music checks.
+
 - Match opening: owner saves the same main Edit place after the targeted sync and follows the [opening checklist](playtests/2026-10-25-match-opening-handoff.md). Check its preserved five-map ballot, curved camera paths and scenery clearance, first-round 14+5 timing, subsequent rounds, phone framing, two-player roles, eight-avatar lineup and camera/control recovery. The overlay maps only the 11 showcase scripts.
 
 - Project owner: review the fresh main build using the [match opening checklist](playtests/2026-10-25-match-opening-handoff.md). Start with two clients in each mode, then eight avatars on a small phone, reduced motion, disconnects, respawn, repeated matches and the return to first person. Report the first framing, timing or cleanup failure with mode, player count, device and time in the sequence.
@@ -253,6 +258,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 - Complete the separate Step 1 two-player Studio checklist before using its telemetry as authority evidence.
 
 ## Blockers
+
+- Lobby free roam needs owner Studio review for actual movement, camera framing, touch button clearance, gamepad navigation and seamless BGM. Existing BGM asset provenance remains Pending Review in ASSET_LOG.
 
 - Match opening source checks pass, but camera composition against actual Kalsada scenery, clothing/appearance rendering, multiplayer replication, mobile and gamepad recovery are unverified until project-owner Studio acceptance. No new asset ID was added; existing audio and map rights review remains as recorded in ASSET_LOG.
 
@@ -342,6 +349,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 37. The project owner approved all Lihim na Target phases. Full reshuffle follows each capture, target lock and Tsinelas are disabled, and a zero-capture round awards no points. Competitive play starts at four and continues a round with three, ending it at two.
 
 ## Validation
+
+- 2026-10-25 lobby free roam: offline checks executed the production lobby camera and music state helpers with mocked phase, FOV and respawn inputs; source gates confirm live-only abilities and enabled controls. Luau syntax and bytecode compilation, notes, whitespace and main/tutorial/four-script Rojo builds passed after the final source edit. Config, LobbyUI, MovementController and MusicController matched the open Edit place before editing and after the owner-confirmed targeted sync. Edit mode, Workspace/Map IDs and 725 Workspace root children were preserved. Studio gameplay and device testing remain with the owner.
 
 - 2026-10-25 varied showcase motion: offline recovery/path checks passed for all five quadratic paths, cut boundaries, reduced motion, empty lineup, protected avatar attributes, countdown and GO. Syntax, standalone Luau compilation, notes, diff whitespace and main/tutorial/overlay Rojo builds passed. Read-only Edit inspection confirmed all 11 full mapped sources match, one MatchShowcase and UIController, Workspace ID `59d929f7-2e07-8af6-0ad8-4a4c00000002`, Map model ID `1ca2e3c5-9bf4-2060-0aeb-452500001e69`, and 704 Workspace root children. Agent did not run Studio gameplay tests; owner framing and device checks remain.
 

@@ -53,7 +53,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 
 | Controller or module | Canonical source | Client-owned responsibility | Owner |
 |---|---|---|---|
-| MovementController | `src/StarterPlayerScripts/MovementController.client.lua` | Input, predicted movement, movement animation, ability presentation, and local camera effects | Project Owner |
+| MovementController | `src/StarterPlayerScripts/MovementController.client.lua` | Input, lobby walk/jump and live-only ability gates, predicted movement, movement animation, and ability presentation | Project Owner |
 | MomentumController | `src/StarterPlayerScripts/MomentumController.lua` | Local momentum prediction, reconciliation, and local change events | Project Owner |
 | MomentumHUD | `src/StarterPlayerScripts/MomentumHUD.client.lua` | Local momentum bar, popups, chain, loss feedback, and sound cues | Project Owner |
 | AirMovement | `src/StarterPlayerScripts/AirMovement.lua` | Normal jump grace windows, character-only falling force, air control, momentum preservation, and air-speed cap | Project Owner |
@@ -71,7 +71,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | UIAccessibility | `src/StarterPlayerScripts/UIAccessibility.client.lua` | Applies local text size and high contrast preferences to runtime screens | Project Owner |
 | TouchLayoutController | `src/StarterPlayerScripts/TouchLayoutController.client.lua` | Positions existing touch actions above the Roblox jump control without changing their input gates | Project Owner |
 | NametagController | `src/StarterPlayerScripts/NametagController.client.lua` | One visible local overhead identity and role badge per other match player, including private Hunt target decoration | Project Owner |
-| LobbyUI | `src/StarterPlayerScripts/LobbyUI.client.lua` | Lobby, party, queue, settings presentation, and lobby camera | Project Owner |
+| LobbyUI | `src/StarterPlayerScripts/LobbyUI.client.lua` | Lobby, party, queue and settings presentation, free-roam controls, and engine-owned lobby camera view selection | Project Owner |
 | TutorialPrompt | `src/StarterPlayerScripts/TutorialPrompt.client.lua` | First-join Start/Later choice and entry errors | Project Owner |
 | TutorialHUD | `src/StarterPlayerScripts/TutorialHUD.client.lua` | Sequential tutorial instructions, retry hint, completion and return controls | Project Owner |
 | RpsUI | `src/StarterPlayerScripts/RpsUI.client.lua` | MS_RPS cards, sign input, local timer, and reveal presentation | Project Owner |
@@ -81,7 +81,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | SecretHuntHUD | `src/StarterPlayerScripts/SecretHuntHUD.client.lua` | Private target card, timed hints, danger, capture feedback, and final-phase leaderboard | Project Owner |
 | ClientSettings | `src/StarterPlayerScripts/ClientSettings.lua` | In-session presentation settings | Project Owner |
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |
-| MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client match-state music playback and fades | Project Owner |
+| MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client lobby and match-state music playback and fades through AudioRouter | Project Owner |
 | VfxScale | `src/StarterPlayerScripts/VfxScale.lua` | Client cosmetic intensity and telegraph floor | Project Owner |
 | CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | First-person-only match camera with lobby-preference restoration, pose and look input, aim and target-lock handoff, movement camera effects, and chase feedback | Project Owner |
 | MatchShowcase | `src/StarterPlayerScripts/MatchShowcase.lua` | Server-deadline-driven opening title, inert local lineup, responsive framing and cleanup; CameraDirector applies its camera poses | Project Owner |

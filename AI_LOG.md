@@ -141,3 +141,5 @@ _Form 03 Compliance: Required by Level Up 3.0 Esports Game Dev Challenge Rules_
 
 | 2026-10-22 | Codex | First-person FOV cap revision | Reduced the owner-approved first-person FOV slider maximum and final camera cap from 120 to 95 degrees using `Config.Settings.FirstPersonFovMax`; updated the handoff and live notes; syntax, notes, diff whitespace, and Rojo build passed; Studio confirmation remains with the project owner | Full | Project Owner; visual cap check pending |
 
+| 2026-10-25 | Codex | Free-roaming lobby, view switch and BGM | Enabled walk/jump with the menu visible, added lobby-only third/first view controls and gamepad menu focus, gated abilities to live rounds, and reused the existing match BGM in lobby. Offline checks, syntax, compilation, notes and three Rojo builds passed. The owner synced the four-script place-restricted overlay; read-only Studio inspection confirmed full source equality and unchanged Workspace/Map identities. Studio gameplay, device and sound review and place save remain with the owner. | Full | Project Owner |
+
