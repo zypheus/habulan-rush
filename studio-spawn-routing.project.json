@@ -1,0 +1,19 @@
+{
+  "name": "HabulanRushSpawnRoutingSync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": { "$path": "src/ReplicatedStorage/Config.lua", "$ignoreUnknownInstances": true }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "MatchService": { "$path": "src/ServerScriptService/MatchService.server.lua", "$ignoreUnknownInstances": true },
+      "SpawnRouting": { "$path": "src/ServerScriptService/SpawnRouting.lua", "$ignoreUnknownInstances": true }
+    }
+  }
+}

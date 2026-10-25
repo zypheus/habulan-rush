@@ -12,6 +12,7 @@
 -- Task/spec: open-experience random round spawns, approved 2026-10-24.
 -- Task/spec: tutorial teleport queue guard, approved 2026-10-25.
 -- Task/spec: search cancellation state guard, 2026-10-25.
+-- Task/spec: lobby island and Kalsada spawn routing, approved 2026-10-25.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
 -- CHANGED IN v1.2
@@ -56,6 +57,7 @@ local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
 local PanyoMode = require(ServerScriptService:WaitForChild("PanyoMode"))
 local SecretHuntMode = require(ServerScriptService:WaitForChild("SecretHuntMode"))
 local SpawnSelector = require(ServerScriptService:WaitForChild("SpawnSelector"))
+local SpawnRouting = require(ServerScriptService:WaitForChild("SpawnRouting"))
 
 -- QueueEvent is created here if your Remotes setup script doesn't define it yet
 local QueueEvent: RemoteEvent
@@ -422,6 +424,17 @@ local function initPlayer(player: Player)
 	player:SetAttribute("HRushState", "MS_01")
 	player:SetAttribute("HRushRole", "Runner")
 	player:SetAttribute("HRushGameMode", nil)
+	SpawnRouting.setLobby(player)
+	local existingCharacter = player.Character
+	if existingCharacter then
+		task.defer(function()
+			if player.Parent ~= Players or player.Character ~= existingCharacter then return end
+			local root = existingCharacter:WaitForChild("HumanoidRootPart", 5)
+			if root and root:IsA("BasePart") then
+				SpawnRouting.placeLobbyCharacter(player, existingCharacter)
+			end
+		end)
+	end
 	-- Late joiners never see returnToLobby's broadcast, so push the lobby
 	-- state directly: without this the client keeps its pre-first-message
 	-- defaults and movement stays frozen until the next full match cycle.
@@ -724,6 +737,9 @@ local function returnToLobby()
 	playerRoles = {}
 	immuneUntil = {}
 	inMatch = {}
+	for _, p in ipairs(returning) do
+		if p.Parent == Players then SpawnRouting.setLobby(p) end
+	end
 
 	for _, p in ipairs(Players:GetPlayers()) do
 		if not queued[p] then
@@ -1050,6 +1066,9 @@ local function runMatch()
 		local selectedMap = runMapVote(currentMode)
 		ReplicatedStorage:SetAttribute("HRushSelectedMap", selectedMap)
 		print(string.format("[MatchService] Map vote completed. Selected map: %s", selectedMap))
+		for _, player in ipairs(getParticipants() :: { Player }) do
+			SpawnRouting.setArena(player)
+		end
 
 		-- Sample once at match entry; the first round reuses these positions.
 		local roundSpawns = SpawnSelector.assignRound(getParticipants() :: { Player })

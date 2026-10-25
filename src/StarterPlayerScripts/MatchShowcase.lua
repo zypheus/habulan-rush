@@ -3,7 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: Deadline-driven match opening, inert local avatar lineup, and title/fade UI.
 -- CameraDirector alone applies the returned camera frame. No gameplay or private role reads.
--- Task/spec: varied curved Kalsada clips, lineup and five-second countdown, approved 2026-10-25.
+-- Task/spec: lower full-court Kalsada clip, lineup and five-second countdown, approved 2026-10-25.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -215,6 +215,36 @@ local function smooth(t: number): number
 	return t * t * (3 - 2 * t)
 end
 
+local function fitMapFrame(position: Vector3, focus: Vector3, clip: any, viewport: Vector2): Vector3
+	local bounds = clip.FrameBounds
+	if bounds == nil then return position end
+	local aspect = math.max(1, viewport.X) / math.max(1, viewport.Y)
+	local halfFov = math.tan(math.rad(settings.FieldOfView / 2)) * bounds.ScreenMargin
+	local function fits(shift: number): boolean
+		local view = CFrame.lookAt(position + bounds.Pullback * shift, focus)
+		for _, x in { bounds.Min.X, bounds.Max.X } do
+			for _, y in { bounds.Min.Y, bounds.Max.Y } do
+				for _, z in { bounds.Min.Z, bounds.Max.Z } do
+					local point = view:PointToObjectSpace(Vector3.new(x, y, z))
+					local depth = -point.Z
+					if depth <= 0 or math.abs(point.X) > depth * halfFov * aspect
+						or math.abs(point.Y) > depth * halfFov then
+						return false
+					end
+				end
+			end
+		end
+		return true
+	end
+	if fits(0) then return position end
+	local near, far = 0, bounds.MaxPullback
+	for _ = 1, 12 do
+		local middle = (near + far) / 2
+		if fits(middle) then far = middle else near = middle end
+	end
+	return position + bounds.Pullback * far
+end
+
 -- Fits the actual avatar bounds in both axes, including on narrow screens.
 function Showcase.fitDistance(size: Vector3, viewport: Vector2): number
 	local vertical = math.tan(math.rad(settings.FieldOfView / 2))
@@ -280,7 +310,7 @@ function Showcase.step(camera: Camera): CFrame?
 		local second = clip.Control:Lerp(clip.Finish.Position, t)
 		local position = first:Lerp(second, t)
 		local focus = clip.Focus:Lerp(clip.FocusFinish or clip.Focus, t)
-		return CFrame.lookAt(position, focus)
+		return CFrame.lookAt(fitMapFrame(position, focus, clip, camera.ViewportSize), focus)
 	end
 	local t = if Theme.reducedMotion() then 0 else smooth(math.clamp(
 		(elapsed - settings.MapShotDuration) / (transitionStart - settings.MapShotDuration), 0, 1))

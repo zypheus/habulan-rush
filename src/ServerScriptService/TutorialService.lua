@@ -7,8 +7,8 @@
 -- into the far training strip without TeleportService). Embedded mode never
 -- writes MatchService-owned globals at startup, temporarily pins the global
 -- round state while sessions run, re-asserts per-player lesson attributes
--- against broadcast sweeps, and returns players by pivoting to the Kalsada
--- spawn. Task/spec: owner-approved Classic Tag tutorial, 2026-10-25.
+-- against broadcast sweeps, and returns players to the lobby island.
+-- Task/spec: owner-approved Classic Tag tutorial and lobby spawn routing, 2026-10-25.
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -21,6 +21,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Progress = require(ServerScriptService:WaitForChild("TutorialProgress"))
+local SpawnRouting = require(ServerScriptService:WaitForChild("SpawnRouting"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local TutorialEvent = Remotes:WaitForChild("TutorialEvent") :: RemoteEvent
 local StateChanged = Remotes:WaitForChild("StateChanged") :: RemoteEvent
@@ -352,12 +353,16 @@ local function endSession(player: Player, session: Session)
 		end
 	end)
 	local character = player.Character
-	local map = Workspace:FindFirstChild("Map")
-	local lobbySpawn = map and map:FindFirstChild("Spawn")
-	if character and lobbySpawn and (lobbySpawn :: Instance):IsA("SpawnLocation") then
-		character:PivotTo((lobbySpawn :: BasePart).CFrame + Vector3.new(0, 3, 0))
-	elseif character then
-		character:PivotTo(CFrame.new(0, 8, 0))
+	if embedded then
+		if character then SpawnRouting.placeLobbyCharacter(player, character) else SpawnRouting.setLobby(player) end
+	else
+		local map = Workspace:FindFirstChild("Map")
+		local lobbySpawn = map and map:FindFirstChild("Spawn")
+		if character and lobbySpawn and (lobbySpawn :: Instance):IsA("SpawnLocation") then
+			character:PivotTo((lobbySpawn :: BasePart).CFrame + Vector3.new(0, 3, 0))
+		elseif character then
+			character:PivotTo(CFrame.new(0, 8, 0))
+		end
 	end
 end
 

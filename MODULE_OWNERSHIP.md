@@ -31,11 +31,12 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Service | Canonical source | Authoritative state or responsibility | Owner |
 |---|---|---|---|
 | PartyService | `src/ServerScriptService/PartyService.lua` | Party membership, leader actions, and party locks | Project Owner |
-| MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, roles, timer, scoring, and server-only tag commit | Project Owner |
+| MatchService | `src/ServerScriptService/MatchService.server.lua` | Queue, match phases, participants, lobby/arena respawn routing, roles, timer, scoring, and server-only tag commit | Project Owner |
 | PanyoMode | `src/ServerScriptService/PanyoMode.lua` | One panyo instance, server-observed pickup, Carrier ownership, steal protection, recovery, and possession clock | Project Owner |
 | PanyoEvents | `src/ServerScriptService/PanyoEvents.lua` | Panyo phase transitions, periodic reveals, and final-second cues | Project Owner |
 | SecretHuntMode | `src/ServerScriptService/SecretHuntMode.lua` | Private target cycle, capture ledger, protection, streaks, recovery, and timed Hunt cues | Project Owner |
 | SpawnSelector | `src/ServerScriptService/SpawnSelector.lua` | Server-owned authored-map ground sampling and distinct round spawn assignments | Project Owner |
+| SpawnRouting | `src/ServerScriptService/SpawnRouting.lua` | Server-owned lobby island and Kalsada RespawnLocation selection with a missing-island fallback | Project Owner |
 | MovementAuthority | `src/ServerScriptService/MovementAuthority.lua` | Server movement state, request validation, cooldowns, and passive speed/displacement observation | Project Owner |
 | MovementAuthority bootstrap | `src/ServerScriptService/MovementAuthority.server.lua` | Starts the MovementAuthority lifecycle | Project Owner |
 | TagService | `src/ServerScriptService/TagService.server.lua` | Click tag rate guard, target selection, spatial/arc/LOS validation, and replicated third-person tag animation | Project Owner |
@@ -64,7 +65,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | SprintVFX bootstrap | `src/StarterPlayerScripts/SprintVFX.client.lua` | Starts the SprintVFX module | Project Owner |
 | TargetLockController | `src/StarterPlayerScripts/TargetLockController.lua` | Local target selection, reticle, and camera assist | Project Owner |
 | TargetLock bootstrap | `src/StarterPlayerScripts/TargetLockController.client.lua` | Starts the target-lock module | Project Owner |
-| UIController | `src/StarterPlayerScripts/UIController.client.lua` | Match HUD, cooldowns, draft presentation, and recaps | Project Owner |
+| UIController | `src/StarterPlayerScripts/UIController.client.lua` | Match HUD, cooldowns, draft presentation, and recaps; mode HUDs own their live chips and timer, and no match SET button is drawn | Project Owner |
 | UITheme | `src/StarterPlayerScripts/UITheme.lua` | Read-only Config UI tokens, shared surface, safe-area screen, and focus style constructors | Project Owner |
 | MatchFeedback | `src/StarterPlayerScripts/MatchFeedback.lua` | Separate floating match and movement cards with original UI icons; confirmed mode events retain priority and involved-player haptics | Project Owner |
 | UILayoutCoordinator | `src/StarterPlayerScripts/UILayoutCoordinator.lua` | Shared breakpoints, modal focus, and measured touch-control reservation | Project Owner |
@@ -83,7 +84,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | AudioRouter | `src/StarterPlayerScripts/AudioRouter.lua` | Client SoundGroups and one-shot routing | Project Owner |
 | MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client lobby and match-state music playback and fades through AudioRouter | Project Owner |
 | VfxScale | `src/StarterPlayerScripts/VfxScale.lua` | Client cosmetic intensity and telegraph floor | Project Owner |
-| CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | First-person-only match camera with lobby-preference restoration, pose and look input, aim and target-lock handoff, movement camera effects, and chase feedback | Project Owner |
+| CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | First-person-only match camera with lobby-preference restoration, pose and look input, vote/settings cursor release, aim and target-lock handoff, movement camera effects, and chase feedback | Project Owner |
 | MatchShowcase | `src/StarterPlayerScripts/MatchShowcase.lua` | Server-deadline-driven opening title, inert local lineup, responsive framing and cleanup; CameraDirector applies its camera poses | Project Owner |
 | CameraDirector bootstrap | `src/StarterPlayerScripts/CameraDirector.client.lua` | Starts CameraDirector once | Project Owner |
 | ChaseState | `src/StarterPlayerScripts/ChaseState.lua` | Client-only chase awareness state: active Taya resolution (players and bots), distance, closing speed, visibility, and one smoothed chase intensity shared by camera and HUD | Project Owner |
@@ -95,6 +96,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Area | Canonical source | Responsibility | Owner |
 |---|---|---|---|
 | Open Studio showcase overlay | `studio-showcase.project.json` | Main-place-restricted sync of 11 showcase scripts after comparing and preserving Studio-only Config, map-vote, spawn and camera edits; excludes Workspace and unrelated instances | Project Owner |
+| Open Studio court-shot overlay | `studio-court-shot.project.json` | Main-place-restricted sync of Config and MatchShowcase for the lower full-court clip; excludes Workspace and unrelated scripts | Project Owner |
+| Open Studio vote-cursor overlay | `studio-vote-cursor.project.json` | Main-place-restricted sync of CameraDirector and UIController for ballot cursor and match SET removal; excludes Workspace and unrelated scripts | Project Owner |
 | Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua`, `tools/AnimationDev/HRush_AnimPreview.lua` | Data-driven original R15 animation definitions, validation, building, and local preview | Project Owner |
 | Workspace map input | `assets/Map.rbxmx`, `assets/Terrain.rbxmx` | Owner-exported authored Kalsada scene, original lobby spawn, tagged walkable ground, spawn regions, and terrain | Project Owner |
 | Tutorial place input | `tutorial.project.json`, `assets/TutorialMap.rbxmx`, `assets/TutorialScene.rbxmx`, `assets/TutorialTrainingZone.rbxmx`, `scripts/build-tutorial-zone.ps1` | Optional standalone tutorial place with anchored Kalsada scenery, scene waypoints, and the deterministic training strip generator; the strip, scene, and lesson scripts are also mapped into the main place project, and TutorialMap remains subplace only | Project Owner |

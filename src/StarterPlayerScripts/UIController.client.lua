@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: remove the match SET button and preserve owner HUD changes, 2026-10-25.
 -- Task/spec: showcase HUD suppression and reliable countdown handoff, approved 2026-10-25.
 -- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/UIController.client.lua
@@ -386,30 +387,6 @@ local function updateRoleBanner()
 	roleBanner.Visible = false
 end
 
--- Settings stays available during live play.
-local settingsGear = Instance.new("TextButton")
-settingsGear.Name = "SettingsGear"
-settingsGear.AnchorPoint = Vector2.new(1, 0)
-settingsGear.Position = UDim2.new(1, -12, 0, 12)
-settingsGear.Size = UDim2.fromOffset(64, 64)
-settingsGear.BackgroundColor3 = COL_PANEL
-settingsGear.BackgroundTransparency = 0.05
-settingsGear.BorderSizePixel = 0
-settingsGear.Font = Enum.Font.GothamBold
-settingsGear.TextSize = 18
-settingsGear.Text = "SET"
-settingsGear.TextColor3 = HUD_DIM
-settingsGear.Parent = gui
-corner(settingsGear, 12)
-stroke(settingsGear, HUD_DIM, 1)
-settingsGear.Activated:Connect(function()
-	AudioRouter.playUi("click")
-	local ev = ReplicatedStorage:FindFirstChild("HRushSettingsToggle")
-	if ev and ev:IsA("BindableEvent") then
-		ev:Fire()
-	end
-end)
-
 -- Attribute readers
 local function attrNum(name: string, fallback: number): number
 	local v = LocalPlayer:GetAttribute(name)
@@ -432,10 +409,17 @@ local curRole = attrStr("HRushRole", "Runner")
 local curSkillId = "" -- granted skill id (declared early so visibility logic sees it)
 
 local function updateVisibility()
-	-- Dash stays Runner-only; the skill chip follows the grant list
-	-- instead, so Config.Debug.AllowAnyRoleForSkills can show it on Taya too.
-	-- The chip is also a circle (not a rounded square), so it reads apart from
-	-- the dash chip by SHAPE, not only by color.
+	-- Suppress old UIController chip cluster when a mode HUD is active
+	-- (TayaHUD / PanyoHUD / SecretHuntHUD own their own ability cards).
+	local modeHudActive = PlayerGui:FindFirstChild("HRushHUD_ClassicTag") ~= nil
+		or PlayerGui:FindFirstChild("HRushHUD_Panyo") ~= nil
+		or PlayerGui:FindFirstChild("HRushHUD_SecretHunt") ~= nil
+	if modeHudActive then
+		cluster.Visible = false
+		chip.Visible = false
+		chipCaption.Visible = false
+		return
+	end
 	local isRunner = (curRole == "Runner")
 	local hasSkill = (curSkillId ~= "")
 	chip.Visible = isRunner
@@ -1612,7 +1596,11 @@ local function applyOverlayGate()
 	local mode = LocalPlayer:GetAttribute("HRushGameMode")
 	overlayGui.Enabled = inMatch and st ~= nil and st ~= "MS_01" and not MatchShowcase.isActive()
 	resultsGui.Enabled = inMatch and (st == "MS_05" or st == "MS_06")
-	topBar.Visible = inMatch and st == "MS_04"
+	-- Preserve the open place's mode HUD ownership of the live timer.
+	local modeHudActive2 = PlayerGui:FindFirstChild("HRushHUD_ClassicTag") ~= nil
+		or PlayerGui:FindFirstChild("HRushHUD_Panyo") ~= nil
+		or PlayerGui:FindFirstChild("HRushHUD_SecretHunt") ~= nil
+	topBar.Visible = (not modeHudActive2) and inMatch and st == "MS_04"
 	classicObjective.Visible = topBar.Visible and mode == "ClassicTag"
 	classicStandings.Visible = classicObjective.Visible and not Layout.compact()
 	tagFeed.Visible = classicObjective.Visible
@@ -1628,7 +1616,6 @@ local function applyOverlayGate()
 	end
 	roundLabel.Text = string.format("ROUND %d / %d", tonumber(LocalPlayer:GetAttribute("HRushRound")) or 1, totalRounds)
 	local compact = Layout.compact()
-	settingsGear.Position = UDim2.new(1, if UserInputService.TouchEnabled then -92 else -12, 0, 8)
 	topBar.Position = UDim2.new(0.5, 0, 0, if compact then 8 else 12)
 	topBar.Size = UDim2.fromOffset(if compact then 154 else 240, if compact then 48 else 64)
 	classicObjective.Position = UDim2.fromOffset(if compact then 12 else 24, if compact then 56 else 92)

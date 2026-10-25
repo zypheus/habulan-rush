@@ -561,10 +561,14 @@ Config.Match = {
 						Control = Vector3.new(-143, 42, 150),
 						Finish = CFrame.lookAt(Vector3.new(-150, 40, 150), Vector3.new(-195, 12, 95)),
 						Focus = Vector3.new(-195, 12, 95) },
-					{ Start = CFrame.lookAt(Vector3.new(-80, 31, 73), Vector3.new(-125, 5, 23)),
-						Control = Vector3.new(-72, 39, 64),
-						Finish = CFrame.lookAt(Vector3.new(-68, 37, 54), Vector3.new(-125, 5, 23)),
-						Focus = Vector3.new(-125, 5, 23) },
+					{ Start = CFrame.lookAt(Vector3.new(-10, 21, 42), Vector3.new(-126, 18, 23)),
+						Control = Vector3.new(-5, 20, 25),
+						Finish = CFrame.lookAt(Vector3.new(-10, 19, 7), Vector3.new(-126, 18, 23)),
+						Focus = Vector3.new(-126, 18, 23),
+						FrameBounds = { -- [SD] Court floor and opaque roof from the authored Kalsada scene.
+							Min = Vector3.new(-171, 2, -18), Max = Vector3.new(-77, 40, 65),
+							Pullback = Vector3.new(1, 0, 0), ScreenMargin = 0.85, MaxPullback = 512,
+						} },
 					{ Start = CFrame.lookAt(Vector3.new(-152, 28, -18), Vector3.new(-184, 5, -54)),
 						Control = Vector3.new(-146, 30, -22),
 						Finish = CFrame.lookAt(Vector3.new(-143, 28, -31), Vector3.new(-184, 5, -54)),
@@ -749,6 +753,8 @@ Config.Maps = {
 }
 
 Config.Spawn = { -- [SD] Full authored-map round spawn sampling.
+	LobbyPath = { "BarangayMaligayaLobby", "CentralPlaza", "PlazaSpawn" }, -- [SD] open-place lobby island spawn
+	ArenaPath = { "Map", "Spawn" }, -- [SD] fallback and ordinary match respawn
 	GroundTag = "HRUSH_SpawnGround",
 	RegionFolder = "SpawnRegions",
 	MinSeparation = 20,
@@ -1059,11 +1065,11 @@ Config.Settings = {
 	TelegraphFloor = 0.35, -- [SD] minimum visibility kept for telegraph effects
 }
 
--- Per-match-state music tracks. Empty slots use the existing match BGM until
--- dedicated licensed tracks are logged in ASSET_LOG.md.
+-- Per-match-state music tracks. Lobby keeps the earlier loop; empty match
+-- slots use MatchIntro.BgmId until dedicated tracks are selected.
 Config.Audio = {
 	Music = {
-		lobby = "", -- [SD] MS_01
+		lobby = "rbxassetid://94984747143473", -- [SD] MS_01 lobby only; see ASSET_LOG
 		draft = "", -- [SD] MS_02
 		countdown = "", -- [SD] MS_03
 		round = "", -- [SD] MS_04
@@ -1172,7 +1178,7 @@ Config.UI = {
 	},
 	MatchIntro = {
 		BackgroundImageId = "", -- [SD] match-start cover art; empty = gradient only until the art ID lands
-		BgmId = "rbxassetid://94984747143473", -- [SD] match BGM loop, see ASSET_LOG
+		BgmId = "rbxassetid://106317705738449", -- [SD] match-only BGM loop, see ASSET_LOG
 		BgmVolume = 0.5, -- [SD] match BGM volume 0-1
 		BgmFadeTime = 1.0, -- [SD] fade in/out on match enter/exit (s)
 	},

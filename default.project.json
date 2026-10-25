@@ -109,6 +109,9 @@
       "SpawnSelector": {
         "$path": "src/ServerScriptService/SpawnSelector.lua"
       },
+      "SpawnRouting": {
+        "$path": "src/ServerScriptService/SpawnRouting.lua"
+      },
       "MovementAuthority": {
         "$path": "src/ServerScriptService/MovementAuthority.lua"
       },

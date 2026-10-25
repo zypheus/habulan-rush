@@ -18,7 +18,7 @@ Source implements five two-second Kalsada landmark clips, a 3.5-second group ava
 |---|---|
 | 0 to 2 seconds | Wide Kalsada push and BARANGAY KALSADA title |
 | 2 to 4 seconds | Barangay Hall sideways arc |
-| 4 to 6 seconds | Multipurpose court and playground rising sideways move |
+| 4 to 6 seconds | Lower sideline move showing the full multipurpose court floor and roof |
 | 6 to 8 seconds | Fountain arc in the opposite direction |
 | 8 to 10 seconds | Street and parked-car pullback |
 | 10 to 13.5 seconds | Static participant copies, a fitted camera push, mode name and actual participant count |
@@ -65,7 +65,7 @@ At the owner's sync request, read-only inspection of the open main Edit place fo
 
 ## Owner manual checklist
 
-1. Use the same main Edit place for review so its current scenery and owner additions are included. Run two clients through each mode. Confirm the wide push, Hall arc, rising court move, reverse fountain arc and street pullback at 0, 2, 4, 6 and 8 seconds. Check that each landmark stays framed and the camera does not pass through scenery. Confirm the visible avatar lineup at 10 seconds, first person at 14 seconds, five countdown numbers with five ticks, and one GO cue when movement unlocks at 19 seconds. Confirm normal HUD and touch controls stay hidden during the scene and return afterward. Check Output for any `HRUSH_MatchShowcase` warning or render callback error.
+1. Use the same main Edit place for review so its current scenery and owner additions are included. Run two clients through each mode. Confirm the wide push, Hall arc, lower full-court move, reverse fountain arc and street pullback at 0, 2, 4, 6 and 8 seconds. Check that each landmark stays framed and the camera does not pass through scenery. Confirm the visible avatar lineup at 10 seconds, first person at 14 seconds, five countdown numbers with five ticks, and one GO cue when movement unlocks at 19 seconds. Confirm normal HUD and touch controls stay hidden during the scene and return afterward. Check Output for any `HRUSH_MatchShowcase` warning or render callback error.
 2. Run eight clients. Review the broad Kalsada shot and lineup angle for terrain or building obstruction. Check all avatars, asymmetric accessories, feet on the ground, clothing, no duplicate real bodies and readable mode text on a small landscape phone. Repeat with large text, portrait, tablet and gamepad.
 3. In Classic, confirm Bato Bato Pick finishes first. Confirm later rounds have no showcase and a second match plays a fresh opening. Solo practice in Panyo and Hunt should still show one avatar and the correct mode.
 4. Respawn, remove a participant, and remove the selected Taya during preparation. Confirm no stale copy or camera lock remains, the replacement Taya is shown correctly, and existing practice/competitive mode rules still apply.
@@ -73,3 +73,9 @@ At the owner's sync request, read-only inspection of the open main Edit place fo
 6. Check reduced motion, muted audio and first-person FOV settings at 50, 72 and 95. Confirm the scene uses fixed shots with reduced motion, muted sounds stay silent, the gameplay FOV returns, and two Hunt clients never see each other's target assignment in the opening.
 
 Visual shot composition, device controls and multiplayer behavior remain unverified until the project owner completes this checklist.
+
+## Lower court camera revision
+
+The owner selected a lower 4-6 s court view with the full floor and opaque roof visible, including on portrait phones. Config now sets start `(-10,21,42)`, control `(-5,20,25)`, finish `(-10,19,7)`, focus `(-126,18,23)`, and conservative court-and-roof bounds from the authored scene. MatchShowcase retains the eased quadratic path, then pulls the camera east only when the current viewport would crop those bounds at the existing 50-degree FOV. Reduced motion holds the fitted first frame. All other clips, the lineup, countdown, audio and gameplay camera are unchanged.
+
+Before editing, read-only inspection found the open main Edit place's complete Config and MatchShowcase sources equal to the repository. Source copies and Workspace/Map identity metadata were saved to `C:/Users/Acer/AppData/Local/Temp/hrush-court-shot-20261025-214158`. Workspace had 752 root children, and the existing match-BGM Rojo server on port 34874 was paused before editing. The new `studio-court-shot.project.json` is restricted to place `127422539599317` and maps only Config and MatchShowcase, with no Workspace path. The offline showcase check covers each two-second cut, curved path, reduced-motion hold, empty lineup and court/roof projection on desktop, landscape phone, tablet and portrait phone. Syntax, Luau compilation, main/tutorial/targeted Rojo builds and notes pass. The owner connected and synced the two-script preview. Read-only follow-up confirmed both complete Studio sources equal the repository, Edit mode, and unchanged Workspace and Map IDs. Workspace root children increased from 752 to 758 during concurrent owner work; the overlay did not map Workspace. The owner saves the place and checks actual roof clearance and court visibility in Studio; agents do not run Studio gameplay tests.

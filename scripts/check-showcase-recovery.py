@@ -179,6 +179,14 @@ print("[HRUSH_ShowcaseRecovery] Deadline lifecycle and partial cleanup passed")
     assert CONFIG_SOURCE.count("Finish = CFrame.lookAt(") == 5
     map_config = CONFIG_SOURCE.split("MapClips = {", 1)[1].split("LineupFloor =", 1)[0]
     point = r"Vector3\.new\(([-\d., ]+)\)"
+    bounds_match = re.search(
+        rf"FrameBounds = \{{.*?Min = {point}, Max = {point},\s*"
+        rf"Pullback = {point}, ScreenMargin = ([\d.]+), MaxPullback = (\d+),",
+        map_config,
+        re.S,
+    )
+    assert bounds_match, "court clip needs the authored floor and roof bounds"
+    map_config = re.sub(r",\s*FrameBounds = \{.*?\}\s*", "", map_config, count=1, flags=re.S)
     pattern = re.compile(
         rf"\{{\s*Start = CFrame\.lookAt\({point}, {point}\),\s*"
         rf"Control = {point},\s*Finish = CFrame\.lookAt\({point}, {point}\),\s*"
@@ -189,7 +197,7 @@ print("[HRUSH_ShowcaseRecovery] Deadline lifecycle and partial cleanup passed")
     expected_positions = [
         ((-60, 90, 125), (-66, 83, 116.5), (-72, 76, 108)),
         ((-140, 40, 140), (-143, 42, 150), (-150, 40, 150)),
-        ((-80, 31, 73), (-72, 39, 64), (-68, 37, 54)),
+        ((-10, 21, 42), (-5, 20, 25), (-10, 19, 7)),
         ((-152, 28, -18), (-146, 30, -22), (-143, 28, -31)),
         ((105, 25, 113), (96, 27, 122), (93, 30, 125)),
     ]
@@ -198,20 +206,47 @@ print("[HRUSH_ShowcaseRecovery] Deadline lifecycle and partial cleanup passed")
         assert (coordinates(clip[0]), coordinates(clip[2]), coordinates(clip[3])) == expected_positions[index]
         assert coordinates(clip[1]) == coordinates(clip[5]), "start aim must match focus"
         assert coordinates(clip[4]) == coordinates(clip[6] or clip[5]), "finish aim must match focus"
+    assert coordinates(clips[2][5]) == (-126, 18, 23)
+    assert coordinates(bounds_match[1]) == (-171, 2, -18)
+    assert coordinates(bounds_match[2]) == (-77, 40, 65)
+    assert coordinates(bounds_match[3]) == (1, 0, 0)
+    assert float(bounds_match[4]) == 0.85 and int(bounds_match[5]) == 512
     map_start = SOURCE.index("\tif mapShot then\n", SOURCE.index("function Showcase.step("))
     map_end = SOURCE.index("\n\tlocal t = if Theme.reducedMotion()", map_start)
     map_branch = SOURCE[map_start:map_end]
+    fit_start = SOURCE.index("local function fitMapFrame(")
+    fit_end = SOURCE.index("\n-- Fits the actual avatar bounds", fit_start)
+    fit_map_frame = SOURCE[fit_start:fit_end]
     clip_fixture = r'''
-local settings = {MapShotDuration=10}
+local settings = {MapShotDuration=10,FieldOfView=50}
 local reduced = false
 local Theme = {reducedMotion=function() return reduced end}
 local function smooth(t) return t*t*(3-2*t) end
-local function vector(x,y,z)
-    return {X=x,Y=y,Z=z,Lerp=function(self,other,t)
-        return vector(self.X+(other.X-self.X)*t,self.Y+(other.Y-self.Y)*t,self.Z+(other.Z-self.Z)*t)
-    end}
+local vector
+local vectorMeta = {}
+vectorMeta.__index = vectorMeta
+function vectorMeta.__add(a,b) return vector(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end
+function vectorMeta.__sub(a,b) return vector(a.X-b.X,a.Y-b.Y,a.Z-b.Z) end
+function vectorMeta.__mul(a,b) return vector(a.X*b,a.Y*b,a.Z*b) end
+function vectorMeta:Dot(other) return self.X*other.X+self.Y*other.Y+self.Z*other.Z end
+function vectorMeta:Cross(other)
+    return vector(self.Y*other.Z-self.Z*other.Y,self.Z*other.X-self.X*other.Z,self.X*other.Y-self.Y*other.X)
 end
-local CFrame = {lookAt=function(position,focus) return {Position=position,Focus=focus} end}
+function vectorMeta:Unit() return self*(1/math.sqrt(self:Dot(self))) end
+function vectorMeta:Lerp(other,t) return self+(other-self)*t end
+vector = function(x,y,z)
+    return setmetatable({X=x,Y=y,Z=z},vectorMeta)
+end
+local Vector3 = {new=vector}
+local CFrame = {lookAt=function(position,focus)
+    local forward=(focus-position):Unit()
+    local right=forward:Cross(vector(0,1,0)):Unit()
+    local up=right:Cross(forward)
+    return {Position=position,Focus=focus,PointToObjectSpace=function(self,world)
+        local delta=world-self.Position
+        return vector(delta:Dot(right),delta:Dot(up),-delta:Dot(forward))
+    end}
+end}
 local map = {MapClips={}}
 '''
     def luau_vector(raw):
@@ -227,6 +262,13 @@ local map = {MapClips={}}
             f"FocusFinish={luau_vector(focus_finish or focus)}"
             "})"
         )
+    clip_data.append(
+        "map.MapClips[3].FrameBounds={"
+        f"Min={luau_vector(bounds_match[1])},Max={luau_vector(bounds_match[2])},"
+        f"Pullback={luau_vector(bounds_match[3])},ScreenMargin={bounds_match[4]},"
+        f"MaxPullback={bounds_match[5]}"
+        "}"
+    )
     clip_fixture += "\n".join(clip_data) + r'''
 local function close(a,b) return math.abs(a-b) < 0.001 end
 local function same(a,b) return close(a.X,b.X) and close(a.Y,b.Y) and close(a.Z,b.Z) end
@@ -234,9 +276,11 @@ local function distance(a,b)
     local x,y,z = a.X-b.X,a.Y-b.Y,a.Z-b.Z
     return math.sqrt(x*x+y*y+z*z)
 end
-local function shot(at, still)
+local camera = {ViewportSize=vector(1920,1080,0)}
+local function shot(at, still, viewport)
     local elapsed = at
     reduced = still
+    camera.ViewportSize = viewport or vector(1920,1080,0)
     local mapShot = true
 '''
     clip_checks = r'''
@@ -263,7 +307,35 @@ assert(same(shot(10,false).Position, map.MapClips[5].Finish.Position)
 assert(distance(map.MapClips[5].Start.Position,map.MapClips[5].Focus)
     < distance(map.MapClips[5].Finish.Position,map.MapClips[5].Focus),
     "street clip must pull back")
+local bounds = map.MapClips[3].FrameBounds
+for _, viewport in {vector(1920,1080,0),vector(568,320,0),vector(1024,768,0),
+    vector(390,844,0),vector(360,800,0)} do
+    local aspect = viewport.X/viewport.Y
+    local halfFov = math.tan(math.rad(settings.FieldOfView/2))*bounds.ScreenMargin
+    for _, elapsed in {4,4.5,5,5.5,5.999} do
+        local pose = shot(elapsed,false,viewport)
+        assert(pose.Position.Y >= 19 and pose.Position.Y <= 21,
+            "court camera must stay below the opaque roof")
+        for _, x in {bounds.Min.X,bounds.Max.X} do
+            for _, y in {bounds.Min.Y,bounds.Max.Y} do
+                for _, z in {bounds.Min.Z,bounds.Max.Z} do
+                    local point = pose:PointToObjectSpace(vector(x,y,z))
+                    local depth = -point.Z
+                    assert(depth > 0 and math.abs(point.X) <= depth*halfFov*aspect+0.001
+                        and math.abs(point.Y) <= depth*halfFov+0.001,
+                        "the full court and roof must fit on each screen")
+                end
+            end
+        end
+    end
+end
+assert(shot(4,false,vector(390,844,0)).Position.X > shot(4,false).Position.X,
+    "portrait must pull the court camera back")
+assert(same(shot(5,true,vector(390,844,0)).Position,
+    shot(4,true,vector(390,844,0)).Position),
+    "reduced motion holds the fitted court first frame")
 print("[HRUSH_ShowcaseRecovery] Curved paths, five cuts, reduced motion and empty lineup passed")
 '''
-    script.write_text(clip_fixture + "\n" + map_branch + "\n" + clip_checks, encoding="utf-8")
+    script.write_text(clip_fixture + "\n" + fit_map_frame + "\n" + map_branch + "\n" + clip_checks,
+                      encoding="utf-8")
     subprocess.run([str(LUAU), str(script)], check=True)

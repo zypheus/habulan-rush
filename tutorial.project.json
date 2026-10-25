@@ -143,6 +143,9 @@
       "TutorialProgress": {
         "$path": "src/ServerScriptService/TutorialProgress.lua"
       },
+      "SpawnRouting": {
+        "$path": "src/ServerScriptService/SpawnRouting.lua"
+      },
       "TutorialService": {
         "$path": "src/ServerScriptService/TutorialService.lua"
       },

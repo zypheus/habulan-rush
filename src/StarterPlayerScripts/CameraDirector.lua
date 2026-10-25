@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: free cursor for mode and map voting, 2026-10-25.
 -- Task/spec: preserve inspected Studio view defaults during showcase sync, 2026-10-25.
 -- Task/spec: first-round showcase camera ownership and handoff, approved 2026-10-25.
 -- StarterPlayerScripts/CameraDirector.lua (ModuleScript)
@@ -899,11 +900,26 @@ end
 -- Cursor
 ----------------------------------------------------------------------------
 
--- Forces LockCenter and hides the icon while we own the match camera, and
--- self-heals after Alt+Tab or a textbox focus. Never fights a focused chat
--- box or the platform menu.
-local function maintainCursor(paused: boolean)
+-- Locks the cursor for active play, frees it for ballots and settings, and
+-- restores the lobby state when the match camera releases. The platform menu
+-- owns its cursor while open.
+local function maintainCursor(paused: boolean, freeForUi: boolean?)
+	if GuiService.MenuIsOpen then
+		return
+	end
 	if paused then
+		if freeForUi then
+			-- The saved lobby state can be LockCenter when the player chose first
+			-- person there. Ballots and settings must always get a usable cursor.
+			cursorForced = true
+			if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			end
+			if not UserInputService.MouseIconEnabled then
+				UserInputService.MouseIconEnabled = true
+			end
+			return
+		end
 		if cursorForced then
 			cursorForced = false
 			if savedMouseBehavior ~= nil then
@@ -983,7 +999,7 @@ local function acquire()
 	end
 	bound = true
 	yielded = false
-	maintainCursor(false)
+	maintainCursor(not actionPhase(), not MatchShowcase.isActive())
 	RunService:BindToRenderStep(BIND, Enum.RenderPriority.Camera.Value, onRender)
 	debugPrint(
 		"acquired (CameraType was " .. tostring(savedCameraType) .. ", FOV " .. tostring(savedFieldOfView) .. ")"
@@ -1155,7 +1171,7 @@ function onRender(dt: number)
 	end
 
 	local paused = settingsOpen() or not actionPhase()
-	maintainCursor(paused)
+	maintainCursor(paused, not MatchShowcase.isActive())
 
 	local root = refreshCharacter()
 	if root == nil then
