@@ -30,7 +30,7 @@
 --     HRush_Dash one-shots strictly inside the 0.2s dash window (sprint
 --     stops at dash start and resumes at move end via tickSprintAnim).
 --     Cosmetic only; a failed load silently keeps the default animations.
---   • Movement lock: MS_03 Countdown WalkSpeed 0; dash/slide open in
+--   • Movement lock: MS_03 Countdown WalkSpeed 0; lobby allows walk/jump only; dash/slide open in
 --     MS_01 lobby warm-up and MS_04 Round Live, closed otherwise.
 --     NOTE (playtest): spawn straight into the lobby and press C — no
 --     FIND MATCH needed to test slide; MatchService owns MS_02-MS_06.
@@ -675,8 +675,8 @@ local function performDash()
 	if inputLocked then
 		return
 	end
-	if not (roundLive or lobbyWarmup) then
-		return -- MS_02/MS_03/MS_05/MS_06: abilities closed
+	if not roundLive then
+		return -- Lobby and non-live match phases: abilities closed
 	end
 	if isStunned() then
 		return -- stunned: no new actions
@@ -791,8 +791,8 @@ local function performSlide()
 	if inputLocked then
 		return
 	end
-	if not (roundLive or lobbyWarmup) then
-		return -- MS_02/MS_03/MS_05/MS_06: abilities closed
+	if not roundLive then
+		return -- Lobby and non-live match phases: abilities closed
 	end
 	if isStunned() then
 		return -- stunned: no new actions
@@ -935,7 +935,7 @@ local function performRoll()
 	local perfect = roll.inputAt > 0 and os.clock() - roll.inputAt <= Config.Momentum.PerfectRollWindow
 	roll.inputExpiresAt = 0
 	roll.inputAt = 0
-	if inputLocked or not (roundLive or lobbyWarmup) or isStunned() then
+	if inputLocked or not roundLive or isStunned() then
 		return
 	end
 	if roll.active or isSliding or isDashing or vault.active then
@@ -1145,7 +1145,7 @@ function vault.finish(completed: boolean, interruption: string?, preserveMomentu
 end
 
 function vault.tryStart(): boolean
-	if inputLocked or not (roundLive or lobbyWarmup) or isStunned() or vault.active or roll.active or isDashing then
+	if inputLocked or not roundLive or isStunned() or vault.active or roll.active or isDashing then
 		return false
 	end
 	if skillFlightLeft > 0 or skillWindupLeft > 0 or skillApprovedActive then
@@ -1246,7 +1246,7 @@ end
 local function handleSlideInput()
 	if Humanoid and Humanoid.FloorMaterial == Enum.Material.Air then
 		if not inputLocked
-			and (roundLive or lobbyWarmup)
+			and roundLive
 			and not isStunned()
 			and not roll.active
 			and not isSliding
@@ -2813,7 +2813,7 @@ end
 
 -- ── Server state (role / round / tag boost) ───────────────────────────────────
 -- TDD §4: StateChanged carries { state, role? }. MS_04 = Round Live.
--- MS_03 Countdown locks movement (WalkSpeed 0); MS_01/05/06 freeze & end slides.
+-- MS_03 Countdown locks movement (WalkSpeed 0); MS_01 allows walk/jump only.
 local function applyServerState(payload: { state: string?, role: string? })
 	if typeof(payload) ~= "table" then
 		return

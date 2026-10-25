@@ -9,6 +9,7 @@
 -- Task/spec: earned sprint help and loading tips, approved 2026-10-24.
 -- Task/spec: first-join Classic Tag tutorial entry, approved 2026-10-25.
 -- Task/spec: tutorial lobby visibility and queue cancellation repair, 2026-10-25.
+-- Task/spec: free-roaming lobby views and movement, approved 2026-10-25.
 --[[
 	HABULAN RUSH - Lobby UI
 	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
@@ -85,15 +86,9 @@ local CONFIG = {
 	LocationSub = "LOBBY",
 	PlayerNameOverride = nil, -- e.g. "JuanDelaRush". nil = your real Roblox display name
 
-	-- Lobby camera (the character stays a real 3D character)
+	-- Lobby presentation (the character stays a real 3D character)
 	EnableLobbyCamera = true,
-	DisableMovement = true,
 	HideDefaultCoreGui = true,
-	CameraDistance = 9.5,
-	CameraHeight = 1.4,
-	CameraYawDegrees = 18, -- turns the camera so the character is in 3/4 view
-	CameraShiftX = 1.5, -- pushes the character left of screen centre (landscape only)
-	CameraFOV = 42,
 }
 
 local COLORS = {
@@ -2409,6 +2404,15 @@ local phoneInvite = phoneButton("Invite", "INV", UDim2.new(0, 12, 1, -12), UDim2
 phoneInvite.AnchorPoint = Vector2.new(0, 1)
 local phoneLeave = phoneButton("Leave", "EXIT", UDim2.new(0, 84, 1, -12), UDim2.fromOffset(64, 64), false)
 phoneLeave.AnchorPoint = Vector2.new(0, 1)
+local viewTouch = createButton({
+	Name = "LobbyView", Position = UDim2.fromOffset(12, 156), Size = UDim2.fromOffset(72, 52),
+	BackgroundColor3 = COLORS.Slate, Text = "VIEW\n3RD", TextWrapped = true,
+	FontFace = FONTS.Heavy, TextSize = 14, TextColor3 = COLORS.Cream,
+	Visible = false,
+}, gui) :: TextButton
+corner(viewTouch, 10)
+stroke(viewTouch, COLORS.TextDim, 2, 0.15)
+Theme.focus(viewTouch)
 phonePlay.Activated:Connect(function()
 	if not QueueEvent then return end
 	local queue = player:GetAttribute("HRushQueue")
@@ -2467,9 +2471,12 @@ end)
 -- CAMERA
 --------------------------------------------------------------------------
 local isPortrait = false
+local originalCameraMode = player.CameraMode
+local originalMinZoom = player.CameraMinZoomDistance
+local originalMaxZoom = player.CameraMaxZoomDistance
 
 local function setupLobbyCamera()
-	if not CONFIG.EnableLobbyCamera then
+	if not CONFIG.EnableLobbyCamera or player:GetAttribute("HRushInMatch") == true then
 		return
 	end
 
@@ -2482,39 +2489,61 @@ local function setupLobbyCamera()
 		end)
 	end
 
-	if CONFIG.DisableMovement then
-		task.spawn(function()
-			local ok, module = pcall(function()
-				return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule", 5))
-			end)
-			if ok and module then
-				pcall(function()
-					module:GetControls():Disable()
-				end)
-			end
-		end)
-	end
-
-	RunService:BindToRenderStep("HabulanLobbyCamera", Enum.RenderPriority.Camera.Value + 1, function()
-		local cam = workspace.CurrentCamera
+	local firstPerson = ClientSettings.get("cameraViewMode") == "FirstPerson"
+	local distance = SharedConfig.Camera.ThirdPersonDistance
+	player.CameraMaxZoomDistance = math.max(player.CameraMaxZoomDistance, distance)
+	player.CameraMinZoomDistance = distance
+	player.CameraMaxZoomDistance = distance
+	player.CameraMode = if firstPerson then Enum.CameraMode.LockFirstPerson else Enum.CameraMode.Classic
+	viewTouch.Text = if firstPerson then "VIEW\n1ST" else "VIEW\n3RD"
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam.CameraType = Enum.CameraType.Custom
+		cam.FieldOfView = if firstPerson then ClientSettings.get("firstPersonFov") :: number
+			else SharedConfig.Camera.BaseFov
 		local char = player.Character
-		local hrp = char and char:FindFirstChild("HumanoidRootPart")
-		if not cam or not hrp then
-			return
-		end
-		cam.CameraType = Enum.CameraType.Scriptable
-		cam.FieldOfView = CONFIG.CameraFOV
-
-		local sway = math.sin(os.clock() * 0.45) * 1.5
-		local yaw = math.rad(CONFIG.CameraYawDegrees + sway)
-		local focus = hrp.Position + Vector3.new(0, 0.6, 0)
-		local dir = (CFrame.Angles(0, yaw, 0) * hrp.CFrame.LookVector.Unit)
-		local camPos = focus + dir * CONFIG.CameraDistance + Vector3.new(0, CONFIG.CameraHeight, 0)
-		local base = CFrame.lookAt(camPos, focus)
-		local shift = isPortrait and 0 or CONFIG.CameraShiftX
-		cam.CFrame = base * CFrame.new(shift, 0, 0)
-	end)
+		local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+		if humanoid then cam.CameraSubject = humanoid end
+	end
 end
+
+local function toggleLobbyView()
+	if player:GetAttribute("HRushInMatch") == true or player:GetAttribute("HRushState") ~= "MS_01"
+		or currentPanel ~= nil or GuiService.MenuIsOpen or UserInputService:GetFocusedTextBox() ~= nil then return end
+	local nextMode = if ClientSettings.get("cameraViewMode") == "FirstPerson" then "ThirdPerson" else "FirstPerson"
+	ClientSettings.set("cameraViewMode", nextMode)
+end
+
+viewTouch.Activated:Connect(toggleLobbyView)
+ClientSettings.Changed:Connect(function(key: unknown)
+	if key == "cameraViewMode" or key == "firstPersonFov" then setupLobbyCamera() end
+end)
+
+ContextActionService:BindAction("HRUSH_LobbyView", function(_name, state, _input)
+	if state ~= Enum.UserInputState.Begin or player:GetAttribute("HRushInMatch") == true then
+		return Enum.ContextActionResult.Pass
+	end
+	if currentPanel ~= nil or GuiService.MenuIsOpen or UserInputService:GetFocusedTextBox() ~= nil then
+		return Enum.ContextActionResult.Pass
+	end
+	toggleLobbyView()
+	return Enum.ContextActionResult.Sink
+end, false, SharedConfig.Camera.FirstPerson.ToggleKey, SharedConfig.Camera.FirstPerson.ToggleGamepad)
+
+ContextActionService:BindAction("HRUSH_LobbyMenuFocus", function(_name, state, input)
+	if state ~= Enum.UserInputState.Begin or player:GetAttribute("HRushInMatch") == true or currentPanel ~= nil then
+		return Enum.ContextActionResult.Pass
+	end
+	if input.KeyCode == Enum.KeyCode.DPadDown and GuiService.SelectedObject == nil then
+		GuiService.SelectedObject = if Layout.compact() then phonePlay else playButton
+		return Enum.ContextActionResult.Sink
+	elseif input.KeyCode == Enum.KeyCode.ButtonB and GuiService.SelectedObject ~= nil
+		and GuiService.SelectedObject:IsDescendantOf(gui) then
+		GuiService.SelectedObject = nil
+		return Enum.ContextActionResult.Sink
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.KeyCode.DPadDown, Enum.KeyCode.ButtonB)
 
 --------------------------------------------------------------------------
 -- RESPONSIVE UI
@@ -2585,15 +2614,15 @@ watchViewport()
 workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 	watchViewport()
 	setupResponsiveUI()
+	setupLobbyCamera()
 end)
 setupResponsiveUI()
-setupLobbyCamera()
 
 --------------------------------------------------------------------------
 -- MATCH INTEGRATION (lobby <-> match gate)
 -- Keep only the settings panel available during a match; lobby controls stay hidden.
 --------------------------------------------------------------------------
-local function setControlsEnabled(enabled)
+local function enableControls()
 	task.spawn(function()
 		local ok, module = pcall(function()
 			return require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule", 5))
@@ -2601,11 +2630,7 @@ local function setControlsEnabled(enabled)
 		if ok and module then
 			pcall(function()
 				local controls = module:GetControls()
-				if enabled then
-					controls:Enable()
-				else
-					controls:Disable()
-				end
+				controls:Enable()
 			end)
 		end
 	end)
@@ -2618,9 +2643,7 @@ local function applyMatchGate()
 		group.Frame.Visible = not inMatch and not Layout.compact()
 	end
 	phoneLobby.Visible = not inMatch and Layout.compact()
-	if not inMatch and UserInputService.GamepadEnabled and GuiService.SelectedObject == nil then
-		GuiService.SelectedObject = if Layout.compact() then phonePlay else playButton
-	end
+	viewTouch.Visible = not inMatch and UserInputService.TouchEnabled
 	pickerHolder.Visible = false
 	for _, panel in pairs(panels) do
 		panel.Token += 1
@@ -2628,7 +2651,7 @@ local function applyMatchGate()
 	end
 	currentPanel = nil
 	priorPanelFocus = nil
-	if inMatch and GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(gui) then
+	if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(gui) then
 		GuiService.SelectedObject = nil
 	end
 	overlayToken += 1
@@ -2642,20 +2665,25 @@ local function applyMatchGate()
 
 	if inMatch then
 		closePanel()
+		player.CameraMode = originalCameraMode
+		player.CameraMaxZoomDistance = math.max(player.CameraMaxZoomDistance, originalMaxZoom)
+		player.CameraMinZoomDistance = originalMinZoom
+		player.CameraMaxZoomDistance = originalMaxZoom
 		local cam = workspace.CurrentCamera
 		if cam then
 			cam.CameraType = Enum.CameraType.Custom
-			cam.FieldOfView = 70
+			cam.FieldOfView = SharedConfig.Camera.BaseFov
 			local char = player.Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			if hum then
 				cam.CameraSubject = hum
 			end
 		end
-		setControlsEnabled(true)
 	else
-		setupLobbyCamera() -- re-binds the lobby camera and disables movement
+		setupLobbyCamera()
+		task.defer(setupLobbyCamera) -- run after CameraDirector releases its match camera
 	end
+	enableControls()
 end
 
 player:GetAttributeChangedSignal("HRushInMatch"):Connect(applyMatchGate)

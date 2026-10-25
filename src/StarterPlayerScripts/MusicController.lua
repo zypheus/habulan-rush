@@ -3,7 +3,7 @@
 -- Owner: UI Dev
 -- Responsibility: looping match-state music with crossfades. Reads one track
 -- per match state from Config.Audio.Music (all "" until licensed audio is
--- logged). Empty IDs play nothing and never error. All output obeys the
+-- logged). The existing match loop also fills the lobby slot. All output obeys the
 -- Music SoundGroup. Presentation only, never gameplay.
 -- Refs: Settings screen task (Art Bible sections 3.1 and 3.3, UI/UX Spec section 5).
 -- Task/spec: MS_RPS first Taya selection, GDD 3.2 / System Spec 2.1.
@@ -42,15 +42,14 @@ local function keyForState(state: string): string
 	end
 end
 
--- Per-state track id. In-match states fall back to the match BGM until their
--- own licensed tracks land. Lobby has no fallback and stays silent.
+-- Per-state track id. Empty slots, including the lobby, use the current match BGM.
 local function idForState(state: string): string
 	local key = keyForState(state)
 	local id = (MUSIC :: any)[key]
 	if typeof(id) == "string" and id ~= "" then
 		return id
 	end
-	if key ~= "lobby" and typeof(INTRO.BgmId) == "string" then
+	if typeof(INTRO.BgmId) == "string" then
 		return INTRO.BgmId
 	end
 	return ""
@@ -165,10 +164,6 @@ local function refresh()
 		return
 	end
 	stopTestTone()
-	if LocalPlayer:GetAttribute("HRushInMatch") ~= true then
-		stopTrack()
-		return
-	end
 	local state = LocalPlayer:GetAttribute("HRushState")
 	local id = if typeof(state) == "string" then idForState(state) else ""
 	if id == "" then

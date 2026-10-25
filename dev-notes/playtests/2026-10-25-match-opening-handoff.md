@@ -16,11 +16,11 @@ Source implements five two-second Kalsada landmark clips, a 3.5-second group ava
 
 | Time from preparation start | Presentation |
 |---|---|
-| 0 to 2 seconds | Wide Kalsada move and BARANGAY KALSADA title |
-| 2 to 4 seconds | Barangay Hall and approach |
-| 4 to 6 seconds | Multipurpose court and playground |
-| 6 to 8 seconds | Fountain area |
-| 8 to 10 seconds | Street and parked-car area |
+| 0 to 2 seconds | Wide Kalsada push and BARANGAY KALSADA title |
+| 2 to 4 seconds | Barangay Hall sideways arc |
+| 4 to 6 seconds | Multipurpose court and playground rising sideways move |
+| 6 to 8 seconds | Fountain arc in the opposite direction |
+| 8 to 10 seconds | Street and parked-car pullback |
 | 10 to 13.5 seconds | Static participant copies, a fitted camera push, mode name and actual participant count |
 | 13.5 to 14 seconds | Fade through black, remove the copies, restore real characters and first-person view |
 | 14 to 19 seconds | Existing role or objective splash and 5, 4, 3, 2, 1 |
@@ -28,6 +28,7 @@ Source implements five two-second Kalsada landmark clips, a 3.5-second group ava
 
 - MatchService publishes `HRushShowcaseEndsAt` and `HRushPhaseEndsAt` before MS_03 reaches clients. Clients never acknowledge or delay the server start. A late client joins the current point in the timeline.
 - Config owns timing, FOV, fit margin, title reservation and Kalsada shot positions. The lineup floor is the broad LIGHTGREEN ground at approximately (-124.3, 2.06, 26.25), derived from source XML. Neither map nor real spawn positions changed for this item.
+- The five map moves use eased quadratic camera positions and keep looking at their landmarks. Only the wide shot still pushes in. Cuts remain at the original two-second boundaries; the lineup camera is unchanged.
 - MatchShowcase returns a camera pose to CameraDirector. It never writes the camera itself. The existing first-person yaw and configured FOV resume under the fade.
 - Copies are ordered by UserId, use current replicated appearances, and contain no scripts, interactive objects, tags, gameplay attributes, nameplates or cosmetic effects. Roblox-reserved `RBX` appearance attributes remain because client scripts cannot remove them. Parts are anchored and cannot collide, touch or be queried. Inert Humanoids retain avatar clothing with their name displays disabled. No new animation or audio asset is required.
 - Normal HUD, action buttons, world nametags and feedback are suppressed during the scene. TouchGui's previous enabled state and real-character transparency values are restored. Camera look resumes with the countdown. The avatar-fit calculation includes the title area and oversized accessories.
@@ -53,6 +54,7 @@ At the owner's sync request, read-only inspection of the open main Edit place fo
 - `python scripts/check-showcase-recovery.py` passed using the actual copy and countdown functions with mocked protected attributes, copy failure, missing avatar, repeat entry/exit, partial cleanup, five ticks, one GO, and missing deadline. This is an offline logic check; it does not verify rendering or replication.
 - The owner requested five distinct map clips and a longer opening. Before editing, the two affected Studio sources matched the repository exactly and were copied to `C:/Users/Acer/AppData/Local/Temp/hrush-five-clips-20261025-143735`; targeted Rojo was paused. The five shot paths use authored Map.rbxmx landmark positions. Offline checks cover all five two-second cuts, reduced motion and the empty-lineup hold. Visual framing remains owner testing.
 - The owner reconnected the targeted Rojo server on localhost:34874 and synced the two changed scripts. Read-only Studio inspection then confirmed all 11 complete overlay script sources match the repository, with one MatchShowcase and one UIController. The same Workspace and Map instance IDs remain in the open Edit place. Workspace currently has 704 root children after other concurrent place work; this overlay has no Workspace or map path. Save this Edit place and test the new sequence there.
+- For the varied-motion revision, the open Edit place was checked again: Config and MatchShowcase matched source exactly before editing, and Workspace and Map kept their recorded unique IDs. The two sources and overlay were backed up to `C:/Users/Acer/AppData/Local/Temp/hrush-showcase-motion-20261025-150700`, then targeted Rojo on port 34874 was paused. Offline recovery and path checks, syntax, Luau compilation, notes, whitespace and main, tutorial and overlay builds passed. The owner reconnected Rojo and synced. Read-only verification found all 11 full mapped script sources equal to the repository, one MatchShowcase and UIController, unchanged Workspace and Map IDs, 704 root children, and Edit mode. Owner save and visual review remain.
 
 - Luau syntax check passed.
 - Standalone Luau 0.744 compilation passed, including the touched large client scripts. This verifies bytecode generation as well as parsing.
@@ -63,7 +65,7 @@ At the owner's sync request, read-only inspection of the open main Edit place fo
 
 ## Owner manual checklist
 
-1. Use the same main Edit place for review so its current scenery and owner additions are included. Run two clients through each mode. Confirm five distinct map views at 0, 2, 4, 6 and 8 seconds, the visible avatar lineup at 10 seconds, first person at 14 seconds, five countdown numbers with five ticks, and one GO cue when movement unlocks at 19 seconds. Confirm normal HUD and touch controls stay hidden during the scene and return afterward. Check Output for any `HRUSH_MatchShowcase` warning or render callback error.
+1. Use the same main Edit place for review so its current scenery and owner additions are included. Run two clients through each mode. Confirm the wide push, Hall arc, rising court move, reverse fountain arc and street pullback at 0, 2, 4, 6 and 8 seconds. Check that each landmark stays framed and the camera does not pass through scenery. Confirm the visible avatar lineup at 10 seconds, first person at 14 seconds, five countdown numbers with five ticks, and one GO cue when movement unlocks at 19 seconds. Confirm normal HUD and touch controls stay hidden during the scene and return afterward. Check Output for any `HRUSH_MatchShowcase` warning or render callback error.
 2. Run eight clients. Review the broad Kalsada shot and lineup angle for terrain or building obstruction. Check all avatars, asymmetric accessories, feet on the ground, clothing, no duplicate real bodies and readable mode text on a small landscape phone. Repeat with large text, portrait, tablet and gamepad.
 3. In Classic, confirm Bato Bato Pick finishes first. Confirm later rounds have no showcase and a second match plays a fresh opening. Solo practice in Panyo and Hunt should still show one avatar and the correct mode.
 4. Respawn, remove a participant, and remove the selected Taya during preparation. Confirm no stale copy or camera lock remains, the replacement Taya is shown correctly, and existing practice/competitive mode rules still apply.

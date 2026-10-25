@@ -3,7 +3,7 @@
 -- Owner: Project Owner
 -- Responsibility: Deadline-driven match opening, inert local avatar lineup, and title/fade UI.
 -- CameraDirector alone applies the returned camera frame. No gameplay or private role reads.
--- Task/spec: five Kalsada clips, lineup and five-second countdown, approved 2026-10-25.
+-- Task/spec: varied curved Kalsada clips, lineup and five-second countdown, approved 2026-10-25.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -276,7 +276,11 @@ function Showcase.step(camera: Camera): CFrame?
 		local clip = clips[index]
 		local t = if Theme.reducedMotion() then 0 else smooth(math.clamp(
 			(elapsed - (index - 1) * clipDuration) / clipDuration, 0, 1))
-		return clip.Start:Lerp(clip.Finish, t)
+		local first = clip.Start.Position:Lerp(clip.Control, t)
+		local second = clip.Control:Lerp(clip.Finish.Position, t)
+		local position = first:Lerp(second, t)
+		local focus = clip.Focus:Lerp(clip.FocusFinish or clip.Focus, t)
+		return CFrame.lookAt(position, focus)
 	end
 	local t = if Theme.reducedMotion() then 0 else smooth(math.clamp(
 		(elapsed - settings.MapShotDuration) / (transitionStart - settings.MapShotDuration), 0, 1))

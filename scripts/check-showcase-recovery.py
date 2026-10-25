@@ -1,6 +1,7 @@
 """Run the real avatar-copy function against Roblox-like failure fixtures offline."""
 
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -176,6 +177,27 @@ print("[HRUSH_ShowcaseRecovery] Deadline lifecycle and partial cleanup passed")
     assert "Duration = 14," in CONFIG_SOURCE and "MapShotDuration = 10," in CONFIG_SOURCE
     assert CONFIG_SOURCE.count("Start = CFrame.lookAt(") == 5
     assert CONFIG_SOURCE.count("Finish = CFrame.lookAt(") == 5
+    map_config = CONFIG_SOURCE.split("MapClips = {", 1)[1].split("LineupFloor =", 1)[0]
+    point = r"Vector3\.new\(([-\d., ]+)\)"
+    pattern = re.compile(
+        rf"\{{\s*Start = CFrame\.lookAt\({point}, {point}\),\s*"
+        rf"Control = {point},\s*Finish = CFrame\.lookAt\({point}, {point}\),\s*"
+        rf"Focus = {point}(?:, FocusFinish = {point})?\s*\}}"
+    )
+    clips = pattern.findall(map_config)
+    assert len(clips) == 5, "all five camera paths must have start, control, finish and focus"
+    expected_positions = [
+        ((-60, 90, 125), (-66, 83, 116.5), (-72, 76, 108)),
+        ((-140, 40, 140), (-143, 42, 150), (-150, 40, 150)),
+        ((-80, 31, 73), (-72, 39, 64), (-68, 37, 54)),
+        ((-152, 28, -18), (-146, 30, -22), (-143, 28, -31)),
+        ((105, 25, 113), (96, 27, 122), (93, 30, 125)),
+    ]
+    coordinates = lambda raw: tuple(float(value.strip()) for value in raw.split(","))
+    for index, clip in enumerate(clips):
+        assert (coordinates(clip[0]), coordinates(clip[2]), coordinates(clip[3])) == expected_positions[index]
+        assert coordinates(clip[1]) == coordinates(clip[5]), "start aim must match focus"
+        assert coordinates(clip[4]) == coordinates(clip[6] or clip[5]), "finish aim must match focus"
     map_start = SOURCE.index("\tif mapShot then\n", SOURCE.index("function Showcase.step("))
     map_end = SOURCE.index("\n\tlocal t = if Theme.reducedMotion()", map_start)
     map_branch = SOURCE[map_start:map_end]
@@ -184,10 +206,33 @@ local settings = {MapShotDuration=10}
 local reduced = false
 local Theme = {reducedMotion=function() return reduced end}
 local function smooth(t) return t*t*(3-2*t) end
+local function vector(x,y,z)
+    return {X=x,Y=y,Z=z,Lerp=function(self,other,t)
+        return vector(self.X+(other.X-self.X)*t,self.Y+(other.Y-self.Y)*t,self.Z+(other.Z-self.Z)*t)
+    end}
+end
+local CFrame = {lookAt=function(position,focus) return {Position=position,Focus=focus} end}
 local map = {MapClips={}}
-for i=1,5 do
-    local id = i
-    map.MapClips[i] = {Start={Lerp=function(_self,_finish,t) return {id=id,t=t} end}, Finish={}}
+'''
+    def luau_vector(raw):
+        return f"vector({raw})"
+
+    clip_data = []
+    for clip in clips:
+        start, start_focus, control, finish, finish_focus, focus, focus_finish = clip
+        clip_data.append(
+            "table.insert(map.MapClips, {"
+            f"Start={{Position={luau_vector(start)}}}, Control={luau_vector(control)}, "
+            f"Finish={{Position={luau_vector(finish)}}}, Focus={luau_vector(focus)}, "
+            f"FocusFinish={luau_vector(focus_finish or focus)}"
+            "})"
+        )
+    clip_fixture += "\n".join(clip_data) + r'''
+local function close(a,b) return math.abs(a-b) < 0.001 end
+local function same(a,b) return close(a.X,b.X) and close(a.Y,b.Y) and close(a.Z,b.Z) end
+local function distance(a,b)
+    local x,y,z = a.X-b.X,a.Y-b.Y,a.Z-b.Z
+    return math.sqrt(x*x+y*y+z*z)
 end
 local function shot(at, still)
     local elapsed = at
@@ -200,14 +245,25 @@ for i=1,5 do
     local start = (i-1)*2
     local first = shot(start, false)
     local last = shot(start+1.999, false)
-    assert(first.id == i and first.t == 0, "clip must cut at its two-second boundary")
-    assert(last.id == i and last.t > 0.99, "clip must move gently before the next cut")
-    assert(shot(start+1, true).id == i and shot(start+1, true).t == 0,
+    local clip = map.MapClips[i]
+    assert(same(first.Position, clip.Start.Position) and same(first.Focus, clip.Focus),
+        "clip must cut to its start pose at the two-second boundary")
+    assert(distance(last.Position, clip.Finish.Position) < 0.001,
+        "clip must reach its finish before the next cut")
+    local middle = shot(start+1, false)
+    local expected = clip.Start.Position:Lerp(clip.Control, 0.5):Lerp(
+        clip.Control:Lerp(clip.Finish.Position, 0.5), 0.5)
+    assert(same(middle.Position, expected), "camera must follow the quadratic path")
+    assert(same(shot(start+1, true).Position, first.Position),
         "reduced motion holds each clip's first frame")
 end
-assert(shot(10,false).id == 5 and shot(13.5,false).t == 1,
+assert(same(shot(10,false).Position, map.MapClips[5].Finish.Position)
+    and same(shot(13.5,false).Position, map.MapClips[5].Finish.Position),
     "empty lineup keeps the last map view through the handoff")
-print("[HRUSH_ShowcaseRecovery] Five clip cuts, reduced motion and empty lineup passed")
+assert(distance(map.MapClips[5].Start.Position,map.MapClips[5].Focus)
+    < distance(map.MapClips[5].Finish.Position,map.MapClips[5].Focus),
+    "street clip must pull back")
+print("[HRUSH_ShowcaseRecovery] Curved paths, five cuts, reduced motion and empty lineup passed")
 '''
     script.write_text(clip_fixture + "\n" + map_branch + "\n" + clip_checks, encoding="utf-8")
     subprocess.run([str(LUAU), str(script)], check=True)
