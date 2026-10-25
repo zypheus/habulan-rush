@@ -1,0 +1,30 @@
+{
+  "name": "HabulanRushTutorialEntrySync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": { "$path": "src/ReplicatedStorage/Config.lua" }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "MatchService": { "$path": "src/ServerScriptService/MatchService.server.lua" },
+      "TutorialProgress": { "$path": "src/ServerScriptService/TutorialProgress.lua" },
+      "TutorialGateway": { "$path": "src/ServerScriptService/TutorialGateway.server.lua" }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "LobbyUI": { "$path": "src/StarterPlayerScripts/LobbyUI.client.lua" },
+        "TutorialPrompt": { "$path": "src/StarterPlayerScripts/TutorialPrompt.client.lua" }
+      }
+    }
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "name": "HabulanRushTutorial",
+  "servePlaceIds": [90963168543860],
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Config": {
+        "$path": "src/ReplicatedStorage/Config.lua"
+      },
+      "TagRules": {
+        "$path": "src/ReplicatedStorage/TagRules.lua"
+      },
+      "RpsRules": {
+        "$path": "src/ReplicatedStorage/RpsRules.lua"
+      },
+      "MomentumRules": {
+        "$path": "src/ReplicatedStorage/MomentumRules.lua"
+      },
+      "TsinelasArc": {
+        "$path": "src/ReplicatedStorage/TsinelasArc.lua"
+      },
+      "VFX": {
+        "$path": "src/ReplicatedStorage/VFX"
+      },
+      "Cosmetics": {
+        "$path": "src/ReplicatedStorage/Cosmetics"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "RequestTag": {
+          "$className": "RemoteEvent"
+        },
+        "RequestSkill": {
+          "$className": "RemoteEvent"
+        },
+        "RequestDash": {
+          "$className": "RemoteEvent"
+        },
+        "DashVFXEvent": {
+          "$className": "UnreliableRemoteEvent"
+        },
+        "RequestMovementState": {
+          "$className": "RemoteEvent"
+        },
+        "MomentumUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "PickSkill": {
+          "$className": "RemoteEvent"
+        },
+        "ActivateDiskarte": {
+          "$className": "RemoteEvent"
+        },
+        "StateChanged": {
+          "$className": "RemoteEvent"
+        },
+        "TagEvent": {
+          "$className": "RemoteEvent"
+        },
+        "SkillEvent": {
+          "$className": "RemoteEvent"
+        },
+        "SkillApproved": {
+          "$className": "RemoteEvent"
+        },
+        "SkillVFX": {
+          "$className": "RemoteEvent"
+        },
+        "SkillLanded": {
+          "$className": "RemoteEvent"
+        },
+        "DiskarteUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "ClutchEvent": {
+          "$className": "RemoteEvent"
+        },
+        "RoundRecap": {
+          "$className": "RemoteEvent"
+        },
+        "MatchRecap": {
+          "$className": "RemoteEvent"
+        },
+        "QueueEvent": {
+          "$className": "RemoteEvent"
+        },
+        "PartyEvent": {
+          "$className": "RemoteEvent"
+        },
+        "MapVoteEvent": {
+          "$className": "RemoteEvent"
+        },
+        "ModeVoteEvent": {
+          "$className": "RemoteEvent"
+        },
+        "PanyoEvent": {
+          "$className": "RemoteEvent"
+        },
+        "SecretHuntEvent": {
+          "$className": "RemoteEvent"
+        },
+        "RpsStageStart": {
+          "$className": "RemoteEvent"
+        },
+        "RpsReveal": {
+          "$className": "RemoteEvent"
+        },
+        "RpsResult": {
+          "$className": "RemoteEvent"
+        },
+        "RpsSubmitSign": {
+          "$className": "RemoteEvent"
+        },
+        "TutorialEvent": {
+          "$className": "RemoteEvent"
+        }
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "Map": {
+        "$path": "assets/TutorialMap.rbxmx"
+      },
+      "Terrain": {
+        "$path": "assets/Terrain.rbxmx"
+      },
+      "TutorialScene": {
+        "$path": "assets/TutorialScene.rbxmx"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "MovementAuthority": {
+        "$path": "src/ServerScriptService/MovementAuthority.lua"
+      },
+      "MovementAuthorityBootstrap": {
+        "$path": "src/ServerScriptService/MovementAuthority.server.lua"
+      },
+      "TutorialProgress": {
+        "$path": "src/ServerScriptService/TutorialProgress.lua"
+      },
+      "TutorialService": {
+        "$path": "src/ServerScriptService/TutorialService.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "UITheme": {
+          "$path": "src/StarterPlayerScripts/UITheme.lua"
+        },
+        "MatchFeedback": {
+          "$path": "src/StarterPlayerScripts/MatchFeedback.lua"
+        },
+        "UILayoutCoordinator": {
+          "$path": "src/StarterPlayerScripts/UILayoutCoordinator.lua"
+        },
+        "TouchLayoutController": {
+          "$path": "src/StarterPlayerScripts/TouchLayoutController.client.lua"
+        },
+        "UIAccessibility": {
+          "$path": "src/StarterPlayerScripts/UIAccessibility.client.lua"
+        },
+        "MovementController": {
+          "$path": "src/StarterPlayerScripts/MovementController.client.lua"
+        },
+        "MomentumController": {
+          "$path": "src/StarterPlayerScripts/MomentumController.lua"
+        },
+        "MomentumHUD": {
+          "$path": "src/StarterPlayerScripts/MomentumHUD.client.lua"
+        },
+        "AirMovement": {
+          "$path": "src/StarterPlayerScripts/AirMovement.lua"
+        },
+        "LandingController": {
+          "$path": "src/StarterPlayerScripts/LandingController.lua"
+        },
+        "TagController": {
+          "$path": "src/StarterPlayerScripts/TagController.lua"
+        },
+        "TagControllerBootstrap": {
+          "$path": "src/StarterPlayerScripts/TagController.client.lua"
+        },
+        "SprintVFX": {
+          "$path": "src/StarterPlayerScripts/SprintVFX.lua"
+        },
+        "SprintVFXBootstrap": {
+          "$path": "src/StarterPlayerScripts/SprintVFX.client.lua"
+        },
+        "TargetLockController": {
+          "$path": "src/StarterPlayerScripts/TargetLockController.lua"
+        },
+        "TargetLockBootstrap": {
+          "$path": "src/StarterPlayerScripts/TargetLockController.client.lua"
+        },
+        "ClientSettings": {
+          "$path": "src/StarterPlayerScripts/ClientSettings.lua"
+        },
+        "AudioRouter": {
+          "$path": "src/StarterPlayerScripts/AudioRouter.lua"
+        },
+        "VfxScale": {
+          "$path": "src/StarterPlayerScripts/VfxScale.lua"
+        },
+        "CameraDirector": {
+          "$path": "src/StarterPlayerScripts/CameraDirector.lua"
+        },
+        "CameraDirectorBootstrap": {
+          "$path": "src/StarterPlayerScripts/CameraDirector.client.lua"
+        },
+        "FirstPersonTorsoHider": {
+          "$path": "src/StarterPlayerScripts/FirstPersonTorsoHider.lua"
+        },
+        "FirstPersonTorsoHiderBootstrap": {
+          "$path": "src/StarterPlayerScripts/FirstPersonTorsoHider.client.lua"
+        },
+        "ChaseState": {
+          "$path": "src/StarterPlayerScripts/ChaseState.lua"
+        },
+        "TutorialHUD": {
+          "$path": "src/StarterPlayerScripts/TutorialHUD.client.lua"
+        }
+      }
+    }
+  }
+}

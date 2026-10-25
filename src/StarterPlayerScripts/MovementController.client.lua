@@ -11,6 +11,7 @@
 -- Task/spec: local-only confirmed TAG sound ownership, approved 2026-10-24.
 -- Task/spec: automatic earned sprint without stamina, approved 2026-10-24.
 -- Task/spec: completed local Vault floating card, approved 2026-10-24.
+-- Task/spec: tutorial subplace initial state sync, approved 2026-10-25.
 -- T09 [Code/P0] MovementController — Client movement (COMPLETE)
 --
 -- Responsibilities:
@@ -2813,7 +2814,7 @@ end
 -- ── Server state (role / round / tag boost) ───────────────────────────────────
 -- TDD §4: StateChanged carries { state, role? }. MS_04 = Round Live.
 -- MS_03 Countdown locks movement (WalkSpeed 0); MS_01/05/06 freeze & end slides.
-StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: string? })
+local function applyServerState(payload: { state: string?, role: string? })
 	if typeof(payload) ~= "table" then
 		return
 	end
@@ -2870,6 +2871,13 @@ StateChanged.OnClientEvent:Connect(function(payload: { state: string?, role: str
 		end
 		applySpeed()
 		pushAttributes(true)
+	end
+end
+StateChanged.OnClientEvent:Connect(applyServerState)
+task.defer(function()
+	local state = LocalPlayer:GetAttribute("HRushState")
+	if typeof(state) == "string" then
+		applyServerState({ state = state, role = LocalPlayer:GetAttribute("HRushRole") })
 	end
 end)
 

@@ -16,6 +16,14 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Classic Tag tutorial, 2026-10-25
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-25 | TutorialScene waypoints (`assets/TutorialScene.rbxmx`) | Model | Original invisible marker Parts authored in repository | Original project geometry | Reserved tutorial subplace on Kalsada | Pending Review | Seven named markers are separate from the Kalsada map, so a future map can replace them. No external asset ID. |
+| 2026-10-25 | Anchored tutorial Kalsada (`assets/TutorialMap.rbxmx`) | Model | Derived from the project-owner supplied `assets/Map.rbxmx` | Same pending mesh and texture rights review as the source map | Tutorial subplace only | Pending Review | Set Anchored true on 280 previously unanchored BaseParts so scenery stays in place. Geometry, texture references, and waypoint asset are unchanged. The main-place map keeps its original source asset. |
+| 2026-10-25 | Practice Runner, dash gate, and beacon | Model / Script | Original runtime Parts and labels authored in TutorialService | Original project geometry | Tutorial-only tag step and waypoint guidance | Pending Review | Noncolliding gate at DashGoal. No Humanoid, competitive bot, uploaded texture, or external asset ID. The reused Kalsada map retains its existing rights-review status. |
+
 ### Floating action icons, 2026-10-24
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |

@@ -52,6 +52,7 @@
         "ModeVoteEvent":   { "$className": "RemoteEvent" },
         "PanyoEvent":      { "$className": "RemoteEvent" },
         "SecretHuntEvent": { "$className": "RemoteEvent" },
+        "TutorialEvent": { "$className": "RemoteEvent" },
         "RpsStageStart":   { "$className": "RemoteEvent" },
         "RpsReveal":       { "$className": "RemoteEvent" },
         "RpsResult":       { "$className": "RemoteEvent" },
@@ -77,6 +78,12 @@
       },
       "MatchService": {
         "$path": "src/ServerScriptService/MatchService.server.lua"
+      },
+      "TutorialProgress": {
+        "$path": "src/ServerScriptService/TutorialProgress.lua"
+      },
+      "TutorialGateway": {
+        "$path": "src/ServerScriptService/TutorialGateway.server.lua"
       },
       "PanyoMode": {
         "$path": "src/ServerScriptService/PanyoMode.lua"
@@ -161,6 +168,9 @@
         },
         "LobbyUI": {
           "$path": "src/StarterPlayerScripts/LobbyUI.client.lua"
+        },
+        "TutorialPrompt": {
+          "$path": "src/StarterPlayerScripts/TutorialPrompt.client.lua"
         },
         "MapVoteUI": {
           "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"

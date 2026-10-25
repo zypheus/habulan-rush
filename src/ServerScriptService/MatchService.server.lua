@@ -8,6 +8,8 @@
 -- Task/spec: Agawan ng Panyo full mode, approved 2026-10-23.
 -- Task/spec: Lihim na Target full mode, approved 2026-10-23.
 -- Task/spec: open-experience random round spawns, approved 2026-10-24.
+-- Task/spec: tutorial teleport queue guard, approved 2026-10-25.
+-- Task/spec: search cancellation state guard, 2026-10-25.
 --                 phase timers, disconnect handling, and PLAY queue.
 --
 -- CHANGED IN v1.2
@@ -476,6 +478,7 @@ end)
 
 QueueEvent.OnServerEvent:Connect(function(player, action)
 	if action == "Play" then
+		if player:GetAttribute("HRushTutorialTeleporting") == true then return end
 		if matchState ~= "MS_01" or inMatch[player] then
 			-- match already running: tell the client, then reset
 			player:SetAttribute("HRushQueue", "Busy")
@@ -508,8 +511,10 @@ QueueEvent.OnServerEvent:Connect(function(player, action)
 			player:SetAttribute("HRushSearchEndsAt", searchEndsAt or (workspace:GetServerTimeNow() + SEARCH_TIMEOUT))
 		end
 	elseif action == "Cancel" then
+		if matchState ~= "MS_01" or inMatch[player] or not queued[player] then return end
 		local party = PartyService.GetParty(player)
-		if party and party.leader == player then
+		if party then
+			if party.leader ~= player then return end
 			PartyService.SetLocked(party, false)
 			for _, m in ipairs(party.members) do
 				queued[m] = nil
@@ -992,7 +997,7 @@ local function runMatch()
 			end
 		end
 		searchEndsAt = nil
-		if aborted then
+		if aborted or countQueued() == 0 then
 			continue
 		end
 

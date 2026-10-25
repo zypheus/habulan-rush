@@ -1,6 +1,6 @@
 # Module Ownership
 
-Updated: 2026-10-24
+Updated: 2026-10-25
 Human merge owner: **Project Owner**, sole maintainer
 Primary coding agent: **Codex**, only for the currently approved item
 
@@ -24,6 +24,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | ModeVoteEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Validated mode ballot requests and server vote presentation | Project Owner |
 | PanyoEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Server-only Panyo pickup, steal, drop, phase, reveal, and final cue presentation | Project Owner |
 | SecretHuntEvent remote | `default.project.json`, `ReplicatedStorage.Remotes` | Private assignment, hint, capture, phase, and leaderboard presentation; rate-limited snapshot request | Project Owner |
+| TutorialEvent remote | `default.project.json`, `tutorial.project.json`, `ReplicatedStorage.Remotes` | Validated Start, Later, Leave, and retry requests plus tutorial errors | Project Owner |
 
 ## Server
 
@@ -43,6 +44,9 @@ Primary coding agent: **Codex**, only for the currently approved item
 | RunStyleService | `src/ServerScriptService/RunStyleService.server.lua` | Server-whitelisted cosmetic animation selection | Project Owner |
 | Bootstrap | `src/ServerScriptService/Bootstrap.server.lua` | Kalsada greybox, lighting, and character defaults | Project Owner |
 | NametagDefaults | `src/ServerScriptService/NametagDefaults.server.lua` | Suppresses built-in overhead names and health displays so local nametags render once | Project Owner |
+| TutorialProgress | `src/ServerScriptService/TutorialProgress.lua` | Versioned shared-experience tutorial choice and completion record | Project Owner |
+| TutorialGateway | `src/ServerScriptService/TutorialGateway.server.lua` | Idle solo admission and reserved tutorial teleport from the lobby | Project Owner |
+| TutorialService | `src/ServerScriptService/TutorialService.server.lua` | Isolated lesson roles, waypoints, practice target, progress, completion, and return | Project Owner |
 
 ## Client
 
@@ -67,6 +71,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 | TouchLayoutController | `src/StarterPlayerScripts/TouchLayoutController.client.lua` | Positions existing touch actions above the Roblox jump control without changing their input gates | Project Owner |
 | NametagController | `src/StarterPlayerScripts/NametagController.client.lua` | One visible local overhead identity and role badge per other match player, including private Hunt target decoration | Project Owner |
 | LobbyUI | `src/StarterPlayerScripts/LobbyUI.client.lua` | Lobby, party, queue, settings presentation, and lobby camera | Project Owner |
+| TutorialPrompt | `src/StarterPlayerScripts/TutorialPrompt.client.lua` | First-join Start/Later choice and entry errors | Project Owner |
+| TutorialHUD | `src/StarterPlayerScripts/TutorialHUD.client.lua` | Sequential tutorial instructions, retry hint, completion and return controls | Project Owner |
 | RpsUI | `src/StarterPlayerScripts/RpsUI.client.lua` | MS_RPS cards, sign input, local timer, and reveal presentation | Project Owner |
 | MapVoteUI | `src/StarterPlayerScripts/MapVoteUI.client.lua` | Map-vote presentation and input | Project Owner |
 | ModeVoteUI | `src/StarterPlayerScripts/ModeVoteUI.client.lua` | Match mode ballot presentation and input | Project Owner |
@@ -88,6 +94,8 @@ Primary coding agent: **Codex**, only for the currently approved item
 |---|---|---|---|
 | Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua`, `tools/AnimationDev/HRush_AnimPreview.lua` | Data-driven original R15 animation definitions, validation, building, and local preview | Project Owner |
 | Workspace map input | `assets/Map.rbxmx`, `assets/Terrain.rbxmx` | Owner-exported authored Kalsada scene, original lobby spawn, tagged walkable ground, spawn regions, and terrain | Project Owner |
+| Tutorial place input | `tutorial.project.json`, `assets/TutorialMap.rbxmx`, `assets/TutorialScene.rbxmx` | Reusable tutorial code with anchored Kalsada scenery and separately named scene waypoints | Project Owner |
+| Open Studio tutorial entry overlays | `studio-tutorial-entry.project.json`, `studio-feedback.project.json` | Main-place restricted source sync of the lobby tutorial clients and queue repair without replacing the authored map; current Edit place has direct source mirrors for server scripts because Rojo did not adopt the older instances | Project Owner |
 | Open Studio spawn overlay | `assets/SpawnRegions.rbxmx`, `assets/PanyoSpawn.rbxmx`, `studio-spawn.project.json` | Targeted sync into the existing open place while preserving its authored Workspace objects | Project Owner |
 | Open Studio camera and TAG overlay | `studio-camera-tag.project.json` | Place-ID-restricted sync of four approved client modules while preserving all other Studio objects | Project Owner |
 | Open Studio earned sprint overlay | `studio-earned-sprint.project.json` | Place-ID-restricted sync of movement balance modules and Config while preserving the authored map and other Studio objects | Project Owner |

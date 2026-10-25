@@ -16,6 +16,7 @@
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
 -- Task/spec: open-experience random round spawns, approved 2026-10-24.
 -- Task/spec: earned sprint and movement balance, approved 2026-10-24.
+-- Task/spec: Classic Tag tutorial place and presentation settings, approved 2026-10-25.
 
 local Config = {}
 
@@ -569,6 +570,16 @@ Config.Match = {
 	EventWarningTime = 2.5,
 	SearchTimeout = 10,
 	TeamSize      = 4,
+}
+
+Config.Tutorial = { -- [SD] Classic Tag onboarding in its own place; no competitive rewards.
+	PlaceId = 90963168543860, -- [SD] Project-owner supplied tutorial subplace ID, 2026-10-25.
+	MainPlaceId = 127422539599317, -- [SD] Current main Edit place; fallback for direct tutorial arrivals.
+	ProgressStore = "HRushTutorialV1", -- [SD] shared by places in this experience.
+	RequestInterval = 1.0, -- [SD] minimum interval between tutorial menu requests.
+	MoveGoalRadius = 5, -- [SD] studs from the authored MoveGoal marker.
+	DashGoalRadius = 10, -- [SD] studs from the authored DashGoal marker.
+	TagTravelSpeed = 6, -- [SD] studs per second for the tutorial-only target.
 }
 
 Config.Events = {

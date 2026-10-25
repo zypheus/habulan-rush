@@ -13,6 +13,19 @@
         "$path": "src/ReplicatedStorage/Config.lua"
       }
     },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "MatchService": {
+        "$path": "src/ServerScriptService/MatchService.server.lua"
+      },
+      "TutorialProgress": {
+        "$path": "src/ServerScriptService/TutorialProgress.lua"
+      },
+      "TutorialGateway": {
+        "$path": "src/ServerScriptService/TutorialGateway.server.lua"
+      }
+    },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "$ignoreUnknownInstances": true,
@@ -36,6 +49,12 @@
         },
         "MomentumHUD": {
           "$path": "src/StarterPlayerScripts/MomentumHUD.client.lua"
+        },
+        "LobbyUI": {
+          "$path": "src/StarterPlayerScripts/LobbyUI.client.lua"
+        },
+        "TutorialPrompt": {
+          "$path": "src/StarterPlayerScripts/TutorialPrompt.client.lua"
         }
       }
     }

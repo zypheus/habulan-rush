@@ -320,13 +320,15 @@ Plain English: GM_01 is the main esports mode. GM_02 satisfies the competition's
 
 Completeness criteria require instructions and a tutorial. 
 
-1. **Tutorial map (60 to 90 s):** guided steps for move, sprint, dash, tag, use a skill, use an ultimate. 
+1. **Classic Tag lesson (about 60 to 90 s):** an optional, untimed tutorial in a reserved subplace. It initially uses Kalsada; a later tutorial map can replace the scene while keeping the named waypoints and lesson logic.
 
-2. **Prompts:** short on screen hints that fade after the first successful use. 
+2. **Entry:** first-time players choose Start or Later. The choice and completion are saved. A Learn to Play button remains in the lobby for replay; starting requires an idle solo player.
 
-3. **Practice dummy:** a bot Taya in the tutorial that behaves predictably. 
+3. **Steps:** move and jump to a marker, dash through a gate, chain two accepted slides to earn automatic sprint, then become Taya and tag a moving practice target. One short instruction appears at a time. Server-observed actions advance the steps; retry hints appear without a time limit.
 
-4. **Skill cards:** each skill shows icon, name, cooldown, and one sentence in plain language. 
+4. **Practice target:** a tutorial-only moving prop represents a Runner. It is not a competitive bot and creates no match score. Finish text explains that the lowest cumulative Taya time wins, then offers return to lobby.
+
+5. **Later lessons:** skill use, Diskarte, Agawan ng Panyo, and Lihim na Target are deferred. Skill cards remain part of the full match interface.
 
 ## 8. User interface 
 

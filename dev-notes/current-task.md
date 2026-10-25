@@ -3,9 +3,9 @@ title: current task
 type: task
 status: active
 owner: project-owner
-task: floating-action-notifications
-updated: 2026-10-24
-source: 2026-10-24 owner-approved floating action notifications plan
+task: classic-tag-tutorial
+updated: 2026-10-25
+source: 2026-10-25 owner-approved Classic Tag tutorial plan
 related:
   - ../AGENTS.md
   - ../docs/MOVEMENT_AUDIT.md
@@ -18,6 +18,14 @@ related:
 This is the live resume page for Codex and Obsidian. Keep it concise and update it after every approved item.
 
 ## Current
+
+- 2026-10-25: Owner reported that tutorial map parts were not anchored. Source inspection found 280 unanchored BaseParts among 2,273 in Kalsada, and Studio inspection confirmed unanchored doorframes in the open Tutorial place. Added tutorial-only `assets/TutorialMap.rbxmx` with those 280 BaseParts anchored and mapped it in `tutorial.project.json`; the main-place `assets/Map.rbxmx` is unchanged. The open Tutorial Edit place was also corrected directly at the owner's request. Follow-up inspection found zero unanchored BaseParts among its 2,274 current map BaseParts and confirmed the blank-template root Baseplate and SpawnLocation were already absent. Owner gameplay review and publication remain.
+
+- 2026-10-25: Traced the owner's “Could not open the tutorial” report to a Studio Play attempt. Roblox does not support TeleportService in Studio. Roblox's public place lookup resolved main place `127422539599317` and tutorial place `90963168543860` to the same universe `10769817230`, so the configured destination is in this experience. The tutorial gateway now reports the Studio limitation before attempting teleport and logs the actual engine error or `TeleportInitFailed` result in published servers. The owner connected the tutorial Edit place to the place-restricted Rojo server on localhost:34872. Read-only inspection confirmed Kalsada, all seven named waypoints, `TutorialService`, `TutorialProgress`, `TutorialHUD`, and `TutorialEvent`. The main Edit place is also open and read-only inspection confirms it has the updated gateway. The owner corrected their earlier report: the places have not been published. The synced tutorial Studio copy contained the blank template's Baseplate and SpawnLocation, so publish the clean generated tutorial build.
+
+- 2026-10-25: Fixed the reported issue in the currently open main Studio Edit place. An earlier Rojo sync had left duplicate `LobbyUI`, `MomentumHUD`, and `Remotes` objects. At the owner's explicit request, removed the stale `LobbyUI` marked `do return end`, the old `MomentumHUD`, and the `Remotes` folder containing only `TutorialEvent`; added `TutorialEvent` to the remaining folder with `QueueEvent`. Read-only follow-up confirmed one active copy of each and the main place remains in Edit mode. Canonical `TutorialProgress`, `TutorialGateway`, and queue guards are in the Edit place. Owner publication, Studio behavior checks, and published-client round trip remain pending; see [tutorial handoff](playtests/2026-10-25-classic-tutorial-handoff.md).
+
+- 2026-10-25: Implemented the Classic Tag tutorial source in a separate Rojo project using Kalsada and a replaceable `TutorialScene` waypoint asset. The main lobby has a saved first-join Start/Later prompt, replay button, solo idle gate, and reserved-session teleport. Tutorial steps observe live server movement, switch to Taya for a moving practice prop, save completion, and return to the lobby. Project-owner-supplied tutorial Place ID `90963168543860` is wired in Config. Source checks and both Rojo builds pass; place publication and owner published-client/device validation remain unverified. See [tutorial handoff](playtests/2026-10-25-classic-tutorial-handoff.md).
 
 - 2026-10-24: Implemented floating action cards in shared MatchFeedback. Original shape icons, eased entrance, upward drift and fade now serve separate movement and match lanes. Confirmed slide/roll gains and momentum loss use the lower lane; completed local vaults show a variant label without rewards. Match messages retain priority, private Hunt sequencing, sounds and haptics. Source syntax, notes, diff and both Rojo builds pass. Six scripts match Studio exactly; the new MomentumHUD was added beside its old unmanaged copy, and owner removal of the old duplicate is pending; see [floating feedback handoff](playtests/2026-10-24-floating-feedback-handoff.md).
 
@@ -175,6 +183,8 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 
 ## Next
 
+- Project owner prefers publishing the existing Studio places. The open Tutorial Edit place (`90963168543860`) now has anchored Kalsada scenery and no blank-template root Baseplate or SpawnLocation; publish it with File > Publish to Roblox. The main Edit place (`127422539599317`) duplicate cleanup is complete; publish that place. Run the [tutorial handoff checklist](playtests/2026-10-25-classic-tutorial-handoff.md) in the Roblox app on PC, phone, and gamepad. Studio Play can check the lobby button and queue cancellation, but cannot teleport.
+
 - Project owner: save the same open Habulan Rush Edit place after sync confirmation and run the [floating feedback checklist](playtests/2026-10-24-floating-feedback-handoff.md). Check two and eight players, all three modes, phone/gamepad, reduced motion and large text. Do not publish for this handoff.
 
 - Project owner: review the [Figma redesign handoff](handoffs/2026-10-24-figma-redesign.md) at actual frame size, using the final HUD and results references. Supply desktop and landscape-phone Studio screenshots for any mismatch, then run the listed tablet, small-phone, gamepad, eight-player, and two-client Hunt privacy checks before source implementation.
@@ -224,6 +234,12 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 - Complete the separate Step 1 two-player Studio checklist before using its telemetry as authority evidence.
 
 ## Blockers
+
+- The anchored tutorial-only map asset and open Tutorial Edit place now agree on anchored scenery. Source has 2,273 anchored BaseParts; the open Edit place has 2,274, including one extra already-anchored part. Owner gameplay check is needed to confirm no intended moving prop was frozen. No Studio gameplay test was run by the agent.
+
+- The currently open main Studio Edit place has the tutorial client and server scripts, including the updated Studio teleport explanation, and queue repair. The owner-requested duplicate cleanup is complete: one `LobbyUI`, one `MomentumHUD`, and one `Remotes` folder with `QueueEvent` and `TutorialEvent` remain. Owner publication and behavior testing remain pending. The tutorial Rojo server on port 34872 is no longer running; the corrected Tutorial Edit place does not need an active Rojo connection to publish.
+
+- Tutorial Place ID `90963168543860` is configured and confirmed in the same universe as the main place (`10769817230`). Its Edit place has Kalsada and tutorial code from Rojo; the template Baseplate and SpawnLocation are absent. The owner corrected their earlier report: neither place has been published. The owner prefers publishing the existing Studio places after the known cleanup. The project owner must test the teleport round trip in a published Roblox client. Studio play mode cannot validate TeleportService.
 
 - Floating action cards await owner duplicate cleanup and visual/gameplay acceptance. Follow-up confirms Studio is stopped in Edit mode, but two MomentumHUD LocalScripts remain and the old popupPosition function is still present at line 170. The earlier deletion did not persist in the Edit place. The owner must remove the old copy while stopped before final verification. Existing audio asset approvals are unchanged.
 
@@ -303,6 +319,16 @@ This is the live resume page for Codex and Obsidian. Keep it concise and update 
 37. The project owner approved all Lihim na Target phases. Full reshuffle follows each capture, target lock and Tsinelas are disabled, and a zero-capture round awards no points. Competitive play starts at four and continues a round with three, ending it at two.
 
 ## Validation
+
+- 2026-10-25 tutorial map anchoring: XML parse found `assets/Map.rbxmx` has 1,993 anchored and 280 unanchored BaseParts; `assets/TutorialMap.rbxmx` has 2,273 anchored and zero unanchored. Studio Edit inspection first confirmed unanchored doorframes; after direct owner-requested correction, inspection found zero unanchored BaseParts among 2,274 current map BaseParts and no root template Baseplate or SpawnLocation. After the owner's Rojo reconnect report, read-only inspection confirmed one Map, seven tutorial waypoints, and anchored doorframes, hinges, and beam. The Rojo server then showed disconnected; no active connection is needed for publishing the corrected Edit place. Luau syntax, notes, both Rojo builds, and diff whitespace pass. Owner gameplay inspection and publication remain pending.
+
+- 2026-10-25 owner-requested main Edit cleanup: Studio MCP inspected source markers and remote children before removal. Follow-up in Edit mode confirmed exactly one `LobbyUI` with the tutorial header, one `MomentumHUD` with shared floating feedback, and one `Remotes` folder containing both `QueueEvent` and `TutorialEvent`. No Studio Play, gameplay test, or publish was run by the agent. Owner publication and live-client checks remain pending.
+
+- 2026-10-25 tutorial teleport follow-up: Roblox place lookup confirmed both IDs in universe `10769817230`. Read-only Studio inspection confirmed Kalsada, seven waypoints, and tutorial scripts in the tutorial Edit place, plus the revised `TutorialGateway` in the open main Edit place. Luau syntax, notes, main/tutorial Rojo builds, and diff whitespace passed after the gateway and project edits. No Studio Play, Luau execution, or publication was performed by the agent. Tutorial-place publication and live-client round trip remain unverified.
+
+- 2026-10-25 tutorial entry follow-up: Source review identified a disabled Find Match button during search despite the Tap to Cancel label. Luau syntax, notes, main and tutorial Rojo builds, targeted overlay build, and diff whitespace passed. The open Studio place and published experience have not been tested by the agent.
+
+- 2026-10-25 Classic Tag tutorial: Owner-supplied Place ID `90963168543860` is wired in Config. Luau syntax, notes, both main and tutorial Rojo builds, both targeted overlay builds, waypoint presence, and diff whitespace passed. Read-only Studio inspection confirmed the mirrored gateway/progress scripts, cancellation guard, and new lobby client in the open Edit place. No Studio play, Luau execution, gameplay test, place creation, or publish was performed by the agent. Owner save, published-client, PC, phone, gamepad, and normal-match checks remain pending.
 
 - 2026-10-24 floating feedback: Luau syntax, notes, whitespace, full and targeted Rojo builds passed. Full-source comparisons confirm six scripts exactly; Studio contains two MomentumHUD instances after reconnect. Owner removal of the old unmanaged copy is pending. No Studio gameplay test or publish was run.
 

@@ -7,6 +7,8 @@
 -- Task/spec: owner-approved first-person FOV setting and in-match settings, 2026-10-22.
 -- Task/spec: approved UI/UX redesign, 2026-10-23.
 -- Task/spec: earned sprint help and loading tips, approved 2026-10-24.
+-- Task/spec: first-join Classic Tag tutorial entry, approved 2026-10-25.
+-- Task/spec: tutorial lobby visibility and queue cancellation repair, 2026-10-25.
 --[[
 	HABULAN RUSH - Lobby UI
 	Place in: StarterPlayer > StarterPlayerScripts > LobbyUI   (LocalScript)
@@ -35,6 +37,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 10)
 local QueueEvent = Remotes and Remotes:WaitForChild("QueueEvent", 10)
 local PartyEvent = Remotes and Remotes:WaitForChild("PartyEvent", 10)
+local TutorialEvent = Remotes and Remotes:WaitForChild("TutorialEvent", 10)
 
 -- Shared tuning (match cover art + BGM). Falls back to silent gradient-only
 -- when an older Config has no MatchIntro table.
@@ -406,6 +409,7 @@ local displayName = CONFIG.PlayerNameOverride or player.DisplayName
 -- Handles filled in below, wired up in BUTTON EVENTS
 local playHolderScale, settingsHolderScale, chevronLabel
 local playButton, settingsButton, playIcon, playText, cancelHint, cancelButton
+local tutorialButton: TextButton
 local onInvitePressed -- assigned with the party picker below
 local gmButton, gmScale
 local playModeChipLabel
@@ -571,7 +575,7 @@ end
 --------------------------------------------------------------------------
 local playGroup = createGroup(
 	"PlayGroup",
-	Vector2.new(420, 172),
+	Vector2.new(420, 230),
 	Vector2.new(1, 0), UDim2.fromScale(0.951, 0.553),
 	Vector2.new(0.5, 1), UDim2.fromScale(0.5, 0.8)
 )
@@ -746,6 +750,21 @@ do
 	makeIcon("Settings", settingsButton, 26, COLORS.GearGray, COLORS.Cream)
 
 end
+
+-- Replay entry stays beside the main action, including after completion.
+tutorialButton = createButton({
+	Name = "TutorialButton",
+	Position = UDim2.fromOffset(0, 180),
+	Size = UDim2.fromOffset(281, 48),
+	BackgroundColor3 = COLORS.Slate,
+	Text = "LEARN TO PLAY",
+	FontFace = FONTS.Heavy,
+	TextSize = 18,
+	TextColor3 = COLORS.Cream,
+}, playGroup) :: TextButton
+corner(tutorialButton, 12)
+stroke(tutorialButton, COLORS.Lime, 1.5, 0.2)
+Theme.focus(tutorialButton)
 
 -- PARTY SLOTS (you + party members + "+" invite buttons)
 -- Membership comes from the PartyService attributes:
@@ -2229,13 +2248,18 @@ do
 		}, card)
 	end
 end
--- The main action starts matchmaking; cancellation has its own target.
+-- The main action starts matchmaking and cancels while searching.
 bindButton(playButton, playHolderScale, function()
 	UIAudio.playUi("click")
 	local q = player:GetAttribute("HRushQueue") or "Idle"
 	if QueueEvent and q == "Idle" then
 		QueueEvent:FireServer("Play")
+	elseif QueueEvent and q == "Searching" then
+		QueueEvent:FireServer("Cancel")
 	end
+end, 1.04, 0.96)
+bindButton(tutorialButton, create("UIScale", {}, tutorialButton), function()
+	if TutorialEvent then TutorialEvent:FireServer("Start") end
 end, 1.04, 0.96)
 bindButton(cancelButton, create("UIScale", {}, cancelButton), function()
 	if QueueEvent then QueueEvent:FireServer("Cancel") end
@@ -2288,7 +2312,7 @@ local function refreshPlayButton()
 	end
 	if q == "Searching" then
 		cancelButton.Visible = true
-		playButton.Active = false
+		playButton.Active = true
 		playText.Position = UDim2.fromOffset(84, 10)
 		playText.Size = UDim2.fromOffset(190, 44)
 		playText.TextSize = 36
@@ -2371,6 +2395,8 @@ local phonePlay = phoneButton("FindMatch", "FIND MATCH", UDim2.fromScale(0.5, 0.
 phonePlay.AnchorPoint = Vector2.new(0.5, 0.5)
 phonePlay.FontFace = FONTS.Display
 phonePlay.TextSize = 28
+local phoneTutorial = phoneButton("Tutorial", "LEARN TO PLAY", UDim2.fromScale(0.5, 0.75), UDim2.fromOffset(250, 56), false)
+phoneTutorial.AnchorPoint = Vector2.new(0.5, 0.5)
 local phoneCancel = phoneButton("CancelSearch", "CANCEL SEARCH", UDim2.fromScale(0.5, 0.76), UDim2.fromOffset(250, 64), false)
 phoneCancel.AnchorPoint = Vector2.new(0.5, 0.5)
 phoneCancel.Visible = false
@@ -2384,7 +2410,13 @@ phoneInvite.AnchorPoint = Vector2.new(0, 1)
 local phoneLeave = phoneButton("Leave", "EXIT", UDim2.new(0, 84, 1, -12), UDim2.fromOffset(64, 64), false)
 phoneLeave.AnchorPoint = Vector2.new(0, 1)
 phonePlay.Activated:Connect(function()
-	if QueueEvent and player:GetAttribute("HRushQueue") == "Idle" then QueueEvent:FireServer("Play") end
+	if not QueueEvent then return end
+	local queue = player:GetAttribute("HRushQueue")
+	if queue == "Idle" then QueueEvent:FireServer("Play")
+	elseif queue == "Searching" then QueueEvent:FireServer("Cancel") end
+end)
+phoneTutorial.Activated:Connect(function()
+	if TutorialEvent then TutorialEvent:FireServer("Start") end
 end)
 phoneCancel.Activated:Connect(function()
 	if QueueEvent then QueueEvent:FireServer("Cancel") end
@@ -2401,17 +2433,22 @@ phoneModeInfo.NextSelectionDown = phonePlay
 phonePlay.NextSelectionUp = phoneModeInfo
 phonePlay.NextSelectionDown = phoneCancel
 phoneCancel.NextSelectionUp = phonePlay
+phoneTutorial.NextSelectionUp = phonePlay
+phoneTutorial.NextSelectionDown = phoneInvite
 task.spawn(function()
 	while phoneLobby.Parent do
 		local queue = player:GetAttribute("HRushQueue") or "Idle"
 		phoneCancel.Visible = queue == "Searching"
-		phonePlay.NextSelectionDown = if phoneCancel.Visible then phoneCancel else phoneInvite
-		phonePlay.Active = queue == "Idle"
+		phoneTutorial.Visible = queue == "Idle" and player:GetAttribute("HRushTutorialTeleporting") ~= true
+		tutorialButton.Visible = phoneTutorial.Visible
+		phonePlay.NextSelectionDown = if phoneCancel.Visible then phoneCancel else phoneTutorial
+		phonePlay.Active = queue == "Idle" or queue == "Searching"
 		phonePlay.TextSize = if queue == "Busy" then 20 else 28
 		if queue == "Searching" then
 			local endsAt = player:GetAttribute("HRushSearchEndsAt")
 			local seconds = if typeof(endsAt) == "number" then math.max(0, math.ceil(endsAt - workspace:GetServerTimeNow())) else 0
-			phonePlay.Text = "SEARCHING " .. tostring(seconds) .. "s"
+			phonePlay.Text = "CANCEL SEARCH (" .. tostring(seconds) .. "s)"
+			phonePlay.TextSize = 19
 		elseif queue == "Idle" then phonePlay.Text = "FIND MATCH"
 		elseif queue == "Busy" then phonePlay.Text = "MATCH IN PROGRESS"
 		else phonePlay.Text = "MATCH STARTING" end

@@ -82,13 +82,13 @@ Mobile buttons: minimum 64 px touch target, right-thumb cluster for dash/skill/p
 
 ### **6. Tutorial UX** 
 
-- Total 60–90 s, eight steps (move, sprint, dash/jump, tag, skill, Diskarte, Rush preview, win rule). 
+- About 60 to 90 seconds for a first attempt, with no time limit: move and jump, dash to a gate, chain two accepted slides to earn sprint, tag a moving practice Runner prop, then read the win rule.
 
-- One instruction at a time, shown as a short sentence with an icon; step advances only on success. 
+- One instruction at a time, shown as a short sentence. Server-observed success advances the step; a device-specific retry hint appears if the player pauses.
 
-- Practice playground with a bot Taya; skip option appears only after the first completion (stored per player). 
+- First join offers Start and Later. Later dismisses the prompt; the lobby keeps a Learn to Play replay button. An idle solo player teleports to a reserved tutorial subplace, initially using Kalsada. A later tutorial map can keep the same waypoint names.
 
-- Final screen: "Lowest Taya Time wins." 
+- The target is tutorial-only and never contributes match score. Completion is saved; failed saves can be retried or left unconfirmed. The final screen says Lowest cumulative Taya time wins and offers return to lobby. Skill, Diskarte, Panyo, and Secret Hunt lessons are deferred.
 
 ### **7. Accessibility** 
 
