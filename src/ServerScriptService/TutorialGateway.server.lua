@@ -1,14 +1,15 @@
 --!strict
 -- ServerScriptService/TutorialGateway.server.lua
 -- Owner: Project Owner
--- Responsibility: lobby tutorial status, validated entry, and reserved-server teleport.
--- Task/spec: owner-approved Classic Tag tutorial, 2026-10-25.
+-- Responsibility: lobby tutorial status, validated entry, and admission into
+-- the in-place lesson. When the module detects the main place it runs the
+-- session on the training strip far from Kalsada; the separate tutorial place
+-- teleport flow exists only in the standalone build.
+-- Task/spec: owner-approved Classic Tag tutorial in the main place, 2026-10-25.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
-local TeleportService = game:GetService("TeleportService")
 
 local function findRemotes(): Folder
 	for _, child in ReplicatedStorage:GetChildren() do
@@ -37,15 +38,20 @@ end
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local Progress = require(ServerScriptService:WaitForChild("TutorialProgress"))
 local PartyService = require(ServerScriptService:WaitForChild("PartyService"))
+local TutorialModule = require(ServerScriptService:WaitForChild("TutorialService") :: ModuleScript)
+local Tutorial = TutorialModule :: { Admit: (player: Player) -> (boolean, string?) }
 
 local lastRequest: { [Player]: number } = {}
-local teleporting: { [Player]: boolean } = {}
+local admitting: { [Player]: boolean } = {}
 
 local function errorTo(player: Player, message: string)
 	TutorialEvent:FireClient(player, "Error", message)
 end
 
 local function load(player: Player)
+	-- An active lesson writes the save attributes itself; the status read must
+	-- not stomp them.
+	if player:GetAttribute("HRushTutorialActive") == true then return end
 	player:SetAttribute("HRushTutorialStatus", "Loading")
 	player:SetAttribute("HRushTutorialCompleted", false)
 	local status = Progress.read(player.UserId)
@@ -75,7 +81,7 @@ TutorialEvent.OnServerEvent:Connect(function(player: Player, action: unknown)
 		end)
 		return
 	end
-	if teleporting[player] then return end
+	if admitting[player] then return end
 	if status == "Loading" then
 		errorTo(player, "Tutorial status is still loading. Try again shortly.")
 		return
@@ -89,44 +95,28 @@ TutorialEvent.OnServerEvent:Connect(function(player: Player, action: unknown)
 		errorTo(player, "Leave your party to start the solo tutorial.")
 		return
 	end
-	if Config.Tutorial.PlaceId <= 0 then
-		errorTo(player, "Tutorial place is not published yet.")
-		return
-	end
-	if RunService:IsStudio() then
-		errorTo(player, "Studio cannot teleport. Publish both places, then play this experience in Roblox.")
-		return
-	end
-	teleporting[player] = true
+	admitting[player] = true
 	player:SetAttribute("HRushTutorialTeleporting", true)
+	local ok, message = Tutorial.Admit(player)
+	if not ok then
+		admitting[player] = nil
+		player:SetAttribute("HRushTutorialTeleporting", false)
+		if player.Parent then
+			errorTo(player, message or "Could not open the tutorial. Please try again.")
+		end
+		return
+	end
+	-- Only mark the prompt dismissed after admission so a failed start can be
+	-- retried immediately.
 	if status == "new" then
 		player:SetAttribute("HRushTutorialStatus", "later")
 		task.spawn(Progress.mark, player.UserId, "later")
 	end
-	local options = Instance.new("TeleportOptions")
-	options.ShouldReserveServer = true
-	local ok, teleportError = pcall(function()
-		TeleportService:TeleportAsync(Config.Tutorial.PlaceId, { player }, options)
-	end)
-	if not ok and player.Parent then
-		warn(string.format("[TutorialGateway] TeleportAsync failed for place %d in universe %d: %s", Config.Tutorial.PlaceId, game.GameId, tostring(teleportError)))
-		teleporting[player] = nil
-		player:SetAttribute("HRushTutorialTeleporting", false)
-		errorTo(player, "Could not open the tutorial. Please try again.")
-	end
-end)
-
-TeleportService.TeleportInitFailed:Connect(function(player: Player, result, message, placeId)
-	if placeId ~= Config.Tutorial.PlaceId or not teleporting[player] then return end
-	warn(string.format("[TutorialGateway] TeleportInitFailed for place %d in universe %d: %s (%s)", placeId, game.GameId, tostring(result), tostring(message)))
-	teleporting[player] = nil
-	if player.Parent then
-		player:SetAttribute("HRushTutorialTeleporting", false)
-		errorTo(player, "Could not open the tutorial. Please try again.")
-	end
+	admitting[player] = nil
+	player:SetAttribute("HRushTutorialTeleporting", false)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
 	lastRequest[player] = nil
-	teleporting[player] = nil
+	admitting[player] = nil
 end)

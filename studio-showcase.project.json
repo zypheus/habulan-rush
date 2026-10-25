@@ -1,0 +1,35 @@
+{
+  "name": "HabulanRushShowcaseSync",
+  "servePlaceIds": [127422539599317],
+  "tree": {
+    "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "Config": { "$path": "src/ReplicatedStorage/Config.lua", "$ignoreUnknownInstances": true }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "MatchService": { "$path": "src/ServerScriptService/MatchService.server.lua", "$ignoreUnknownInstances": true }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "MatchShowcase": { "$path": "src/StarterPlayerScripts/MatchShowcase.lua", "$ignoreUnknownInstances": true },
+        "CameraDirector": { "$path": "src/StarterPlayerScripts/CameraDirector.lua", "$ignoreUnknownInstances": true },
+        "ChaseHUD": { "$path": "src/StarterPlayerScripts/ChaseHUD.lua", "$ignoreUnknownInstances": true },
+        "FirstPersonTorsoHider": { "$path": "src/StarterPlayerScripts/FirstPersonTorsoHider.lua", "$ignoreUnknownInstances": true },
+        "MatchFeedback": { "$path": "src/StarterPlayerScripts/MatchFeedback.lua", "$ignoreUnknownInstances": true },
+        "NametagController": { "$path": "src/StarterPlayerScripts/NametagController.client.lua", "$ignoreUnknownInstances": true },
+        "PanyoHUD": { "$path": "src/StarterPlayerScripts/PanyoHUD.client.lua", "$ignoreUnknownInstances": true },
+        "SecretHuntHUD": { "$path": "src/StarterPlayerScripts/SecretHuntHUD.client.lua", "$ignoreUnknownInstances": true },
+        "UIController": { "$path": "src/StarterPlayerScripts/UIController.client.lua", "$ignoreUnknownInstances": true }
+      }
+    }
+  }
+}

@@ -1,0 +1,2362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<roblox version="4">
+  <Item class="Model" referent="HZ1">
+    <Properties>
+      <string name="Name">TutorialTrainingZone</string>
+    </Properties>
+    <Item class="Model" referent="HZ2">
+      <Properties>
+        <string name="Name">Base</string>
+      </Properties>
+      <Item class="Part" referent="HZ3">
+        <Properties>
+          <string name="Name">FloorRow</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>-0.45</Y><Z>5099</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>36</X><Y>0.9</Y><Z>218</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16777164</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ4">
+        <Properties>
+          <string name="Name">FloorTail</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>-0.45</Y><Z>4944</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>0.9</Y><Z>92</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16777164</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ5">
+        <Properties>
+          <string name="Name">FloorLoop</string>
+          <CoordinateFrame name="CFrame">
+            <X>-22.5</X><Y>-0.45</Y><Z>4893</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>45</X><Y>0.9</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16777164</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ6">
+        <Properties>
+          <string name="Name">FloorLane</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>-0.45</Y><Z>5053</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>0.9</Y><Z>310</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ7">
+        <Properties>
+          <string name="Name">FloorConnector</string>
+          <CoordinateFrame name="CFrame">
+            <X>-19</X><Y>-0.45</Y><Z>5213</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>52</X><Y>0.9</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16777164</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ8">
+        <Properties>
+          <string name="Name">FillerSouthEdge</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15</X><Y>-0.45</Y><Z>4884</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>80</X><Y>0.9</Y><Z>8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ9">
+        <Properties>
+          <string name="Name">FillerW2a</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>-0.45</Y><Z>4889</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>0.9</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ10">
+        <Properties>
+          <string name="Name">FillerW2b</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>-0.45</Y><Z>4894</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>0.9</Y><Z>8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ11">
+        <Properties>
+          <string name="Name">FillerE2</string>
+          <CoordinateFrame name="CFrame">
+            <X>12.5</X><Y>-0.45</Y><Z>4889</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>25</X><Y>0.9</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ12">
+        <Properties>
+          <string name="Name">FillerE8</string>
+          <CoordinateFrame name="CFrame">
+            <X>12.5</X><Y>-0.45</Y><Z>4894</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>25</X><Y>0.9</Y><Z>8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ13">
+        <Properties>
+          <string name="Name">FillerW92</string>
+          <CoordinateFrame name="CFrame">
+            <X>-48.5</X><Y>-0.45</Y><Z>4944</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>13</X><Y>0.9</Y><Z>92</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ14">
+        <Properties>
+          <string name="Name">FillerM92</string>
+          <CoordinateFrame name="CFrame">
+            <X>-17.5</X><Y>-0.45</Y><Z>4944</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>21</X><Y>0.9</Y><Z>92</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ15">
+        <Properties>
+          <string name="Name">FillerE92</string>
+          <CoordinateFrame name="CFrame">
+            <X>16</X><Y>-0.45</Y><Z>4944</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>18</X><Y>0.9</Y><Z>92</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ16">
+        <Properties>
+          <string name="Name">FillerW218</string>
+          <CoordinateFrame name="CFrame">
+            <X>-48.5</X><Y>-0.45</Y><Z>5099</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>13</X><Y>0.9</Y><Z>218</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ17">
+        <Properties>
+          <string name="Name">FillerM218</string>
+          <CoordinateFrame name="CFrame">
+            <X>-23</X><Y>-0.45</Y><Z>5099</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>0.9</Y><Z>218</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ18">
+        <Properties>
+          <string name="Name">FillerE218</string>
+          <CoordinateFrame name="CFrame">
+            <X>21.5</X><Y>-0.45</Y><Z>5099</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>7</X><Y>0.9</Y><Z>218</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ19">
+        <Properties>
+          <string name="Name">FillerW10</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>-0.45</Y><Z>5213</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>13</X><Y>0.9</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ20">
+        <Properties>
+          <string name="Name">FillerE10</string>
+          <CoordinateFrame name="CFrame">
+            <X>16</X><Y>-0.45</Y><Z>5213</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>18</X><Y>0.9</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ21">
+        <Properties>
+          <string name="Name">FillerNorth27</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15</X><Y>-0.45</Y><Z>5231.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>80</X><Y>0.9</Y><Z>27</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ22">
+        <Properties>
+          <string name="Name">RollLandPad</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>0.06</Y><Z>5172.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>0.12</Y><Z>25</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16775404</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ23">
+        <Properties>
+          <string name="Name">VaultRunPad</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>0.06</Y><Z>5067.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>0.12</Y><Z>15</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16775404</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ24">
+        <Properties>
+          <string name="Name">ZipLandPad</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>0.06</Y><Z>4902.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>0.12</Y><Z>15</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16775404</Color3uint8>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ25">
+      <Properties>
+        <string name="Name">Walls</string>
+      </Properties>
+      <Item class="Part" referent="HZ26">
+        <Properties>
+          <string name="Name">WallW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-55</X><Y>4</Y><Z>5062.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.9</X><Y>8</Y><Z>365</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ27">
+        <Properties>
+          <string name="Name">WallE</string>
+          <CoordinateFrame name="CFrame">
+            <X>25</X><Y>4</Y><Z>5062.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.9</X><Y>8</Y><Z>365</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ28">
+        <Properties>
+          <string name="Name">WallN</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15</X><Y>4</Y><Z>5243.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>79.1</X><Y>8</Y><Z>0.9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ29">
+        <Properties>
+          <string name="Name">WallS</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15</X><Y>4</Y><Z>4880.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>79.1</X><Y>8</Y><Z>0.9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ30">
+        <Properties>
+          <string name="Name">CapW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-55</X><Y>8.3</Y><Z>5062.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.9</X><Y>0.6</Y><Z>365</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ31">
+        <Properties>
+          <string name="Name">CapE</string>
+          <CoordinateFrame name="CFrame">
+            <X>25</X><Y>8.3</Y><Z>5062.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.9</X><Y>0.6</Y><Z>365</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ32">
+        <Properties>
+          <string name="Name">CapN</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15</X><Y>8.3</Y><Z>5243.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>79.1</X><Y>0.6</Y><Z>0.9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ33">
+        <Properties>
+          <string name="Name">CapS</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15</X><Y>8.3</Y><Z>4880.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>79.1</X><Y>0.6</Y><Z>0.9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ34">
+      <Properties>
+        <string name="Name">StartPlaza</string>
+      </Properties>
+      <Item class="Part" referent="HZ35">
+        <Properties>
+          <string name="Name">ArchColW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-7</X><Y>4.5</Y><Z>5008</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>2</X><Y>9</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ36">
+        <Properties>
+          <string name="Name">ArchColE</string>
+          <CoordinateFrame name="CFrame">
+            <X>7</X><Y>4.5</Y><Z>5008</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>2</X><Y>9</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ37">
+        <Properties>
+          <string name="Name">ArchBeam</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>9.75</Y><Z>5008</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>16</X><Y>1.5</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ38">
+        <Properties>
+          <string name="Name">WelcomePostW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-6.1</X><Y>4.425</Y><Z>4998.8</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.8</X><Y>8.85</Y><Z>0.8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ39">
+        <Properties>
+          <string name="Name">WelcomePostE</string>
+          <CoordinateFrame name="CFrame">
+            <X>6.1</X><Y>4.425</Y><Z>4998.8</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.8</X><Y>8.85</Y><Z>0.8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ40">
+        <Properties>
+          <string name="Name">WelcomeBoard</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>10.1</Y><Z>4998.8</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>2.5</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ41">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ42">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">HABULAN RUSH TRAINING</string>
+              <Color3 name="TextColor3"><R>0.96863</R><G>0.7098</G><B>0</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ43">
+        <Properties>
+          <string name="Name">PlazaPostEA</string>
+          <CoordinateFrame name="CFrame">
+            <X>15.2</X><Y>0.9</Y><Z>5002</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.8</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ44">
+        <Properties>
+          <string name="Name">PlazaPostEB</string>
+          <CoordinateFrame name="CFrame">
+            <X>8.8</X><Y>0.9</Y><Z>5002</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.8</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ45">
+        <Properties>
+          <string name="Name">PlazaBoardE</string>
+          <CoordinateFrame name="CFrame">
+            <X>12</X><Y>3</Y><Z>5002</Z>
+            <R00>0</R00><R01>0</R01><R02>-1</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>1</R20><R21>0</R21><R22>0</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>2.4</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ46">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ47">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">TAYA TAGS. RUNNERS FLEE.</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ48">
+        <Properties>
+          <string name="Name">PlazaPostWA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-15.2</X><Y>0.9</Y><Z>5002</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.8</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ49">
+        <Properties>
+          <string name="Name">PlazaPostWB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-8.8</X><Y>0.9</Y><Z>5002</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.8</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ50">
+        <Properties>
+          <string name="Name">PlazaBoardW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-12</X><Y>3</Y><Z>5002</Z>
+            <R00>0</R00><R01>0</R01><R02>1</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>-1</R20><R21>0</R21><R22>0</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>2.4</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ51">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ52">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">LOWEST TAYA TIME WINS.</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ53">
+      <Properties>
+        <string name="Name">MoveLane</string>
+      </Properties>
+      <Item class="Part" referent="HZ54">
+        <Properties>
+          <string name="Name">Hurdle</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>1</Y><Z>5038</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>2</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ55">
+        <Properties>
+          <string name="Name">HurdleStripe</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>2.15</Y><Z>5038</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>0.3</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ56">
+        <Properties>
+          <string name="Name">DiscMove</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.22</Y><Z>5050</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.44</X><Y>10</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1929184</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ57">
+      <Properties>
+        <string name="Name">DashLane</string>
+      </Properties>
+      <Item class="Part" referent="HZ58">
+        <Properties>
+          <string name="Name">GateColW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-4.5</X><Y>3</Y><Z>5062</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1</X><Y>6</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ59">
+        <Properties>
+          <string name="Name">GateColE</string>
+          <CoordinateFrame name="CFrame">
+            <X>4.5</X><Y>3</Y><Z>5062</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1</X><Y>6</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ60">
+        <Properties>
+          <string name="Name">GateBeam</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>6.4</Y><Z>5062</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>0.8</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ61">
+        <Properties>
+          <string name="Name">DiscDash</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.22</Y><Z>5078</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.44</X><Y>20</Y><Z>20</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1929184</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ62">
+      <Properties>
+        <string name="Name">SprintLane</string>
+      </Properties>
+      <Item class="Part" referent="HZ63">
+        <Properties>
+          <string name="Name">RailSlideW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-9.3</X><Y>0.6</Y><Z>5131</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>1.2</Y><Z>70</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ64">
+        <Properties>
+          <string name="Name">RailSlideE</string>
+          <CoordinateFrame name="CFrame">
+            <X>9.3</X><Y>0.6</Y><Z>5131</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>1.2</Y><Z>70</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ65">
+        <Properties>
+          <string name="Name">DiscSlideStart</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.22</Y><Z>5108</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.44</X><Y>6</Y><Z>6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ66">
+        <Properties>
+          <string name="Name">DiscSlideEnd</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.22</Y><Z>5160</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.44</X><Y>10</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ67">
+        <Properties>
+          <string name="Name">ArrowSprintAShaft</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.06</Y><Z>5116.1</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.4</X><Y>0.12</Y><Z>2.2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ68">
+        <Properties>
+          <string name="Name">ArrowSprintAHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-0.4617461065</X><Y>0.06</Y><Z>5117.4089919348</Z>
+            <R00>0.7880107536</R00><R01>0</R01><R02>0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>-0.6156614753</R20><R21>0</R21><R22>0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ69">
+        <Properties>
+          <string name="Name">ArrowSprintAHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>0.4617461065</X><Y>0.06</Y><Z>5117.4089919348</Z>
+            <R00>0.7880107536</R00><R01>0</R01><R02>-0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0.6156614753</R20><R21>0</R21><R22>0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ70">
+        <Properties>
+          <string name="Name">ArrowSprintBShaft</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.06</Y><Z>5130.1</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.4</X><Y>0.12</Y><Z>2.2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ71">
+        <Properties>
+          <string name="Name">ArrowSprintBHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-0.4617461065</X><Y>0.06</Y><Z>5131.4089919348</Z>
+            <R00>0.7880107536</R00><R01>0</R01><R02>0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>-0.6156614753</R20><R21>0</R21><R22>0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ72">
+        <Properties>
+          <string name="Name">ArrowSprintBHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>0.4617461065</X><Y>0.06</Y><Z>5131.4089919348</Z>
+            <R00>0.7880107536</R00><R01>0</R01><R02>-0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0.6156614753</R20><R21>0</R21><R22>0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ73">
+        <Properties>
+          <string name="Name">ArrowSprintCShaft</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.06</Y><Z>5144.1</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.4</X><Y>0.12</Y><Z>2.2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ74">
+        <Properties>
+          <string name="Name">ArrowSprintCHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-0.4617461065</X><Y>0.06</Y><Z>5145.4089919348</Z>
+            <R00>0.7880107536</R00><R01>0</R01><R02>0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>-0.6156614753</R20><R21>0</R21><R22>0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ75">
+        <Properties>
+          <string name="Name">ArrowSprintCHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>0.4617461065</X><Y>0.06</Y><Z>5145.4089919348</Z>
+            <R00>0.7880107536</R00><R01>0</R01><R02>-0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0.6156614753</R20><R21>0</R21><R22>0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ76">
+      <Properties>
+        <string name="Name">TagCourt</string>
+      </Properties>
+      <Item class="Part" referent="HZ77">
+        <Properties>
+          <string name="Name">CourtRailSE</string>
+          <CoordinateFrame name="CFrame">
+            <X>13</X><Y>0.6</Y><Z>5172</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>1.2</Y><Z>0.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ78">
+        <Properties>
+          <string name="Name">CourtRailSW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-13</X><Y>0.6</Y><Z>5172</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>1.2</Y><Z>0.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ79">
+        <Properties>
+          <string name="Name">CourtRailNE</string>
+          <CoordinateFrame name="CFrame">
+            <X>12</X><Y>0.6</Y><Z>5206</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>12</X><Y>1.2</Y><Z>0.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ80">
+        <Properties>
+          <string name="Name">CourtRailNW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-12</X><Y>0.6</Y><Z>5206</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>12</X><Y>1.2</Y><Z>0.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ81">
+        <Properties>
+          <string name="Name">CourtRailE</string>
+          <CoordinateFrame name="CFrame">
+            <X>18</X><Y>0.6</Y><Z>5189</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>1.2</Y><Z>34</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ82">
+        <Properties>
+          <string name="Name">CourtRailW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-18</X><Y>0.6</Y><Z>5189</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>1.2</Y><Z>34</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ83">
+        <Properties>
+          <string name="Name">TagBand</string>
+          <CoordinateFrame name="CFrame">
+            <X>0</X><Y>0.075</Y><Z>5186</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>0.15</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">14034984</Color3uint8>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ84">
+      <Properties>
+        <string name="Name">RollTower</string>
+      </Properties>
+      <Item class="Part" referent="HZ85">
+        <Properties>
+          <string name="Name">RollPlat</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>11.9</Y><Z>5196</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>14</X><Y>2.2</Y><Z>14</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ86">
+        <Properties>
+          <string name="Name">RollRailW</string>
+          <CoordinateFrame name="CFrame">
+            <X>-42</X><Y>13.6</Y><Z>5196</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>1.2</Y><Z>14</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ87">
+        <Properties>
+          <string name="Name">RollRailE</string>
+          <CoordinateFrame name="CFrame">
+            <X>-28</X><Y>13.6</Y><Z>5196</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>1.2</Y><Z>14</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="TrussPart" referent="HZ88">
+        <Properties>
+          <string name="Name">RollLadder</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>6.5</Y><Z>5204.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1</X><Y>13</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ89">
+      <Properties>
+        <string name="Name">VaultLane</string>
+      </Properties>
+      <Item class="Part" referent="HZ90">
+        <Properties>
+          <string name="Name">ArrowChainAShaft</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>0.06</Y><Z>5141.9</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.4</X><Y>0.12</Y><Z>2.2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ91">
+        <Properties>
+          <string name="Name">ArrowChainAHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-34.5382538935</X><Y>0.06</Y><Z>5140.5910080652</Z>
+            <R00>-0.7880107536</R00><R01>0</R01><R02>-0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0.6156614753</R20><R21>0</R21><R22>-0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ92">
+        <Properties>
+          <string name="Name">ArrowChainAHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35.4617461065</X><Y>0.06</Y><Z>5140.5910080652</Z>
+            <R00>-0.7880107536</R00><R01>0</R01><R02>0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>-0.6156614753</R20><R21>0</R21><R22>-0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ93">
+        <Properties>
+          <string name="Name">ArrowChainBShaft</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>0.06</Y><Z>5116.9</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.4</X><Y>0.12</Y><Z>2.2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ94">
+        <Properties>
+          <string name="Name">ArrowChainBHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-34.5382538935</X><Y>0.06</Y><Z>5115.5910080652</Z>
+            <R00>-0.7880107536</R00><R01>0</R01><R02>-0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0.6156614753</R20><R21>0</R21><R22>-0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ95">
+        <Properties>
+          <string name="Name">ArrowChainBHead38</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35.4617461065</X><Y>0.06</Y><Z>5115.5910080652</Z>
+            <R00>-0.7880107536</R00><R01>0</R01><R02>0.6156614753</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>-0.6156614753</R20><R21>0</R21><R22>-0.7880107536</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.6</X><Y>0.12</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ96">
+        <Properties>
+          <string name="Name">Crate</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>1.75</Y><Z>5080.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>12</X><Y>3.5</Y><Z>5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ97">
+        <Properties>
+          <string name="Name">CrateStripe</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>3.65</Y><Z>5082.85</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>12</X><Y>0.3</Y><Z>0.3</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ98">
+      <Properties>
+        <string name="Name">SwingBar</string>
+        <BinaryString name="Tags">U3dpbmdCYXI=</BinaryString>
+      </Properties>
+      <Item class="Part" referent="HZ99">
+        <Properties>
+          <string name="Name">SwingBarPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-38.25</X><Y>3.85</Y><Z>5028</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.5</X><Y>7.7</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ100">
+        <Properties>
+          <string name="Name">SwingBarPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-31.75</X><Y>3.85</Y><Z>5028</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.5</X><Y>7.7</Y><Z>1.5</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ101">
+        <Properties>
+          <string name="Name">GrabVolume</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>5</Y><Z>5028</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>7</Y><Z>9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">true</bool>
+          <float name="Transparency">0.85</float>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16775404</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ102">
+        <Properties>
+          <string name="Name">Bar</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>7</Y><Z>5028</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>1.4</Y><Z>1.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">1088</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+        <Item class="Attachment" referent="HZ103">
+          <Properties>
+            <string name="Name">Pivot</string>
+            <CoordinateFrame name="CFrame">
+              <X>0</X><Y>0</Y><Z>0</Z>
+              <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+            </CoordinateFrame>
+          </Properties>
+        </Item>
+        <Item class="Attachment" referent="HZ104">
+          <Properties>
+            <string name="Name">ReleaseDirection</string>
+            <CoordinateFrame name="CFrame">
+              <X>0</X><Y>0</Y><Z>-5</Z>
+              <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+            </CoordinateFrame>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ105">
+      <Properties>
+        <string name="Name">Zipline</string>
+        <BinaryString name="Tags">WmlwbGluZQ==</BinaryString>
+      </Properties>
+      <Item class="Part" referent="HZ106">
+        <Properties>
+          <string name="Name">ZipColStart</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>7.5</Y><Z>4975</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>3</X><Y>15</Y><Z>3</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ107">
+        <Properties>
+          <string name="Name">ZipPlatStart</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>15.5</Y><Z>4975</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>1</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="TrussPart" referent="HZ108">
+        <Properties>
+          <string name="Name">ZipLadderStart</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>8</Y><Z>4981.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1</X><Y>16</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ109">
+        <Properties>
+          <string name="Name">ZipColEnd</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>5</Y><Z>4915</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>3</X><Y>10</Y><Z>3</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ110">
+        <Properties>
+          <string name="Name">ZipPlatEnd</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>10.5</Y><Z>4915</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>1</Y><Z>10</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">10724005</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="TrussPart" referent="HZ111">
+        <Properties>
+          <string name="Name">ZipLadderEnd</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>5.5</Y><Z>4908.5</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1</X><Y>11</Y><Z>1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ112">
+        <Properties>
+          <string name="Name">GrabVolume</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>18</Y><Z>4975</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>4</Y><Z>9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">true</bool>
+          <float name="Transparency">0.85</float>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">16775404</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ113">
+        <Properties>
+          <string name="Name">ZipCable</string>
+          <CoordinateFrame name="CFrame">
+            <X>-35</X><Y>13.5</Y><Z>4945</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>0.9965457582</R11><R12>0.0830454799</R12><R20>0</R20><R21>-0.0830454799</R21><R22>0.9965457582</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.35</X><Y>0.35</Y><Z>60.2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">false</bool><bool name="CanQuery">false</bool><bool name="CanTouch">false</bool>
+          <float name="Transparency">0.2</float>
+          <token name="Material">1088</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="Attachment" referent="HZ114">
+          <Properties>
+            <string name="Name">Start</string>
+            <CoordinateFrame name="CFrame">
+              <X>0</X><Y>0</Y><Z>30.1</Z>
+              <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+            </CoordinateFrame>
+          </Properties>
+        </Item>
+        <Item class="Attachment" referent="HZ115">
+          <Properties>
+            <string name="Name">End</string>
+            <CoordinateFrame name="CFrame">
+              <X>0</X><Y>0</Y><Z>-30.1</Z>
+              <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+            </CoordinateFrame>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ116">
+      <Properties>
+        <string name="Name">Signs</string>
+      </Properties>
+      <Item class="Part" referent="HZ117">
+        <Properties>
+          <string name="Name">SignMovePostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>5.7</X><Y>0.95</Y><Z>5033</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ118">
+        <Properties>
+          <string name="Name">SignMovePostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>14.3</X><Y>0.95</Y><Z>5033</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ119">
+        <Properties>
+          <string name="Name">SignMove</string>
+          <CoordinateFrame name="CFrame">
+            <X>10</X><Y>3.4</Y><Z>5033</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ120">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ121">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">1 MOVE + JUMP</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ122">
+        <Properties>
+          <string name="Name">SignDashPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>5.7</X><Y>0.95</Y><Z>5061</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ123">
+        <Properties>
+          <string name="Name">SignDashPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>14.3</X><Y>0.95</Y><Z>5061</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ124">
+        <Properties>
+          <string name="Name">SignDash</string>
+          <CoordinateFrame name="CFrame">
+            <X>10</X><Y>3.4</Y><Z>5061</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ125">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ126">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">2 DASH THROUGH THE GATE</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ127">
+        <Properties>
+          <string name="Name">SignSprintPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>5.7</X><Y>0.95</Y><Z>5099</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ128">
+        <Properties>
+          <string name="Name">SignSprintPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>14.3</X><Y>0.95</Y><Z>5099</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ129">
+        <Properties>
+          <string name="Name">SignSprint</string>
+          <CoordinateFrame name="CFrame">
+            <X>10</X><Y>3.4</Y><Z>5099</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ130">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ131">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">3 SLIDE x2 FOR SPRINT</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ132">
+        <Properties>
+          <string name="Name">SignTagPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>5.7</X><Y>0.95</Y><Z>5168</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ133">
+        <Properties>
+          <string name="Name">SignTagPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>14.3</X><Y>0.95</Y><Z>5168</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ134">
+        <Properties>
+          <string name="Name">SignTag</string>
+          <CoordinateFrame name="CFrame">
+            <X>10</X><Y>3.4</Y><Z>5168</Z>
+            <R00>-1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>-1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>10</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ135">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ136">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">4 TAG THE RUNNER</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ137">
+        <Properties>
+          <string name="Name">SignRollPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-41.3</X><Y>0.95</Y><Z>5205</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ138">
+        <Properties>
+          <string name="Name">SignRollPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-34.7</X><Y>0.95</Y><Z>5205</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ139">
+        <Properties>
+          <string name="Name">SignRoll</string>
+          <CoordinateFrame name="CFrame">
+            <X>-38</X><Y>3.4</Y><Z>5205</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ140">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ141">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">ROLLOFF: HARD LANDING ROLL</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ142">
+        <Properties>
+          <string name="Name">SignVaultPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-41.3</X><Y>0.95</Y><Z>5100</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ143">
+        <Properties>
+          <string name="Name">SignVaultPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-34.7</X><Y>0.95</Y><Z>5100</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ144">
+        <Properties>
+          <string name="Name">SignVault</string>
+          <CoordinateFrame name="CFrame">
+            <X>-38</X><Y>3.4</Y><Z>5100</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ145">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ146">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">VAULT: CHAIN 2 SLIDES FOR SPEED</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ147">
+        <Properties>
+          <string name="Name">SignSwingPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-41.3</X><Y>0.95</Y><Z>5030</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ148">
+        <Properties>
+          <string name="Name">SignSwingPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-34.7</X><Y>0.95</Y><Z>5030</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ149">
+        <Properties>
+          <string name="Name">SignSwing</string>
+          <CoordinateFrame name="CFrame">
+            <X>-38</X><Y>3.4</Y><Z>5030</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ150">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ151">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">SWING BAR</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+      <Item class="Part" referent="HZ152">
+        <Properties>
+          <string name="Name">SignZipPostA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-41.3</X><Y>0.95</Y><Z>4968</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ153">
+        <Properties>
+          <string name="Name">SignZipPostB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-34.7</X><Y>0.95</Y><Z>4968</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>1.9</Y><Z>0.7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ154">
+        <Properties>
+          <string name="Name">SignZip</string>
+          <CoordinateFrame name="CFrame">
+            <X>-38</X><Y>3.4</Y><Z>4968</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>8</X><Y>3</Y><Z>0.4</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+        <Item class="SurfaceGui" referent="HZ155">
+          <Properties>
+            <string name="Name">BoardGui</string>
+            <bool name="AlwaysOnTop">false</bool>
+            <Vector2 name="CanvasSize"><X>800</X><Y>600</Y></Vector2>
+            <token name="Face">5</token>
+            <float name="LightInfluence">0</float>
+            <float name="PixelsPerStud">50</float>
+            <token name="SizingMode">1</token>
+          </Properties>
+          <Item class="TextLabel" referent="HZ156">
+            <Properties>
+              <string name="Name">Label</string>
+              <float name="BackgroundTransparency">1</float>
+              <Font name="FontFace"><Family><url>rbxasset://fonts/families/GothamBold.json</url></Family><Weight>400</Weight><Style>Normal</Style></Font>
+              <UDim2 name="Position"><XS>0</XS><XO>0</XO><YS>0</YS><YO>0</YO></UDim2>
+              <UDim2 name="Size"><XS>1</XS><XO>0</XO><YS>1</YS><YO>0</YO></UDim2>
+              <string name="Text">ZIPLINE</string>
+              <Color3 name="TextColor3"><R>1</R><G>0.97255</G><B>0.92549</B></Color3>
+              <bool name="TextScaled">true</bool>
+              <bool name="TextWrapped">true</bool>
+            </Properties>
+          </Item>
+        </Item>
+      </Item>
+    </Item>
+    <Item class="Model" referent="HZ157">
+      <Properties>
+        <string name="Name">Dressing</string>
+      </Properties>
+      <Item class="Part" referent="HZ158">
+        <Properties>
+          <string name="Name">LampAPost</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>7</Y><Z>5170</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>2</X><Y>14</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ159">
+        <Properties>
+          <string name="Name">LampAArm</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>13.6</Y><Z>5170</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>6</X><Y>0.8</Y><Z>0.8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ160">
+        <Properties>
+          <string name="Name">LampABulb</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>12.4</Y><Z>5170</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.6</X><Y>1.4</Y><Z>1.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">288</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ161">
+        <Properties>
+          <string name="Name">LampBPost</string>
+          <CoordinateFrame name="CFrame">
+            <X>18</X><Y>7</Y><Z>5235</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>2</X><Y>14</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ162">
+        <Properties>
+          <string name="Name">LampBArm</string>
+          <CoordinateFrame name="CFrame">
+            <X>18</X><Y>13.6</Y><Z>5235</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>6</X><Y>0.8</Y><Z>0.8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ163">
+        <Properties>
+          <string name="Name">LampBBulb</string>
+          <CoordinateFrame name="CFrame">
+            <X>18</X><Y>12.4</Y><Z>5235</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.6</X><Y>1.4</Y><Z>1.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">288</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ164">
+        <Properties>
+          <string name="Name">LampCPost</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>7</Y><Z>4925</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>2</X><Y>14</Y><Z>2</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ165">
+        <Properties>
+          <string name="Name">LampCArm</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>13.6</Y><Z>4925</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>6</X><Y>0.8</Y><Z>0.8</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1190714</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ166">
+        <Properties>
+          <string name="Name">LampCBulb</string>
+          <CoordinateFrame name="CFrame">
+            <X>-50</X><Y>12.4</Y><Z>4925</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>1.6</X><Y>1.4</Y><Z>1.6</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">288</token>
+          <Color3uint8 name="Color3uint8">16233728</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ167">
+        <Properties>
+          <string name="Name">TreeATrunk</string>
+          <CoordinateFrame name="CFrame">
+            <X>19</X><Y>5</Y><Z>5188</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>3</X><Y>10</Y><Z>3</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">8150086</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ168">
+        <Properties>
+          <string name="Name">TreeALeafA</string>
+          <CoordinateFrame name="CFrame">
+            <X>19</X><Y>11.5</Y><Z>5188</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>5</Y><Z>9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">5932104</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ169">
+        <Properties>
+          <string name="Name">TreeALeafB</string>
+          <CoordinateFrame name="CFrame">
+            <X>19</X><Y>15</Y><Z>5188</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>7</X><Y>3</Y><Z>7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">5932104</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ170">
+        <Properties>
+          <string name="Name">TreeBTrunk</string>
+          <CoordinateFrame name="CFrame">
+            <X>-49</X><Y>5</Y><Z>5120</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>3</X><Y>10</Y><Z>3</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">8150086</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ171">
+        <Properties>
+          <string name="Name">TreeBLeafA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-49</X><Y>11.5</Y><Z>5120</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>5</Y><Z>9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">5932104</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ172">
+        <Properties>
+          <string name="Name">TreeBLeafB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-49</X><Y>15</Y><Z>5120</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>7</X><Y>3</Y><Z>7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">5932104</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ173">
+        <Properties>
+          <string name="Name">TreeCTrunk</string>
+          <CoordinateFrame name="CFrame">
+            <X>-49</X><Y>5</Y><Z>5060</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>3</X><Y>10</Y><Z>3</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">8150086</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ174">
+        <Properties>
+          <string name="Name">TreeCLeafA</string>
+          <CoordinateFrame name="CFrame">
+            <X>-49</X><Y>11.5</Y><Z>5060</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>9</X><Y>5</Y><Z>9</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">5932104</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ175">
+        <Properties>
+          <string name="Name">TreeCLeafB</string>
+          <CoordinateFrame name="CFrame">
+            <X>-49</X><Y>15</Y><Z>5060</Z>
+            <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>7</X><Y>3</Y><Z>7</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">5932104</Color3uint8>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ176">
+        <Properties>
+          <string name="Name">TireA1</string>
+          <CoordinateFrame name="CFrame">
+            <X>22</X><Y>0.35</Y><Z>5110</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>2.1</Y><Z>2.1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1780277</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ177">
+        <Properties>
+          <string name="Name">TireA2</string>
+          <CoordinateFrame name="CFrame">
+            <X>22</X><Y>1.05</Y><Z>5110</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>2.1</Y><Z>2.1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1780277</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ178">
+        <Properties>
+          <string name="Name">TireA3</string>
+          <CoordinateFrame name="CFrame">
+            <X>22</X><Y>1.75</Y><Z>5110</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>2.1</Y><Z>2.1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1780277</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ179">
+        <Properties>
+          <string name="Name">TireB1</string>
+          <CoordinateFrame name="CFrame">
+            <X>-52</X><Y>0.35</Y><Z>5010</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>2.1</Y><Z>2.1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1780277</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ180">
+        <Properties>
+          <string name="Name">TireB2</string>
+          <CoordinateFrame name="CFrame">
+            <X>-52</X><Y>1.05</Y><Z>5010</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>2.1</Y><Z>2.1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1780277</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+      <Item class="Part" referent="HZ181">
+        <Properties>
+          <string name="Name">TireB3</string>
+          <CoordinateFrame name="CFrame">
+            <X>-52</X><Y>1.75</Y><Z>5010</Z>
+            <R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+          </CoordinateFrame>
+          <Vector3 name="size"><X>0.7</X><Y>2.1</Y><Z>2.1</Z></Vector3>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool><bool name="CanQuery">true</bool><bool name="CanTouch">true</bool>
+          <token name="Material">256</token>
+          <Color3uint8 name="Color3uint8">1780277</Color3uint8>
+          <token name="shape">2</token>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

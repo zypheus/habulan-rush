@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: preserve inspected Studio map-vote and camera defaults during showcase sync, 2026-10-25.
 -- Task/spec: floating action notice presentation, approved 2026-10-24.
 -- ReplicatedStorage/Config.lua
 -- Owner: Project Owner
@@ -539,6 +540,34 @@ Config.TargetLock = {
 }
 
 Config.Match = {
+	Showcase = { -- [SD] Owner-approved five-clip match opening, 2026-10-25; round one only.
+		Duration = 14, -- [SD] Five map clips, lineup and handoff; followed by CountdownDuration.
+		MapShotDuration = 10, -- [SD] Five two-second clips.
+		TransitionDuration = 0.5, -- [SD] Fade out, hand off at black, fade into first person.
+		FieldOfView = 50, -- [SD] Cinematic only; gameplay restores the player's FOV.
+		LineupGap = 1.25, -- [SD] Studs between actual avatar bounding boxes.
+		FrameMargin = 1.35, -- [SD] Reserve room around avatars for mobile and the title.
+		TitleReserve = 152, -- [SD] Pixels reserved below the group, capped at half the viewport.
+		PushInScale = 1.1, -- [SD] Start slightly wider than the final fitted shot.
+		GoDisplayDuration = 0.65, -- [SD]
+		Maps = { -- [SD] Authored Kalsada landmarks; source Map.rbxmx.
+			Kalsada = {
+				MapClips = { -- [SD] Wide, Barangay Hall, multipurpose court, fountain, street/car.
+					{ Start = CFrame.lookAt(Vector3.new(-60, 90, 125), Vector3.new(-95, 3, 25)),
+						Finish = CFrame.lookAt(Vector3.new(-72, 76, 108), Vector3.new(-105, 3, 25)) },
+					{ Start = CFrame.lookAt(Vector3.new(-140, 40, 140), Vector3.new(-195, 12, 95)),
+						Finish = CFrame.lookAt(Vector3.new(-153, 35, 129), Vector3.new(-195, 12, 95)) },
+					{ Start = CFrame.lookAt(Vector3.new(-80, 31, 73), Vector3.new(-125, 5, 23)),
+						Finish = CFrame.lookAt(Vector3.new(-92, 26, 62), Vector3.new(-125, 5, 23)) },
+					{ Start = CFrame.lookAt(Vector3.new(-152, 28, -18), Vector3.new(-184, 5, -54)),
+						Finish = CFrame.lookAt(Vector3.new(-158, 24, -25), Vector3.new(-184, 5, -54)) },
+					{ Start = CFrame.lookAt(Vector3.new(93, 30, 125), Vector3.new(138, 5, 73)),
+						Finish = CFrame.lookAt(Vector3.new(105, 25, 113), Vector3.new(138, 5, 73)) },
+				},
+				LineupFloor = CFrame.new(-124.3, 2.06, 26.25), -- [SD] Top of the broad LIGHTGREEN ground.
+			},
+		},
+	},
 	Rps = {
 		IntroTime = 1.5, -- [SD] Opening card before the first pick
 		PickTime = 5, -- [SD] Server-owned input window per stage
@@ -590,7 +619,7 @@ Config.Debug = {
 	AllowAnyRoleTargetLock = false, -- target lock is Taya-only (F-feature role gate)
 	ShowLockDebug = true,
 	AllowAnyRoleForSkills = true,
-	ShowSkillDebug = true,
+	ShowSkillDebug = false,
 	ShowSprintVFX = true, -- sprint VFX state prints
 	ForceTrailsVisible = false, -- sprint trail test override
 	SettingsTestTone = false, -- TODO: remove before submission (debug loop proving the Music slider)
@@ -793,12 +822,17 @@ Config.SecretHunt = {
 	Sounds = { capture = "", assignment = "", danger = "", final = "" }, -- [SD] silent until competition-safe cues are approved
 }
 
+-- [SD] Preserve the project owner's inspected five-map ballot and reveal timing.
 Config.MapVote = {
-	Pool = { "Kalsada" }, -- [SD] Only the authored Kalsada map has safe spawn regions.
-	Duration = 10, RevealTime = 1.5,
+	Pool = { "kalsada", "binaha", "recycling", "palengke", "palayan" },
+	Duration = 10,
+	RevealTime = 2.0,
 	Info = {
-		Kalsada = { tagline="Own the court. Outrun the neighborhood.", event="EVENT · COURT RUSH" },
-		Binaha  = { tagline="Find high ground. Stay ahead of the flood.", event="EVENT · TUBIG TUMATAAS" },
+		kalsada = { tagline="Own the court. Outrun the neighborhood.", event="EVENT · COURT RUSH" },
+		binaha  = { tagline="Find high ground. Stay ahead of the flood.", event="EVENT · TUBIG TUMATAAS" },
+		recycling = { tagline="Navigate stacks of scrap and containers.", event="EVENT · SCRAP RUSH" },
+		palengke = { tagline="Weave through crowded wet market stalls.", event="EVENT · MARKET MANIA" },
+		palayan  = { tagline="Sprint across open rice paddies and dikes.", event="EVENT · HARVEST RUN" },
 	},
 }
 
@@ -1009,7 +1043,7 @@ Config.Settings = {
 	CameraEffectsDefault = 100, -- [SD] camera effects intensity percent 0-100
 	LookBackDefault = true, -- [SD] Runner hold-to-look-back on
 	ChaserIndicatorDefault = true, -- [SD] chaser edge indicator on
-	CameraViewModeDefault = "ThirdPerson", -- [SD] Phase 4 starting view mode (first person is opt-in)
+	CameraViewModeDefault = "FirstPerson", -- [SD] Phase 4 starting view mode (first person is opt-in)
 	VolumeCurve = 2, -- [SD] loudness curve power for slider mapping
 	SliderStep = 5, -- [SD] slider snap step for keyboard and gamepad
 	TelegraphFloor = 0.35, -- [SD] minimum visibility kept for telegraph effects

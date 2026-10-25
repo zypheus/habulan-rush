@@ -127,6 +127,9 @@
       },
       "TutorialScene": {
         "$path": "assets/TutorialScene.rbxmx"
+      },
+      "TutorialTrainingZone": {
+        "$path": "assets/TutorialTrainingZone.rbxmx"
       }
     },
     "ServerScriptService": {
@@ -141,6 +144,9 @@
         "$path": "src/ServerScriptService/TutorialProgress.lua"
       },
       "TutorialService": {
+        "$path": "src/ServerScriptService/TutorialService.lua"
+      },
+      "TutorialServiceBootstrap": {
         "$path": "src/ServerScriptService/TutorialService.server.lua"
       }
     },
@@ -207,6 +213,9 @@
         },
         "CameraDirector": {
           "$path": "src/StarterPlayerScripts/CameraDirector.lua"
+        },
+        "MatchShowcase": {
+          "$path": "src/StarterPlayerScripts/MatchShowcase.lua"
         },
         "CameraDirectorBootstrap": {
           "$path": "src/StarterPlayerScripts/CameraDirector.client.lua"

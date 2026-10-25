@@ -16,13 +16,20 @@ _All models, textures, audio, and assets used in the game must be logged here._
 
 ## Asset Entries
 
+### Match opening, 2026-10-25
+
+| Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 2026-10-25 | Match opening lineup and title | Runtime Model / Procedural UI | Local copies of current participant characters, existing Kalsada scenery, original Frames and text in MatchShowcase | Existing player avatar and map assets retain their original rights status; original project UI | Six-second first-round opening in all match modes | Pending Review | No external model, animation, image or audio ID introduced. Copies are anchored, noncolliding, nonqueryable, stripped of scripts, tags, attributes and effects, and destroyed at the camera handoff. Existing music and countdown sounds retain their recorded review status. Owner visual acceptance pending. |
+
 ### Classic Tag tutorial, 2026-10-25
 
 | Date Added | Asset Name | Type | Source | License | Area Used | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 2026-10-25 | TutorialScene waypoints (`assets/TutorialScene.rbxmx`) | Model | Original invisible marker Parts authored in repository | Original project geometry | Reserved tutorial subplace on Kalsada | Pending Review | Seven named markers are separate from the Kalsada map, so a future map can replace them. No external asset ID. |
+| 2026-10-25 | Tutorial training zone (`assets/TutorialTrainingZone.rbxmx`) | Model | Original Part geometry deterministically emitted by `scripts/build-tutorial-zone.ps1` | Original project geometry | Main place training strip far from Kalsada plus the tutorial subplace; mapped in both projects | Pending Review | Static anchored strip with numbered sign boards, Move, Dash, Sprint, and Tag court discs matched to Config radii, slide rails, a roll platform above the 12-stud hard-landing threshold, a vault crate runway, lampposts, trees, tire stacks, and `SwingBar` and `Zipline` tagged prop models for the MOVEMENT_AUDIT Batch F spec. No external asset ID, texture, audio, Toolbox import, or third-party font (Roblox built-in GothamBold family only). On 2026-10-25 the strip moved into the main place at the owner's single-place direction. |
+| 2026-10-25 | TutorialScene waypoints (`assets/TutorialScene.rbxmx`) | Model | Original invisible marker Parts authored in repository | Original project geometry | Main place training strip and tutorial subplace | Pending Review | Seven named markers are separate from the Kalsada map, so a future map can replace them. No external asset ID. On 2026-10-25 the markers moved onto the generated training strip; names, classes, and sizes are unchanged. |
 | 2026-10-25 | Anchored tutorial Kalsada (`assets/TutorialMap.rbxmx`) | Model | Derived from the project-owner supplied `assets/Map.rbxmx` | Same pending mesh and texture rights review as the source map | Tutorial subplace only | Pending Review | Set Anchored true on 280 previously unanchored BaseParts so scenery stays in place. Geometry, texture references, and waypoint asset are unchanged. The main-place map keeps its original source asset. |
-| 2026-10-25 | Practice Runner, dash gate, and beacon | Model / Script | Original runtime Parts and labels authored in TutorialService | Original project geometry | Tutorial-only tag step and waypoint guidance | Pending Review | Noncolliding gate at DashGoal. No Humanoid, competitive bot, uploaded texture, or external asset ID. The reused Kalsada map retains its existing rights-review status. |
+| 2026-10-25 | Practice Runner, dash gate, and beacon | Model / Script | Original runtime Parts and labels authored in TutorialService | Original project geometry | Tutorial lesson tag step in the main place and the tutorial subplace | Pending Review | Noncolliding gate at DashGoal. No Humanoid, competitive bot, uploaded texture, or external asset ID. The reused Kalsada map retains its existing rights-review status. |
 
 ### Floating action icons, 2026-10-24
 

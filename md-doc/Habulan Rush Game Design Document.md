@@ -99,7 +99,7 @@ Habulan Rush: Game Design Document
 |MS_01|Lobby|until<br>queued|Players queue for a match|MS_VOTE|
 |MS_VOTE|Map Vote|10 s|Match players vote on the map|MS_RPS|
 |MS_RPS|Bato Bato Pick|variable|Eligible players reveal rock, paper, or scissors together; winning signs become safe until one starting Taya remains|MS_03|
-|MS_03|Countdown|5 s|Players spawn, use the MS_RPS starting Taya result, movement locked; one eligible player skips MS_RPS|MS_04|
+|MS_03|Match opening and countdown|19 s in round one; 5 s later|Players spawn and use the MS_RPS starting Taya result. Round one opens with five 2 s Kalsada landmark clips, a 3.5 s avatar lineup and 0.5 s handoff, then the 5 s countdown. Movement stays locked; one eligible player skips MS_RPS|MS_04|
 |MS_04|Round Live|150 s|Chase, tag passing, skills, Skill Surge<br>events|MS_05|
 |MS_05|Round End|8 s|Show Taya time ranking and points|MS_RPS or<br>MS_06|
 |MS_06|Match End|15 s|Final ranking, MVP highlight, return<br>to lobby|MS_01|

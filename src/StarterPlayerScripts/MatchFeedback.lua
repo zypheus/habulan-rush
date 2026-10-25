@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: suppress match notices during the showcase, approved 2026-10-25.
 -- StarterPlayerScripts/MatchFeedback.lua
 -- Owner: Project Owner
 -- Responsibility: Floating match and movement action cards, plus involved-player gamepad haptics.
@@ -16,6 +17,7 @@ local Settings = require(script.Parent:WaitForChild("ClientSettings"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 
 type Kind = "major" | "followup" | "minor"
 type Entry = { title: string, subtitle: string, kind: Kind, accent: Color3, icon: string }
@@ -328,6 +330,7 @@ function MatchFeedback.clear()
 end
 
 function MatchFeedback.show(message: string, detail: string, kind: Kind, accent: Color3, haptic: boolean?, icon: string?)
+	if MatchShowcase.isActive() then return end
 	local state = player:GetAttribute("HRushState")
 	if player:GetAttribute("HRushInMatch") ~= true or (state ~= "MS_03" and state ~= "MS_04") then return end
 	local entry: Entry = { title = message, subtitle = detail, kind = kind, accent = accent, icon = icon or "phase" }

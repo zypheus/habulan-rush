@@ -1,4 +1,6 @@
 --!strict
+-- Task/spec: preserve inspected Studio map voting and spawn fallbacks during showcase sync, 2026-10-25.
+-- Task/spec: six-second first-round match showcase, approved 2026-10-25.
 -- ServerScriptService/MatchService.server.lua   (v1.2 - queue + lobby/match separation, bots removed)
 -- Owner: Project Owner
 -- Responsibility: Match phases, mode/map votes, MS_RPS first Taya selection, scoring, and fallback bag.
@@ -352,7 +354,10 @@ local function teleportToPositions(list: { Player }, assignments: { [Player]: Ve
 	local ready: { { character: Model, position: Vector3 } } = {}
 	for _, player in ipairs(list) do
 		if player.Parent == Players then
-			local position = assignments[player]
+			local position = assignments and assignments[player]
+			if position == nil then
+				position = Vector3.new(0, 3.5, 0)
+			end
 			local character: Model? = nil
 			local deadline = os.clock() + 5
 			repeat
@@ -365,17 +370,17 @@ local function teleportToPositions(list: { Player }, assignments: { [Player]: Ve
 				end
 				task.wait(0.1)
 			until os.clock() >= deadline or player.Parent ~= Players
-			if character == nil or position == nil then
-				warn(string.format("[MatchService] Round spawn unavailable for %s", player.Name))
-				return false
+			if character == nil then
+				warn(string.format("[MatchService] Character unavailable for %s during teleport", player.Name))
+			else
+				table.insert(ready, { character = character, position = position })
 			end
-			table.insert(ready, { character = character, position = position })
 		end
 	end
 	for _, entry in ipairs(ready) do
 		entry.character:PivotTo(CFrame.new(entry.position))
 	end
-	return true
+	return #ready > 0 or #list == 0
 end
 
 -- ============================================================
@@ -694,6 +699,7 @@ local function runRps(): Player?
 end
 
 local function returnToLobby()
+	ReplicatedStorage:SetAttribute("HRushShowcaseEndsAt", nil)
 	PanyoMode.EndRound()
 	SecretHuntMode.EndRound()
 	local returning: { Player } = {}
@@ -842,15 +848,28 @@ end
 -- ============================================================
 -- MAP VOTE
 -- ============================================================
-local function runMapVote(): string
-	local pool = (Config.MapVote and Config.MapVote.Pool) or { "Kalsada", "Binaha" }
+local CANONICAL_MAP_NAMES: { [string]: string } = {
+	kalsada = "Kalsada",
+	binaha = "Binaha",
+	recycling = "Recycling",
+	palengke = "Palengke",
+	palayan = "Palayan",
+	Kalsada = "Kalsada",
+	Binaha = "Binaha",
+	Recycling = "Recycling",
+	Palengke = "Palengke",
+	Palayan = "Palayan",
+}
+
+local function runMapVote(gameMode: string?): string
+	local pool = (Config.MapVote and Config.MapVote.Pool) or { "kalsada", "binaha", "recycling", "palengke", "palayan" }
 	local duration = (Config.MapVote and Config.MapVote.Duration) or 10
-	local revealTime = (Config.MapVote and Config.MapVote.RevealTime) or 1.5
+	local revealTime = (Config.MapVote and Config.MapVote.RevealTime) or 2.0
 	local endsAt = workspace:GetServerTimeNow() + duration
 
 	local votes: { [string]: number } = {}
 	for _, mapKey in ipairs(pool) do
-		votes[mapKey] = 0
+		votes[string.lower(mapKey)] = 0
 	end
 	local voterChoices: { [string]: string } = {}
 
@@ -873,6 +892,7 @@ local function runMapVote(): string
 		endsAt = endsAt,
 		participants = participantList,
 		info = Config.MapVote and Config.MapVote.Info,
+		mode = gameMode or currentMode or "Classic",
 	}
 	for p in pairs(inMatch) do
 		if p:IsDescendantOf(Players) then
@@ -882,20 +902,24 @@ local function runMapVote(): string
 
 	local voteConn: RBXScriptConnection? = nil
 	voteConn = MapVoteEvent.OnServerEvent:Connect(function(player, action, mapKey)
-		if action == "Vote" and typeof(mapKey) == "string" and votes[mapKey] ~= nil then
-			if inMatch[player] then
+		local targetKey = if action == "Vote" and typeof(mapKey) == "string" then mapKey
+			elseif typeof(action) == "string" and mapKey == nil then action
+			else nil
+		if targetKey and inMatch[player] then
+			local key = string.lower(targetKey)
+			if votes[key] ~= nil then
 				local oldChoice = voterChoices[tostring(player.UserId)]
 				if oldChoice then
 					votes[oldChoice] = math.max(0, votes[oldChoice] - 1)
 				end
-				voterChoices[tostring(player.UserId)] = mapKey
-				votes[mapKey] = votes[mapKey] + 1
+				voterChoices[tostring(player.UserId)] = key
+				votes[key] = votes[key] + 1
 
 				local updatePayload = {
 					type = "Update",
 					votes = votes,
 					voterId = player.UserId,
-					map = mapKey,
+					map = key,
 				}
 				for target in pairs(inMatch) do
 					if target:IsDescendantOf(Players) then
@@ -913,7 +937,7 @@ local function runMapVote(): string
 		for _ in pairs(voterChoices) do
 			count += 1
 		end
-		if count >= #participants then
+		if count >= #participants and #participants > 0 then
 			task.wait(0.4)
 			break
 		end
@@ -926,13 +950,17 @@ local function runMapVote(): string
 	local bestCount = -1
 	local candidates: { string } = {}
 	for _, mapKey in ipairs(pool) do
-		local c = votes[mapKey] or 0
+		local key = string.lower(mapKey)
+		local c = votes[key] or 0
 		if c > bestCount then
 			bestCount = c
-			candidates = { mapKey }
-		elseif c == bestCount then
-			table.insert(candidates, mapKey)
+			candidates = { key }
+		elseif c == bestCount and c > 0 then
+			table.insert(candidates, key)
 		end
+	end
+	if #candidates == 0 then
+		candidates = { "kalsada" }
 	end
 	local winner = candidates[math.random(1, #candidates)]
 
@@ -955,7 +983,7 @@ local function runMapVote(): string
 		end
 	end
 
-	return winner
+	return CANONICAL_MAP_NAMES[winner] or "Kalsada"
 end
 
 local function runMatch()
@@ -1019,17 +1047,22 @@ local function runMatch()
 			currentMode = selectedMode
 			broadcastState(nil)
 		end
-		local selectedMap = if currentMode == "AgawanNgPanyo" or currentMode == "SecretHunt"
-			then "Kalsada" else runMapVote()
+		local selectedMap = runMapVote(currentMode)
 		ReplicatedStorage:SetAttribute("HRushSelectedMap", selectedMap)
 		print(string.format("[MatchService] Map vote completed. Selected map: %s", selectedMap))
 
 		-- Sample once at match entry; the first round reuses these positions.
 		local roundSpawns = SpawnSelector.assignRound(getParticipants() :: { Player })
-		if roundSpawns == nil or not teleportToPositions(getParticipants() :: { Player }, roundSpawns) then
-			warn("[MatchService] Safe authored-map spawns unavailable; ending match")
-			continue
+		if roundSpawns == nil or next(roundSpawns) == nil then
+			warn("[MatchService] SpawnSelector returned empty spawns; generating emergency fallback")
+			roundSpawns = {}
+			local participants = getParticipants() :: { Player }
+			for index, player in ipairs(participants) do
+				local angle = (index - 1) * (2 * math.pi / math.max(1, #participants))
+				roundSpawns[player] = Vector3.new(math.cos(angle) * 10, 3.5, math.sin(angle) * 10)
+			end
 		end
+		teleportToPositions(getParticipants() :: { Player }, roundSpawns)
 		task.wait(0.5)
 
 		local practiceSolo = currentMode == "AgawanNgPanyo" and participantCount() == 1
@@ -1047,7 +1080,14 @@ local function runMatch()
 		for roundNum = 1, totalRounds do
 			if roundNum > 1 then
 				roundSpawns = SpawnSelector.assignRound(getParticipants() :: { Player })
-				if roundSpawns == nil then abort = true break end
+				if roundSpawns == nil or next(roundSpawns) == nil then
+					roundSpawns = {}
+					local pList = getParticipants() :: { Player }
+					for index, player in ipairs(pList) do
+						local angle = (index - 1) * (2 * math.pi / math.max(1, #pList))
+						roundSpawns[player] = Vector3.new(math.cos(angle) * 10, 3.5, math.sin(angle) * 10)
+					end
+				end
 			end
 			currentRound = roundNum
 			tayaTimeThisRound = {}
@@ -1083,10 +1123,15 @@ local function runMatch()
 			end
 			-- MS_03 COUNTDOWN
 			matchState = "MS_03"
-			if not teleportToPositions(getParticipants() :: { Player }, roundSpawns :: { [Player]: Vector3 }) then
-				abort = true
-				break
-			end
+			teleportToPositions(getParticipants() :: { Player }, roundSpawns :: { [Player]: Vector3 })
+			-- Publish both deadlines before exposing MS_03 to clients. Only the first
+			-- round keeps the full live countdown in Studio so the opening can be reviewed.
+			local showcaseDuration = if roundNum == 1 then MATCH.Showcase.Duration else 0
+			local cdDuration = if IS_STUDIO and roundNum > 1 then 3 else MATCH.CountdownDuration
+			local preparationEndsAt = Workspace:GetServerTimeNow() + showcaseDuration + cdDuration
+			ReplicatedStorage:SetAttribute("HRushPhaseEndsAt", preparationEndsAt)
+			ReplicatedStorage:SetAttribute("HRushShowcaseEndsAt",
+				if showcaseDuration > 0 then preparationEndsAt - cdDuration else nil)
 			if currentMode == "ClassicTag" then
 				setRoles(startingTaya :: Instance)
 			elseif currentMode == "AgawanNgPanyo" then
@@ -1105,12 +1150,19 @@ local function runMatch()
 					break
 				end
 			end
-			local cdDuration: number = MATCH.CountdownDuration or 5
 			if currentMode == "ClassicTag" then
 				print(string.format("[MatchService] Round %d: MS_03 Countdown (%d s). Starting Taya: %s", currentRound, cdDuration, (startingTaya :: Instance).Name))
 			end
-			waitPhase(IS_STUDIO and 3 or cdDuration)
+			task.wait(math.max(0, preparationEndsAt - Workspace:GetServerTimeNow()))
 			if participantCount() == 0 then abort = true break end
+			if currentMode == "ClassicTag" and (startingTaya == nil or not inMatch[startingTaya]) then
+				-- A chaser may leave during the longer preparation. Reuse the existing
+				-- server fallback rather than enter a live round without a Taya.
+				startingTaya = drawFallbackTaya()
+				if startingTaya == nil then abort = true break end
+				rpsChosen[startingTaya] = true
+				setRoles(startingTaya)
+			end
 			if currentMode == "SecretHunt" and not huntPractice
 				and participantCount() < Config.SecretHunt.MinCompetitivePlayers then
 				if roundNum > 1 then
@@ -1128,6 +1180,7 @@ local function runMatch()
 			matchState = "MS_04"
 			roundActive = true
 			broadcastState(nil)
+			ReplicatedStorage:SetAttribute("HRushShowcaseEndsAt", nil)
 			local roundDuration: number = if currentMode == "AgawanNgPanyo" then Config.Panyo.RoundDuration
 				else if currentMode == "SecretHunt" then Config.SecretHunt.RoundDuration
 				else MATCH.RoundDuration or 150

@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: showcase HUD suppression and reliable countdown handoff, approved 2026-10-25.
 -- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/UIController.client.lua
 -- Owner: Project Owner
@@ -41,6 +42,7 @@ local AudioRouter = require(script.Parent:WaitForChild("AudioRouter"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 local Mv     = Config.Movement
 local TS     = Config.UI.Tsinelas -- RS_03 slot sizes, labels, and timings
 
@@ -909,6 +911,7 @@ local splashSub = oLabel({
 
 local splashToken = 0
 local function playRoleSplash()
+	if MatchShowcase.isActive() then return end
 	splashToken += 1
 	local token = splashToken
 	local isTaya = LocalPlayer:GetAttribute("HRushRole") == "Taya"
@@ -983,16 +986,32 @@ local countdownLabel = oLabel({
 oStroke(countdownLabel, HUD_NAVY, 0, 1)
 
 local lastCountNum = -1
+local countdownGoPlayed = false
+local countdownGoToken = 0
+local function showCountdownGo()
+	countdownGoToken += 1
+	local token = countdownGoToken
+	countdownLabel.Visible = true
+	countdownLabel.Text = "GO!"
+	countdownLabel.TextSize = if Layout.compact() then 40 else 56
+	countdownLabel.TextColor3 = HUD_RED
+	if not countdownGoPlayed then
+		countdownGoPlayed = true
+		AudioRouter.playSfxId(Config.Sfx.Countdown.go, Config.Sfx.Countdown.volume)
+	end
+	task.delay(Config.Match.Showcase.GoDisplayDuration, function()
+		if countdownGoToken == token then countdownLabel.Visible = false end
+	end)
+end
 local function updateCountdown()
 	local st = phaseState
-	if st ~= "MS_03" then
+	if st ~= "MS_03" or MatchShowcase.isActive() then
 		countdownLabel.Visible = false
-		lastCountNum = -1
 		return
 	end
 	local endsAt = ReplicatedStorage:GetAttribute("HRushPhaseEndsAt")
 	local remaining = typeof(endsAt) == "number" and math.ceil(endsAt - Workspace:GetServerTimeNow()) or -1
-	if remaining > 0 then
+	if remaining > 0 and remaining <= Config.Match.CountdownDuration then
 		countdownLabel.Visible = true
 		if remaining ~= lastCountNum then
 			lastCountNum = remaining
@@ -1003,15 +1022,8 @@ local function updateCountdown()
 			AudioRouter.playSfxId(Config.Sfx.Countdown.tick, Config.Sfx.Countdown.volume)
 		end
 	else
-		-- 0: the launch moment
-		countdownLabel.Visible = true
-		if lastCountNum ~= 0 then
-			lastCountNum = 0
-			countdownLabel.Text = "GO!"
-			countdownLabel.TextSize = if Layout.compact() then 40 else 56
-			countdownLabel.TextColor3 = HUD_RED
-			AudioRouter.playSfxId(Config.Sfx.Countdown.go, Config.Sfx.Countdown.volume)
-		end
+		-- The server's MS_04 transition owns GO and control release.
+		countdownLabel.Visible = false
 	end
 end
 
@@ -1598,7 +1610,7 @@ local function applyOverlayGate()
 	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
 	local st = phaseState
 	local mode = LocalPlayer:GetAttribute("HRushGameMode")
-	overlayGui.Enabled = inMatch and st ~= nil and st ~= "MS_01"
+	overlayGui.Enabled = inMatch and st ~= nil and st ~= "MS_01" and not MatchShowcase.isActive()
 	resultsGui.Enabled = inMatch and (st == "MS_05" or st == "MS_06")
 	topBar.Visible = inMatch and st == "MS_04"
 	classicObjective.Visible = topBar.Visible and mode == "ClassicTag"
@@ -1613,7 +1625,6 @@ local function applyOverlayGate()
 		tayaBadge.Visible = false
 		countdownLabel.Visible = false
 		respawnLabel.Visible = false
-		lastCountNum = -1
 	end
 	roundLabel.Text = string.format("ROUND %d / %d", tonumber(LocalPlayer:GetAttribute("HRushRound")) or 1, totalRounds)
 	local compact = Layout.compact()
@@ -1652,8 +1663,12 @@ local function setPhase(st: string?)
 		buildDraft()
 	end
 	if st == "MS_03" and prev ~= "MS_03" then
+		lastCountNum = -1
+		countdownGoPlayed = false
+		countdownGoToken += 1
 		playRoleSplash()
 	end
+	if prev == "MS_03" and st == "MS_04" then showCountdownGo() end
 end
 
 LocalPlayer:GetAttributeChangedSignal("HRushState"):Connect(function()
@@ -1793,10 +1808,22 @@ local function applyHudGate()
 	local inMatch = LocalPlayer:GetAttribute("HRushInMatch") == true
 	local st = LocalPlayer:GetAttribute("HRushState")
 	gui.Enabled = inMatch and (st == "MS_03" or st == "MS_04" or st == "MS_05")
+		and not MatchShowcase.isActive()
 	updateRoleBanner()
 end
 
 LocalPlayer:GetAttributeChangedSignal("HRushInMatch"):Connect(applyHudGate)
 LocalPlayer:GetAttributeChangedSignal("HRushState"):Connect(applyHudGate)
 LocalPlayer:GetAttributeChangedSignal("HRushRole"):Connect(updateRoleBanner)
+MatchShowcase.Changed:Connect(function(active: boolean)
+	applyHudGate()
+	applyOverlayGate()
+	if active then
+		splashToken += 1
+		splash.Visible = false
+	elseif phaseState == "MS_03" then
+		playRoleSplash()
+		updateCountdown()
+	end
+end)
 applyHudGate()

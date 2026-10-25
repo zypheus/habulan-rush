@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: preserve showcase character hiding, approved 2026-10-25.
 -- StarterPlayerScripts/FirstPersonTorsoHider.lua (ModuleScript)
 -- Owner: Project Owner
 -- Responsibility: local-only first-person torso hiding. While the camera sits
@@ -19,6 +20,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 local FP = Config.Camera.FirstPerson
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 
 local localPlayer = Players.LocalPlayer
 
@@ -66,6 +68,7 @@ end
 -- fade also writes LocalTransparencyModifier on every part and resets it to 0
 -- on aim exit, and this pass must re-assert the torso state after that.
 local function onRender()
+	if MatchShowcase.isActive() then return end
 	if dirty then
 		rebuild()
 	end

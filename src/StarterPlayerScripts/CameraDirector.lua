@@ -1,4 +1,6 @@
 --!strict
+-- Task/spec: preserve inspected Studio view defaults during showcase sync, 2026-10-25.
+-- Task/spec: first-round showcase camera ownership and handoff, approved 2026-10-25.
 -- StarterPlayerScripts/CameraDirector.lua (ModuleScript)
 -- Owner: Project Owner
 -- Responsibility: single client owner of the in-match gameplay camera: base
@@ -40,6 +42,7 @@ local TargetLockController = require(script.Parent:WaitForChild("TargetLockContr
 local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
 local Momentum = require(script.Parent:WaitForChild("MomentumController"))
 local MomentumRules = require(ReplicatedStorage:WaitForChild("MomentumRules"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 
 local localPlayer = Players.LocalPlayer
 
@@ -51,6 +54,7 @@ local running = false
 -- right now and we only track its live pose so re-entry never snaps.
 local bound = false
 local yielded = false
+local showcaseCameraHeld = false
 local cursorForced = false
 
 -- Saved-state contract, mirrored from AimCamSaved: we save exactly the
@@ -137,7 +141,7 @@ local transferToTaya = false
 
 -- Phase 4 view mode state: the active mode, the deferred request, and the
 -- short pose blend between the modes.
-local viewMode = "ThirdPerson"
+local viewMode = "FirstPerson"
 local pendingMode: string? = nil
 local blendLeft = 0.0
 local blendTotal = 0.0
@@ -229,7 +233,7 @@ end
 -- stops taking input there.
 local function actionPhase(): boolean
 	local state = localPlayer:GetAttribute("HRushState")
-	return state == "MS_03" or state == "MS_04"
+	return (state == "MS_03" or state == "MS_04") and not MatchShowcase.isActive()
 end
 
 -- Looks one step. dx positive turns right and dy positive looks down, the
@@ -987,6 +991,8 @@ local function acquire()
 end
 
 local function release(restoreSaved: boolean)
+	MatchShowcase.stop()
+	showcaseCameraHeld = false
 	if not bound then
 		return
 	end
@@ -1092,6 +1098,23 @@ function onRender(dt: number)
 	local cam = Workspace.CurrentCamera
 	if cam == nil then
 		return
+	end
+	local showcaseFrame = MatchShowcase.step(cam)
+	if showcaseFrame then
+		showcaseCameraHeld = true
+		maintainCursor(true)
+		stepFacing(dt, nil)
+		cam.CameraType = Enum.CameraType.Scriptable
+		cam.CFrame = showcaseFrame
+		cam.FieldOfView = Config.Match.Showcase.FieldOfView
+		return
+	elseif showcaseCameraHeld then
+		-- Resume the stored gameplay yaw under the black frame, never the shot's aim.
+		showcaseCameraHeld = false
+		blendLeft, blendFrom = 0, nil
+		resetEffects()
+		cam.FieldOfView = math.clamp(ClientSettings.get("firstPersonFov") :: number,
+			Config.Settings.FirstPersonFovMin, Config.Settings.FirstPersonFovMax)
 	end
 
 	-- Effects advance before the yield check: envelopes stay live while aim
@@ -1463,6 +1486,7 @@ function CameraDirector.start()
 		return
 	end
 	running = true
+	MatchShowcase.start()
 	Momentum.start()
 	Momentum.Changed:Connect(function(_value: number, reason: string, _action: string?, _gain: number?, payload: any?)
 		if reason == "confirmed" and payload ~= nil and payload.perfect == true
@@ -1473,7 +1497,9 @@ function CameraDirector.start()
 	refreshSensitivity()
 	-- The lobby retains its saved preference; a match always starts in first person.
 	local savedMode = ClientSettings.get("cameraViewMode")
-	if savedMode == "FirstPerson" and modeEnabled() then
+	if savedMode == "ThirdPerson" then
+		viewMode = "ThirdPerson"
+	elseif savedMode == "FirstPerson" and modeEnabled() then
 		viewMode = "FirstPerson"
 	end
 	if inMatch() then

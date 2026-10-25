@@ -45,8 +45,9 @@ Primary coding agent: **Codex**, only for the currently approved item
 | Bootstrap | `src/ServerScriptService/Bootstrap.server.lua` | Kalsada greybox, lighting, and character defaults | Project Owner |
 | NametagDefaults | `src/ServerScriptService/NametagDefaults.server.lua` | Suppresses built-in overhead names and health displays so local nametags render once | Project Owner |
 | TutorialProgress | `src/ServerScriptService/TutorialProgress.lua` | Versioned shared-experience tutorial choice and completion record | Project Owner |
-| TutorialGateway | `src/ServerScriptService/TutorialGateway.server.lua` | Idle solo admission and reserved tutorial teleport from the lobby | Project Owner |
-| TutorialService | `src/ServerScriptService/TutorialService.server.lua` | Isolated lesson roles, waypoints, practice target, progress, completion, and return | Project Owner |
+| TutorialGateway | `src/ServerScriptService/TutorialGateway.server.lua` | Idle solo admission into the tutorial; in the main place the lesson runs in place on the training strip, and the standalone tutorial place keeps the reserved-session teleport | Project Owner |
+| TutorialService | `src/ServerScriptService/TutorialService.lua` | Classic Tag lesson roles, waypoints, practice target, progress, completion, and return; dual-mode standalone subplace and embedded main place with global round-state pinning during sessions | Project Owner |
+| TutorialServiceBootstrap | `src/ServerScriptService/TutorialService.server.lua` | Starts the TutorialService module lifecycle | Project Owner |
 
 ## Client
 
@@ -83,6 +84,7 @@ Primary coding agent: **Codex**, only for the currently approved item
 | MusicController | `src/StarterPlayerScripts/MusicController.lua` | Client match-state music playback and fades | Project Owner |
 | VfxScale | `src/StarterPlayerScripts/VfxScale.lua` | Client cosmetic intensity and telegraph floor | Project Owner |
 | CameraDirector | `src/StarterPlayerScripts/CameraDirector.lua` | First-person-only match camera with lobby-preference restoration, pose and look input, aim and target-lock handoff, movement camera effects, and chase feedback | Project Owner |
+| MatchShowcase | `src/StarterPlayerScripts/MatchShowcase.lua` | Server-deadline-driven opening title, inert local lineup, responsive framing and cleanup; CameraDirector applies its camera poses | Project Owner |
 | CameraDirector bootstrap | `src/StarterPlayerScripts/CameraDirector.client.lua` | Starts CameraDirector once | Project Owner |
 | ChaseState | `src/StarterPlayerScripts/ChaseState.lua` | Client-only chase awareness state: active Taya resolution (players and bots), distance, closing speed, visibility, and one smoothed chase intensity shared by camera and HUD | Project Owner |
 | ChaseHUD | `src/StarterPlayerScripts/ChaseHUD.lua` | Phase 3 chase HUD: Runner edge chevron, Taya advisory tag-target marker, tag-transfer edge pulse, and the mobile hold-to-look-back button | Project Owner |
@@ -92,9 +94,10 @@ Primary coding agent: **Codex**, only for the currently approved item
 
 | Area | Canonical source | Responsibility | Owner |
 |---|---|---|---|
+| Open Studio showcase overlay | `studio-showcase.project.json` | Main-place-restricted sync of 11 showcase scripts after comparing and preserving Studio-only Config, map-vote, spawn and camera edits; excludes Workspace and unrelated instances | Project Owner |
 | Animation authoring | `tools/AnimationDev/HRush_AnimDev.lua`, `tools/AnimationDev/HRush_AnimPreview.lua` | Data-driven original R15 animation definitions, validation, building, and local preview | Project Owner |
 | Workspace map input | `assets/Map.rbxmx`, `assets/Terrain.rbxmx` | Owner-exported authored Kalsada scene, original lobby spawn, tagged walkable ground, spawn regions, and terrain | Project Owner |
-| Tutorial place input | `tutorial.project.json`, `assets/TutorialMap.rbxmx`, `assets/TutorialScene.rbxmx` | Reusable tutorial code with anchored Kalsada scenery and separately named scene waypoints | Project Owner |
+| Tutorial place input | `tutorial.project.json`, `assets/TutorialMap.rbxmx`, `assets/TutorialScene.rbxmx`, `assets/TutorialTrainingZone.rbxmx`, `scripts/build-tutorial-zone.ps1` | Optional standalone tutorial place with anchored Kalsada scenery, scene waypoints, and the deterministic training strip generator; the strip, scene, and lesson scripts are also mapped into the main place project, and TutorialMap remains subplace only | Project Owner |
 | Open Studio tutorial entry overlays | `studio-tutorial-entry.project.json`, `studio-feedback.project.json` | Main-place restricted source sync of the lobby tutorial clients and queue repair without replacing the authored map; current Edit place has direct source mirrors for server scripts because Rojo did not adopt the older instances | Project Owner |
 | Open Studio spawn overlay | `assets/SpawnRegions.rbxmx`, `assets/PanyoSpawn.rbxmx`, `studio-spawn.project.json` | Targeted sync into the existing open place while preserving its authored Workspace objects | Project Owner |
 | Open Studio camera and TAG overlay | `studio-camera-tag.project.json` | Place-ID-restricted sync of four approved client modules while preserving all other Studio objects | Project Owner |

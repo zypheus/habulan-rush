@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: suppress chase indicators during the match showcase, approved 2026-10-25.
 -- StarterPlayerScripts/ChaseHUD.lua (ModuleScript)
 -- Owner: Project Owner
 -- Task/spec: remove the view toggle from first-person-only matches, approved 2026-10-24.
@@ -27,6 +28,7 @@ local TagRules = require(ReplicatedStorage:WaitForChild("TagRules"))
 local ClientSettings = require(script.Parent:WaitForChild("ClientSettings"))
 local ChaseState = require(script.Parent:WaitForChild("ChaseState"))
 local TargetLockController = require(script.Parent:WaitForChild("TargetLockController"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 
 local localPlayer = Players.LocalPlayer
 
@@ -337,7 +339,7 @@ end
 local function syncBound()
 	local active = Cfg.Enabled and localPlayer:GetAttribute("HRushInMatch") == true
 	if gui ~= nil then
-		gui.Enabled = active
+		gui.Enabled = active and not MatchShowcase.isActive()
 	end
 	if active and not bound then
 		bound = true
@@ -525,6 +527,7 @@ function ChaseHUD.start()
 	running = true
 	director = require(script.Parent:WaitForChild("CameraDirector"))
 	build()
+	MatchShowcase.Changed:Connect(syncBound)
 	localPlayer:GetAttributeChangedSignal("HRushInMatch"):Connect(syncBound)
 	localPlayer:GetAttributeChangedSignal("HRushRole"):Connect(onRoleChanged)
 	syncBound()

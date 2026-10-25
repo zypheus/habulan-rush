@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: suppress Panyo HUD during the match showcase, approved 2026-10-25.
 -- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/PanyoHUD.client.lua
 -- Owner: Project Owner
@@ -20,6 +21,7 @@ local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 local event = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PanyoEvent") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -144,6 +146,7 @@ local function isVisible(): boolean
 	return localPlayer:GetAttribute("HRushInMatch") == true
 		and localPlayer:GetAttribute("HRushGameMode") == "AgawanNgPanyo"
 		and (state == "MS_03" or state == "MS_04")
+		and not MatchShowcase.isActive()
 end
 
 local function syncCarrierFx(carrier: Player?)
@@ -312,6 +315,7 @@ event.OnClientEvent:Connect(function(payload: any)
 	refresh()
 end)
 
+MatchShowcase.Changed:Connect(refresh)
 for _, attribute in { "HRushInMatch", "HRushGameMode", "HRushState", "HRushPanyoTime", "HRushPanyoPoints", "HRushPanyoSteals" } do
 	localPlayer:GetAttributeChangedSignal(attribute):Connect(refresh)
 end

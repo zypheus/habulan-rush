@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: suppress world nametags during the match showcase, approved 2026-10-25.
 -- StarterPlayerScripts/NametagController.client.lua
 -- Owner: Project Owner
 -- Responsibility: One visible local identity badge per other match character.
@@ -9,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -62,6 +64,11 @@ huntEvent.OnClientEvent:Connect(function(payload: any)
 end)
 
 Players.PlayerRemoving:Connect(clear)
+MatchShowcase.Changed:Connect(function(active: boolean)
+	if active then
+		for player in guiByPlayer do clear(player) end
+	end
+end)
 localPlayer:GetAttributeChangedSignal("HRushGameMode"):Connect(function()
 	if localPlayer:GetAttribute("HRushGameMode") ~= "SecretHunt" then
 		targetUserId = nil
@@ -82,7 +89,8 @@ task.spawn(function()
 		local camera = Workspace.CurrentCamera
 		local state = localPlayer:GetAttribute("HRushState")
 		local mode = localPlayer:GetAttribute("HRushGameMode")
-		local inRound = localPlayer:GetAttribute("HRushInMatch") == true and (state == "MS_03" or state == "MS_04")
+		local inRound = localPlayer:GetAttribute("HRushInMatch") == true
+			and (state == "MS_03" or state == "MS_04") and not MatchShowcase.isActive()
 		local carrierId = ReplicatedStorage:GetAttribute("HRushPanyoCarrierUserId")
 		local visibleTags = {}
 		for _, player in Players:GetPlayers() do

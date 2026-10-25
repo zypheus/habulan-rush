@@ -65,6 +65,12 @@
       "Map": {
         "$path": "assets/Map.rbxmx"
       },
+      "TutorialScene": {
+        "$path": "assets/TutorialScene.rbxmx"
+      },
+      "TutorialTrainingZone": {
+        "$path": "assets/TutorialTrainingZone.rbxmx"
+      },
       "Terrain": {
         "$path": "assets/Terrain.rbxmx"
       }
@@ -84,6 +90,12 @@
       },
       "TutorialGateway": {
         "$path": "src/ServerScriptService/TutorialGateway.server.lua"
+      },
+      "TutorialService": {
+        "$path": "src/ServerScriptService/TutorialService.lua"
+      },
+      "TutorialServiceBootstrap": {
+        "$path": "src/ServerScriptService/TutorialService.server.lua"
       },
       "PanyoMode": {
         "$path": "src/ServerScriptService/PanyoMode.lua"
@@ -172,6 +184,9 @@
         "TutorialPrompt": {
           "$path": "src/StarterPlayerScripts/TutorialPrompt.client.lua"
         },
+        "TutorialHUD": {
+          "$path": "src/StarterPlayerScripts/TutorialHUD.client.lua"
+        },
         "MapVoteUI": {
           "$path": "src/StarterPlayerScripts/MapVoteUI.client.lua"
         },
@@ -201,6 +216,9 @@
         },
         "CameraDirector": {
           "$path": "src/StarterPlayerScripts/CameraDirector.lua"
+        },
+        "MatchShowcase": {
+          "$path": "src/StarterPlayerScripts/MatchShowcase.lua"
         },
         "CameraDirectorBootstrap": {
           "$path": "src/StarterPlayerScripts/CameraDirector.client.lua"

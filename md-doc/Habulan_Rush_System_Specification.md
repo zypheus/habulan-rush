@@ -13,7 +13,7 @@ This document turns GDD v2.0 into implementable rules. It defines state, rules, 
 |MS_01 Lobby|Server start / match end|Queued search times out or reaches 8 players; solo sandbox allowed|Start queued match|
 |MS_VOTE Map Vote|Queued match starts|Vote timer ends|Collect map votes and publish the selected map|
 |MS_RPS Bato Bato Pick|Map vote or Round End ends; at least two players remain eligible|One starting Taya remains, or stage cap is reached|Run server-timed pick, reveal, and elimination stages; publish starting Taya|
-|MS_03 Countdown|MS_RPS ends, or one eligible player skips it|5 s timer ends|Spawn players, use the MS_RPS result as first Taya, lock movement|
+|MS_03 Match opening and countdown|MS_RPS ends, or one eligible player skips it|19 s preparation ends in round one; 5 s countdown ends in later rounds|Spawn players, use the MS_RPS result as first Taya, lock movement; show five 2 s Kalsada landmark clips, a 3.5 s avatar lineup and 0.5 s handoff once per match before the 5 s countdown|
 |MS_04 Round Live|Countdown ends|Timer reaches 0|Run Taya Timer, Diskarte, events,<br>phases|
 |MS_05 Round End|Round Live ends|8 s timer ends|Freeze input, rank, award points,<br>recap|
 |MS_06 Match End|After round 3|15 s timer ends|Final ranking, MVP, return to lobby|

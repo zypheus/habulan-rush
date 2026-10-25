@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<roblox version="4">
+  <Item class="Folder" referent="HRUSH_TUTORIAL_SCENE">
+    <Properties><string name="Name">TutorialScene</string></Properties>
+    <Item class="Part" referent="HRUSH_TUTORIAL_Start">
+      <Properties>
+        <string name="Name">Start</string>
+        <CoordinateFrame name="CFrame">
+          <X>0</X><Y>0.5</Y><Z>5000</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_TUTORIAL_MoveGoal">
+      <Properties>
+        <string name="Name">MoveGoal</string>
+        <CoordinateFrame name="CFrame">
+          <X>0</X><Y>0.5</Y><Z>5050</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_TUTORIAL_DashGoal">
+      <Properties>
+        <string name="Name">DashGoal</string>
+        <CoordinateFrame name="CFrame">
+          <X>0</X><Y>0.5</Y><Z>5078</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_TUTORIAL_SlideStart">
+      <Properties>
+        <string name="Name">SlideStart</string>
+        <CoordinateFrame name="CFrame">
+          <X>0</X><Y>0.5</Y><Z>5108</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_TUTORIAL_SlideEnd">
+      <Properties>
+        <string name="Name">SlideEnd</string>
+        <CoordinateFrame name="CFrame">
+          <X>0</X><Y>0.5</Y><Z>5160</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_TUTORIAL_TagPathA">
+      <Properties>
+        <string name="Name">TagPathA</string>
+        <CoordinateFrame name="CFrame">
+          <X>-3</X><Y>0.5</Y><Z>5186</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+    <Item class="Part" referent="HRUSH_TUTORIAL_TagPathB">
+      <Properties>
+        <string name="Name">TagPathB</string>
+        <CoordinateFrame name="CFrame">
+          <X>3</X><Y>0.5</Y><Z>5186</Z>
+          <R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>
+        </CoordinateFrame>
+        <Vector3 name="size"><X>2</X><Y>1</Y><Z>2</Z></Vector3>
+        <bool name="Anchored">true</bool><bool name="CanCollide">false</bool>
+        <bool name="CanTouch">false</bool><bool name="CanQuery">false</bool>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>

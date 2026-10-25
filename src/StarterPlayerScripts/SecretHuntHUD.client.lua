@@ -1,4 +1,5 @@
 --!strict
+-- Task/spec: suppress private Hunt HUD during the match showcase, approved 2026-10-25.
 -- Task/spec: floating action card icons, approved 2026-10-24.
 -- StarterPlayerScripts/SecretHuntHUD.client.lua
 -- Owner: Project Owner
@@ -19,6 +20,7 @@ local VfxScale = require(script.Parent:WaitForChild("VfxScale"))
 local Theme = require(script.Parent:WaitForChild("UITheme"))
 local Layout = require(script.Parent:WaitForChild("UILayoutCoordinator"))
 local MatchFeedback = require(script.Parent:WaitForChild("MatchFeedback"))
+local MatchShowcase = require(script.Parent:WaitForChild("MatchShowcase", 10))
 local huntEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SecretHuntEvent") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -202,7 +204,7 @@ end
 
 local function refreshGate()
 	local state = localPlayer:GetAttribute("HRushState")
-	local visible = inHunt() and (state == "MS_03" or state == "MS_04")
+	local visible = inHunt() and (state == "MS_03" or state == "MS_04") and not MatchShowcase.isActive()
 	gui.Enabled = visible
 	localPlayer:SetAttribute("HRushHuntTargetReady", visible and targetId ~= nil)
 	if not visible then
@@ -325,6 +327,7 @@ huntEvent.OnClientEvent:Connect(function(payload: any)
 	end
 end)
 
+MatchShowcase.Changed:Connect(refreshGate)
 for _, attribute in { "HRushInMatch", "HRushState", "HRushGameMode" } do
 	localPlayer:GetAttributeChangedSignal(attribute):Connect(function()
 		if not inHunt() then
